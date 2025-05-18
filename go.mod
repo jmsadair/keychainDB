@@ -1,4 +1,4 @@
-module zebradb
+module zebraos
 
 go 1.24.1
 
