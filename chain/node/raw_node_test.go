@@ -41,6 +41,40 @@ func TestNewRawNode(t *testing.T) {
 	require.Equal(t, successor.String(), node.successor().String())
 }
 
+func TestSetPredecessor(t *testing.T) {
+	address, err := net.ResolveTCPAddr("tcp", "127.0.0.1:8080")
+	require.NoError(t, err)
+	predecessor, err := net.ResolveTCPAddr("tcp", "127.0.0.2:8080")
+	require.NoError(t, err)
+	successor, err := net.ResolveTCPAddr("tcp", "127.0.0.3:8080")
+	require.NoError(t, err)
+	storage := newMockStorage()
+	node := newRawNode(address, predecessor, successor, storage)
+
+	require.Equal(t, predecessor.String(), node.predecessor().String())
+	newPredecessor, err := net.ResolveTCPAddr("tcp", "127.0.0.4:8080")
+	require.NoError(t, err)
+	node.setPredecessor(newPredecessor)
+	require.Equal(t, newPredecessor.String(), node.predecessor().String())
+}
+
+func TestSetSuccessor(t *testing.T) {
+	address, err := net.ResolveTCPAddr("tcp", "127.0.0.1:8080")
+	require.NoError(t, err)
+	predecessor, err := net.ResolveTCPAddr("tcp", "127.0.0.2:8080")
+	require.NoError(t, err)
+	successor, err := net.ResolveTCPAddr("tcp", "127.0.0.3:8080")
+	require.NoError(t, err)
+	storage := newMockStorage()
+	node := newRawNode(address, predecessor, successor, storage)
+
+	require.Equal(t, successor.String(), node.successor().String())
+	newSuccessor, err := net.ResolveTCPAddr("tcp", "127.0.0.4:8080")
+	require.NoError(t, err)
+	node.setPredecessor(newSuccessor)
+	require.Equal(t, newSuccessor.String(), node.predecessor().String())
+}
+
 func TestSetGet(t *testing.T) {
 	address, err := net.ResolveTCPAddr("tcp", "127.0.0.1:8080")
 	require.NoError(t, err)

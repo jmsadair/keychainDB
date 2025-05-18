@@ -41,6 +41,18 @@ func (r *rawNode) successor() net.Addr {
 	return r.succ
 }
 
+func (r *rawNode) setPredecessor(predecessor net.Addr) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.pred = predecessor
+}
+
+func (r *rawNode) setSuccessor(successor net.Addr) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.succ = successor
+}
+
 func (r *rawNode) set(key string, value []byte) error {
 	return r.storage.Set(key, value)
 }
