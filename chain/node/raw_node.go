@@ -6,8 +6,9 @@ import (
 )
 
 type Storage interface {
-	Set(key string, value []byte) error
+	Put(key string, value []byte) error
 	Get(key string) ([]byte, error)
+	Delete(key string) error
 }
 
 type rawNode struct {
@@ -53,10 +54,14 @@ func (r *rawNode) setSuccessor(successor net.Addr) {
 	r.succ = successor
 }
 
-func (r *rawNode) set(key string, value []byte) error {
-	return r.storage.Set(key, value)
+func (r *rawNode) put(key string, value []byte) error {
+	return r.storage.Put(key, value)
 }
 
 func (r *rawNode) get(key string) ([]byte, error) {
 	return r.storage.Get(key)
+}
+
+func (r *rawNode) delete(key string) error {
+	return r.storage.Delete(key)
 }
