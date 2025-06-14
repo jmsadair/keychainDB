@@ -8,6 +8,29 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+type mockClient struct {
+	mock.Mock
+}
+
+func newClientMock() *mockClient {
+	return &mockClient{}
+}
+
+func (mc *mockClient) Put(address net.Addr, key string, value []byte) error {
+	args := mc.MethodCalled("Put", address, key, value)
+	return args.Error(0)
+}
+
+func (mc *mockClient) Get(address net.Addr, key string) ([]byte, error) {
+	args := mc.MethodCalled("Get", address, key)
+	return args.Get(0).([]byte), args.Error(1)
+}
+
+func (mc *mockClient) Delete(address net.Addr, key string) error {
+	args := mc.MethodCalled("Delete", address, key)
+	return args.Error(0)
+}
+
 type mockStorage struct {
 	mock.Mock
 }
@@ -39,7 +62,8 @@ func TestNewRawNode(t *testing.T) {
 	successor, err := net.ResolveTCPAddr("tcp", "127.0.0.3:8080")
 	require.NoError(t, err)
 	storage := newMockStorage()
-	node := newRawNode(address, predecessor, successor, storage)
+	client := newClientMock()
+	node := newRawNode(address, predecessor, successor, storage, client)
 
 	require.Equal(t, address.String(), node.address.String())
 	require.Equal(t, predecessor.String(), node.predecessor().String())
@@ -54,7 +78,8 @@ func TestSetPredecessor(t *testing.T) {
 	successor, err := net.ResolveTCPAddr("tcp", "127.0.0.3:8080")
 	require.NoError(t, err)
 	storage := newMockStorage()
-	node := newRawNode(address, predecessor, successor, storage)
+	client := newClientMock()
+	node := newRawNode(address, predecessor, successor, storage, client)
 
 	require.Equal(t, predecessor.String(), node.predecessor().String())
 	newPredecessor, err := net.ResolveTCPAddr("tcp", "127.0.0.4:8080")
@@ -71,13 +96,14 @@ func TestSetSuccessor(t *testing.T) {
 	successor, err := net.ResolveTCPAddr("tcp", "127.0.0.3:8080")
 	require.NoError(t, err)
 	storage := newMockStorage()
-	node := newRawNode(address, predecessor, successor, storage)
+	client := newClientMock()
+	node := newRawNode(address, predecessor, successor, storage, client)
 
 	require.Equal(t, successor.String(), node.successor().String())
 	newSuccessor, err := net.ResolveTCPAddr("tcp", "127.0.0.4:8080")
 	require.NoError(t, err)
-	node.setPredecessor(newSuccessor)
-	require.Equal(t, newSuccessor.String(), node.predecessor().String())
+	node.setSuccessor(newSuccessor)
+	require.Equal(t, newSuccessor.String(), node.successor().String())
 }
 
 func TestPutGetDelete(t *testing.T) {
@@ -88,25 +114,28 @@ func TestPutGetDelete(t *testing.T) {
 	successor, err := net.ResolveTCPAddr("tcp", "127.0.0.3:8080")
 	require.NoError(t, err)
 	storage := newMockStorage()
-	node := newRawNode(address, predecessor, successor, storage)
+	client := newClientMock()
+	node := newRawNode(address, predecessor, successor, storage, client)
 
 	key := "key"
 	value := []byte("value")
-	storage.On("Put", key, value).Return(nil)
-	storage.On("Get", key).Return(value, nil)
-	storage.On("Delete", key).Return(nil)
 
+	storage.On("Put", key, value).Return(nil)
+	client.On("Put", successor, key, value).Return(nil)
 	err = node.put(key, value)
 	require.NoError(t, err)
 	storage.AssertCalled(t, "Put", key, value)
 	storage.AssertNumberOfCalls(t, "Put", 1)
 
+	storage.On("Get", key).Return(value, nil)
 	returnedValue, err := node.get(key)
-	require.Equal(t, value, returnedValue)
 	require.NoError(t, err)
+	require.Equal(t, value, returnedValue)
 	storage.AssertCalled(t, "Get", key)
 	storage.AssertNumberOfCalls(t, "Get", 1)
 
+	storage.On("Delete", key).Return(nil)
+	client.On("Delete", successor, key).Return(nil)
 	err = node.delete(key)
 	require.NoError(t, err)
 	storage.AssertCalled(t, "Delete", key)

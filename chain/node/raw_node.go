@@ -11,6 +11,11 @@ type Storage interface {
 	Delete(key string) error
 }
 
+type Client interface {
+	Put(address net.Addr, key string, value []byte) error
+	Delete(address net.Addr, key string) error
+}
+
 type rawNode struct {
 	// The address of this node.
 	address net.Addr
@@ -22,12 +27,14 @@ type rawNode struct {
 	succ net.Addr
 	// The local storage for this node.
 	storage Storage
+	// A client for communicating with other nodes in the chain.
+	client Client
 
 	mu sync.RWMutex
 }
 
-func newRawNode(address net.Addr, predecessor net.Addr, successor net.Addr, storage Storage) *rawNode {
-	return &rawNode{address: address, pred: predecessor, succ: successor, storage: storage}
+func newRawNode(address net.Addr, predecessor net.Addr, successor net.Addr, storage Storage, client Client) *rawNode {
+	return &rawNode{address: address, pred: predecessor, succ: successor, storage: storage, client: client}
 }
 
 func (r *rawNode) predecessor() net.Addr {
@@ -55,7 +62,13 @@ func (r *rawNode) setSuccessor(successor net.Addr) {
 }
 
 func (r *rawNode) put(key string, value []byte) error {
-	return r.storage.Put(key, value)
+	if err := r.storage.Put(key, value); err != nil {
+		return err
+	}
+	if r.successor() == nil {
+		return nil
+	}
+	return r.client.Put(r.successor(), key, value)
 }
 
 func (r *rawNode) get(key string) ([]byte, error) {
@@ -63,5 +76,11 @@ func (r *rawNode) get(key string) ([]byte, error) {
 }
 
 func (r *rawNode) delete(key string) error {
-	return r.storage.Delete(key)
+	if err := r.storage.Delete(key); err != nil {
+		return err
+	}
+	if r.successor() == nil {
+		return nil
+	}
+	return r.client.Delete(r.successor(), key)
 }
