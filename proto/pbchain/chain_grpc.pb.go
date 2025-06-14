@@ -4,7 +4,7 @@
 // - protoc             v3.21.12
 // source: pbchain/chain.proto
 
-package chain
+package pbchain
 
 import (
 	context "context"

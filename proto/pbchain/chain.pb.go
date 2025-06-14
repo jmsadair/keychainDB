@@ -4,7 +4,7 @@
 // 	protoc        v3.21.12
 // source: pbchain/chain.proto
 
-package chain
+package pbchain
 
 import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
@@ -298,7 +298,7 @@ const file_pbchain_chain_proto_rawDesc = "" +
 	"\fChainService\x12.\n" +
 	"\x03Get\x12\x11.chain.GetRequest\x1a\x12.chain.GetResponse\"\x00\x12.\n" +
 	"\x03Put\x12\x11.chain.PutRequest\x1a\x12.chain.PutResponse\"\x00\x127\n" +
-	"\x06Delete\x12\x14.chain.DeleteRequest\x1a\x15.chain.DeleteResponse\"\x00B)Z'github.com/jmsadair/zebraos/proto/chainb\x06proto3"
+	"\x06Delete\x12\x14.chain.DeleteRequest\x1a\x15.chain.DeleteResponse\"\x00B+Z)github.com/jmsadair/zebraos/proto/pbchainb\x06proto3"
 
 var (
 	file_pbchain_chain_proto_rawDescOnce sync.Once
