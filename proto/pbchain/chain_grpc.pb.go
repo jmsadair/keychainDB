@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.5.1
 // - protoc             v3.21.12
-// source: pbchain/chain.proto
+// source: chain.proto
 
 package pbchain
 
@@ -203,5 +203,5 @@ var ChainService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "pbchain/chain.proto",
+	Metadata: "chain.proto",
 }

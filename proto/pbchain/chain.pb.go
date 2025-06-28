@@ -2,7 +2,7 @@
 // versions:
 // 	protoc-gen-go v1.36.6
 // 	protoc        v3.21.12
-// source: pbchain/chain.proto
+// source: chain.proto
 
 package pbchain
 
@@ -30,7 +30,7 @@ type GetRequest struct {
 
 func (x *GetRequest) Reset() {
 	*x = GetRequest{}
-	mi := &file_pbchain_chain_proto_msgTypes[0]
+	mi := &file_chain_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -42,7 +42,7 @@ func (x *GetRequest) String() string {
 func (*GetRequest) ProtoMessage() {}
 
 func (x *GetRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_pbchain_chain_proto_msgTypes[0]
+	mi := &file_chain_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -55,7 +55,7 @@ func (x *GetRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetRequest.ProtoReflect.Descriptor instead.
 func (*GetRequest) Descriptor() ([]byte, []int) {
-	return file_pbchain_chain_proto_rawDescGZIP(), []int{0}
+	return file_chain_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *GetRequest) GetKey() string {
@@ -74,7 +74,7 @@ type GetResponse struct {
 
 func (x *GetResponse) Reset() {
 	*x = GetResponse{}
-	mi := &file_pbchain_chain_proto_msgTypes[1]
+	mi := &file_chain_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -86,7 +86,7 @@ func (x *GetResponse) String() string {
 func (*GetResponse) ProtoMessage() {}
 
 func (x *GetResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_pbchain_chain_proto_msgTypes[1]
+	mi := &file_chain_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -99,7 +99,7 @@ func (x *GetResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetResponse.ProtoReflect.Descriptor instead.
 func (*GetResponse) Descriptor() ([]byte, []int) {
-	return file_pbchain_chain_proto_rawDescGZIP(), []int{1}
+	return file_chain_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *GetResponse) GetValue() []byte {
@@ -119,7 +119,7 @@ type PutRequest struct {
 
 func (x *PutRequest) Reset() {
 	*x = PutRequest{}
-	mi := &file_pbchain_chain_proto_msgTypes[2]
+	mi := &file_chain_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -131,7 +131,7 @@ func (x *PutRequest) String() string {
 func (*PutRequest) ProtoMessage() {}
 
 func (x *PutRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_pbchain_chain_proto_msgTypes[2]
+	mi := &file_chain_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -144,7 +144,7 @@ func (x *PutRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PutRequest.ProtoReflect.Descriptor instead.
 func (*PutRequest) Descriptor() ([]byte, []int) {
-	return file_pbchain_chain_proto_rawDescGZIP(), []int{2}
+	return file_chain_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *PutRequest) GetKey() string {
@@ -169,7 +169,7 @@ type PutResponse struct {
 
 func (x *PutResponse) Reset() {
 	*x = PutResponse{}
-	mi := &file_pbchain_chain_proto_msgTypes[3]
+	mi := &file_chain_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -181,7 +181,7 @@ func (x *PutResponse) String() string {
 func (*PutResponse) ProtoMessage() {}
 
 func (x *PutResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_pbchain_chain_proto_msgTypes[3]
+	mi := &file_chain_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -194,7 +194,7 @@ func (x *PutResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PutResponse.ProtoReflect.Descriptor instead.
 func (*PutResponse) Descriptor() ([]byte, []int) {
-	return file_pbchain_chain_proto_rawDescGZIP(), []int{3}
+	return file_chain_proto_rawDescGZIP(), []int{3}
 }
 
 type DeleteRequest struct {
@@ -206,7 +206,7 @@ type DeleteRequest struct {
 
 func (x *DeleteRequest) Reset() {
 	*x = DeleteRequest{}
-	mi := &file_pbchain_chain_proto_msgTypes[4]
+	mi := &file_chain_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -218,7 +218,7 @@ func (x *DeleteRequest) String() string {
 func (*DeleteRequest) ProtoMessage() {}
 
 func (x *DeleteRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_pbchain_chain_proto_msgTypes[4]
+	mi := &file_chain_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -231,7 +231,7 @@ func (x *DeleteRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteRequest.ProtoReflect.Descriptor instead.
 func (*DeleteRequest) Descriptor() ([]byte, []int) {
-	return file_pbchain_chain_proto_rawDescGZIP(), []int{4}
+	return file_chain_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *DeleteRequest) GetKey() string {
@@ -249,7 +249,7 @@ type DeleteResponse struct {
 
 func (x *DeleteResponse) Reset() {
 	*x = DeleteResponse{}
-	mi := &file_pbchain_chain_proto_msgTypes[5]
+	mi := &file_chain_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -261,7 +261,7 @@ func (x *DeleteResponse) String() string {
 func (*DeleteResponse) ProtoMessage() {}
 
 func (x *DeleteResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_pbchain_chain_proto_msgTypes[5]
+	mi := &file_chain_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -274,14 +274,14 @@ func (x *DeleteResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteResponse.ProtoReflect.Descriptor instead.
 func (*DeleteResponse) Descriptor() ([]byte, []int) {
-	return file_pbchain_chain_proto_rawDescGZIP(), []int{5}
+	return file_chain_proto_rawDescGZIP(), []int{5}
 }
 
-var File_pbchain_chain_proto protoreflect.FileDescriptor
+var File_chain_proto protoreflect.FileDescriptor
 
-const file_pbchain_chain_proto_rawDesc = "" +
+const file_chain_proto_rawDesc = "" +
 	"\n" +
-	"\x13pbchain/chain.proto\x12\x05chain\"\x1e\n" +
+	"\vchain.proto\x12\x05chain\"\x1e\n" +
 	"\n" +
 	"GetRequest\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\"#\n" +
@@ -301,19 +301,19 @@ const file_pbchain_chain_proto_rawDesc = "" +
 	"\x06Delete\x12\x14.chain.DeleteRequest\x1a\x15.chain.DeleteResponse\"\x00B+Z)github.com/jmsadair/zebraos/proto/pbchainb\x06proto3"
 
 var (
-	file_pbchain_chain_proto_rawDescOnce sync.Once
-	file_pbchain_chain_proto_rawDescData []byte
+	file_chain_proto_rawDescOnce sync.Once
+	file_chain_proto_rawDescData []byte
 )
 
-func file_pbchain_chain_proto_rawDescGZIP() []byte {
-	file_pbchain_chain_proto_rawDescOnce.Do(func() {
-		file_pbchain_chain_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_pbchain_chain_proto_rawDesc), len(file_pbchain_chain_proto_rawDesc)))
+func file_chain_proto_rawDescGZIP() []byte {
+	file_chain_proto_rawDescOnce.Do(func() {
+		file_chain_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_chain_proto_rawDesc), len(file_chain_proto_rawDesc)))
 	})
-	return file_pbchain_chain_proto_rawDescData
+	return file_chain_proto_rawDescData
 }
 
-var file_pbchain_chain_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
-var file_pbchain_chain_proto_goTypes = []any{
+var file_chain_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
+var file_chain_proto_goTypes = []any{
 	(*GetRequest)(nil),     // 0: chain.GetRequest
 	(*GetResponse)(nil),    // 1: chain.GetResponse
 	(*PutRequest)(nil),     // 2: chain.PutRequest
@@ -321,7 +321,7 @@ var file_pbchain_chain_proto_goTypes = []any{
 	(*DeleteRequest)(nil),  // 4: chain.DeleteRequest
 	(*DeleteResponse)(nil), // 5: chain.DeleteResponse
 }
-var file_pbchain_chain_proto_depIdxs = []int32{
+var file_chain_proto_depIdxs = []int32{
 	0, // 0: chain.ChainService.Get:input_type -> chain.GetRequest
 	2, // 1: chain.ChainService.Put:input_type -> chain.PutRequest
 	4, // 2: chain.ChainService.Delete:input_type -> chain.DeleteRequest
@@ -335,26 +335,26 @@ var file_pbchain_chain_proto_depIdxs = []int32{
 	0, // [0:0] is the sub-list for field type_name
 }
 
-func init() { file_pbchain_chain_proto_init() }
-func file_pbchain_chain_proto_init() {
-	if File_pbchain_chain_proto != nil {
+func init() { file_chain_proto_init() }
+func file_chain_proto_init() {
+	if File_chain_proto != nil {
 		return
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_pbchain_chain_proto_rawDesc), len(file_pbchain_chain_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_chain_proto_rawDesc), len(file_chain_proto_rawDesc)),
 			NumEnums:      0,
 			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
-		GoTypes:           file_pbchain_chain_proto_goTypes,
-		DependencyIndexes: file_pbchain_chain_proto_depIdxs,
-		MessageInfos:      file_pbchain_chain_proto_msgTypes,
+		GoTypes:           file_chain_proto_goTypes,
+		DependencyIndexes: file_chain_proto_depIdxs,
+		MessageInfos:      file_chain_proto_msgTypes,
 	}.Build()
-	File_pbchain_chain_proto = out.File
-	file_pbchain_chain_proto_goTypes = nil
-	file_pbchain_chain_proto_depIdxs = nil
+	File_chain_proto = out.File
+	file_chain_proto_goTypes = nil
+	file_chain_proto_depIdxs = nil
 }
