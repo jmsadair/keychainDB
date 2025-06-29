@@ -11,7 +11,6 @@ import (
 
 type ChainClient struct {
 	mu       sync.Mutex
-	address  net.Addr
 	clients  map[string]pb.ChainServiceClient
 	dialOpts []grpc.DialOption
 }
