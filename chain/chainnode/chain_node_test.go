@@ -1,4 +1,4 @@
-package node
+package chainnode
 
 import (
 	"net"
@@ -54,7 +54,7 @@ func (ms *mockStorage) Delete(key string) error {
 	return args.Error(0)
 }
 
-func TestNewRawNode(t *testing.T) {
+func TestNewChainNode(t *testing.T) {
 	address, err := net.ResolveTCPAddr("tcp", "127.0.0.1:8080")
 	require.NoError(t, err)
 	predecessor, err := net.ResolveTCPAddr("tcp", "127.0.0.2:8080")
@@ -63,11 +63,11 @@ func TestNewRawNode(t *testing.T) {
 	require.NoError(t, err)
 	storage := newMockStorage()
 	client := newClientMock()
-	node := newRawNode(address, predecessor, successor, storage, client)
+	node := NewChainNode(address, predecessor, successor, storage, client)
 
 	require.Equal(t, address.String(), node.address.String())
-	require.Equal(t, predecessor.String(), node.predecessor().String())
-	require.Equal(t, successor.String(), node.successor().String())
+	require.Equal(t, predecessor.String(), node.Predecessor().String())
+	require.Equal(t, successor.String(), node.Successor().String())
 }
 
 func TestSetPredecessor(t *testing.T) {
@@ -79,13 +79,13 @@ func TestSetPredecessor(t *testing.T) {
 	require.NoError(t, err)
 	storage := newMockStorage()
 	client := newClientMock()
-	node := newRawNode(address, predecessor, successor, storage, client)
+	node := NewChainNode(address, predecessor, successor, storage, client)
 
-	require.Equal(t, predecessor.String(), node.predecessor().String())
+	require.Equal(t, predecessor.String(), node.Predecessor().String())
 	newPredecessor, err := net.ResolveTCPAddr("tcp", "127.0.0.4:8080")
 	require.NoError(t, err)
-	node.setPredecessor(newPredecessor)
-	require.Equal(t, newPredecessor.String(), node.predecessor().String())
+	node.SetPredecessor(newPredecessor)
+	require.Equal(t, newPredecessor.String(), node.Predecessor().String())
 }
 
 func TestSetSuccessor(t *testing.T) {
@@ -97,13 +97,13 @@ func TestSetSuccessor(t *testing.T) {
 	require.NoError(t, err)
 	storage := newMockStorage()
 	client := newClientMock()
-	node := newRawNode(address, predecessor, successor, storage, client)
+	node := NewChainNode(address, predecessor, successor, storage, client)
 
-	require.Equal(t, successor.String(), node.successor().String())
+	require.Equal(t, successor.String(), node.Successor().String())
 	newSuccessor, err := net.ResolveTCPAddr("tcp", "127.0.0.4:8080")
 	require.NoError(t, err)
-	node.setSuccessor(newSuccessor)
-	require.Equal(t, newSuccessor.String(), node.successor().String())
+	node.SetSuccessor(newSuccessor)
+	require.Equal(t, newSuccessor.String(), node.Successor().String())
 }
 
 func TestPutGetDelete(t *testing.T) {
@@ -115,20 +115,20 @@ func TestPutGetDelete(t *testing.T) {
 	require.NoError(t, err)
 	storage := newMockStorage()
 	client := newClientMock()
-	node := newRawNode(address, predecessor, successor, storage, client)
+	node := NewChainNode(address, predecessor, successor, storage, client)
 
 	key := "key"
 	value := []byte("value")
 
 	storage.On("Put", key, value).Return(nil)
 	client.On("Put", successor, key, value).Return(nil)
-	err = node.put(key, value)
+	err = node.Put(key, value)
 	require.NoError(t, err)
 	storage.AssertCalled(t, "Put", key, value)
 	storage.AssertNumberOfCalls(t, "Put", 1)
 
 	storage.On("Get", key).Return(value, nil)
-	returnedValue, err := node.get(key)
+	returnedValue, err := node.Get(key)
 	require.NoError(t, err)
 	require.Equal(t, value, returnedValue)
 	storage.AssertCalled(t, "Get", key)
@@ -136,7 +136,7 @@ func TestPutGetDelete(t *testing.T) {
 
 	storage.On("Delete", key).Return(nil)
 	client.On("Delete", successor, key).Return(nil)
-	err = node.delete(key)
+	err = node.Delete(key)
 	require.NoError(t, err)
 	storage.AssertCalled(t, "Delete", key)
 	storage.AssertNumberOfCalls(t, "Delete", 1)
