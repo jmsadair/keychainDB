@@ -1,0 +1,44 @@
+name: "Validations"
+
+on:
+  pull_request:
+    branches:
+      - main
+      
+jobs:
+  Static-Analysis:
+    name: "Static Analysis"
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-go@v5
+      with:
+        go-version: '1.24.x'
+    - name: Verify dependencies
+      run: go mod verify
+    - name: Vet changes
+      run: go vet ./...
+    - name: Install staticcheck
+      run: go install honnef.co/go/tools/cmd/staticcheck@latest
+    - name: Run static analysis
+      run: staticcheck ./...
+  
+  Test:
+    name: "Test"
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go-version: [ '1.24.x' ]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ matrix.go-version }}
+      - name: Test
+        run: go test ./... -json > test-results-${{ matrix.go-version }}.json
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ matrix.go-version }}
+          path: test-results-${{ matrix.go-version }}.json
