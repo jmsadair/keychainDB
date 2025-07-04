@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+package storage;
+
+option go_package = "github.com/jmsadair/zebraos/proto/pbstorage";
+
+message KeyMetadata {
+	string key = 1;
+	repeated uint64 versions = 2;
+}
