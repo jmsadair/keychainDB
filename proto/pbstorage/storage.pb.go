@@ -24,7 +24,8 @@ const (
 type KeyMetadata struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Key           string                 `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
-	Versions      []uint64               `protobuf:"varint,2,rep,packed,name=versions,proto3" json:"versions,omitempty"`
+	LastCommitted uint64                 `protobuf:"varint,2,opt,name=lastCommitted,proto3" json:"lastCommitted,omitempty"`
+	Versions      []uint64               `protobuf:"varint,3,rep,packed,name=versions,proto3" json:"versions,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -66,6 +67,13 @@ func (x *KeyMetadata) GetKey() string {
 	return ""
 }
 
+func (x *KeyMetadata) GetLastCommitted() uint64 {
+	if x != nil {
+		return x.LastCommitted
+	}
+	return 0
+}
+
 func (x *KeyMetadata) GetVersions() []uint64 {
 	if x != nil {
 		return x.Versions
@@ -77,10 +85,11 @@ var File_storage_proto protoreflect.FileDescriptor
 
 const file_storage_proto_rawDesc = "" +
 	"\n" +
-	"\rstorage.proto\x12\astorage\";\n" +
+	"\rstorage.proto\x12\astorage\"a\n" +
 	"\vKeyMetadata\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\x12\x1a\n" +
-	"\bversions\x18\x02 \x03(\x04R\bversionsB-Z+github.com/jmsadair/zebraos/proto/pbstorageb\x06proto3"
+	"\x03key\x18\x01 \x01(\tR\x03key\x12$\n" +
+	"\rlastCommitted\x18\x02 \x01(\x04R\rlastCommitted\x12\x1a\n" +
+	"\bversions\x18\x03 \x03(\x04R\bversionsB-Z+github.com/jmsadair/zebraos/proto/pbstorageb\x06proto3"
 
 var (
 	file_storage_proto_rawDescOnce sync.Once
