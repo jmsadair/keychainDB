@@ -21,6 +21,58 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+type ChainMetadata struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ChainID       string                 `protobuf:"bytes,1,opt,name=chainID,proto3" json:"chainID,omitempty"`
+	Members       []string               `protobuf:"bytes,2,rep,name=members,proto3" json:"members,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ChainMetadata) Reset() {
+	*x = ChainMetadata{}
+	mi := &file_chain_proto_msgTypes[0]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ChainMetadata) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ChainMetadata) ProtoMessage() {}
+
+func (x *ChainMetadata) ProtoReflect() protoreflect.Message {
+	mi := &file_chain_proto_msgTypes[0]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ChainMetadata.ProtoReflect.Descriptor instead.
+func (*ChainMetadata) Descriptor() ([]byte, []int) {
+	return file_chain_proto_rawDescGZIP(), []int{0}
+}
+
+func (x *ChainMetadata) GetChainID() string {
+	if x != nil {
+		return x.ChainID
+	}
+	return ""
+}
+
+func (x *ChainMetadata) GetMembers() []string {
+	if x != nil {
+		return x.Members
+	}
+	return nil
+}
+
 type GetRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Key           string                 `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
@@ -30,7 +82,7 @@ type GetRequest struct {
 
 func (x *GetRequest) Reset() {
 	*x = GetRequest{}
-	mi := &file_chain_proto_msgTypes[0]
+	mi := &file_chain_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -42,7 +94,7 @@ func (x *GetRequest) String() string {
 func (*GetRequest) ProtoMessage() {}
 
 func (x *GetRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_chain_proto_msgTypes[0]
+	mi := &file_chain_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -55,7 +107,7 @@ func (x *GetRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetRequest.ProtoReflect.Descriptor instead.
 func (*GetRequest) Descriptor() ([]byte, []int) {
-	return file_chain_proto_rawDescGZIP(), []int{0}
+	return file_chain_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *GetRequest) GetKey() string {
@@ -74,7 +126,7 @@ type GetResponse struct {
 
 func (x *GetResponse) Reset() {
 	*x = GetResponse{}
-	mi := &file_chain_proto_msgTypes[1]
+	mi := &file_chain_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -86,7 +138,7 @@ func (x *GetResponse) String() string {
 func (*GetResponse) ProtoMessage() {}
 
 func (x *GetResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_chain_proto_msgTypes[1]
+	mi := &file_chain_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -99,7 +151,7 @@ func (x *GetResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetResponse.ProtoReflect.Descriptor instead.
 func (*GetResponse) Descriptor() ([]byte, []int) {
-	return file_chain_proto_rawDescGZIP(), []int{1}
+	return file_chain_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *GetResponse) GetValue() []byte {
@@ -119,7 +171,7 @@ type PutRequest struct {
 
 func (x *PutRequest) Reset() {
 	*x = PutRequest{}
-	mi := &file_chain_proto_msgTypes[2]
+	mi := &file_chain_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -131,7 +183,7 @@ func (x *PutRequest) String() string {
 func (*PutRequest) ProtoMessage() {}
 
 func (x *PutRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_chain_proto_msgTypes[2]
+	mi := &file_chain_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -144,7 +196,7 @@ func (x *PutRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PutRequest.ProtoReflect.Descriptor instead.
 func (*PutRequest) Descriptor() ([]byte, []int) {
-	return file_chain_proto_rawDescGZIP(), []int{2}
+	return file_chain_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *PutRequest) GetKey() string {
@@ -169,7 +221,7 @@ type PutResponse struct {
 
 func (x *PutResponse) Reset() {
 	*x = PutResponse{}
-	mi := &file_chain_proto_msgTypes[3]
+	mi := &file_chain_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -181,7 +233,7 @@ func (x *PutResponse) String() string {
 func (*PutResponse) ProtoMessage() {}
 
 func (x *PutResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_chain_proto_msgTypes[3]
+	mi := &file_chain_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -194,7 +246,7 @@ func (x *PutResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PutResponse.ProtoReflect.Descriptor instead.
 func (*PutResponse) Descriptor() ([]byte, []int) {
-	return file_chain_proto_rawDescGZIP(), []int{3}
+	return file_chain_proto_rawDescGZIP(), []int{4}
 }
 
 type DeleteRequest struct {
@@ -206,7 +258,7 @@ type DeleteRequest struct {
 
 func (x *DeleteRequest) Reset() {
 	*x = DeleteRequest{}
-	mi := &file_chain_proto_msgTypes[4]
+	mi := &file_chain_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -218,7 +270,7 @@ func (x *DeleteRequest) String() string {
 func (*DeleteRequest) ProtoMessage() {}
 
 func (x *DeleteRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_chain_proto_msgTypes[4]
+	mi := &file_chain_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -231,7 +283,7 @@ func (x *DeleteRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteRequest.ProtoReflect.Descriptor instead.
 func (*DeleteRequest) Descriptor() ([]byte, []int) {
-	return file_chain_proto_rawDescGZIP(), []int{4}
+	return file_chain_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *DeleteRequest) GetKey() string {
@@ -249,7 +301,7 @@ type DeleteResponse struct {
 
 func (x *DeleteResponse) Reset() {
 	*x = DeleteResponse{}
-	mi := &file_chain_proto_msgTypes[5]
+	mi := &file_chain_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -261,7 +313,7 @@ func (x *DeleteResponse) String() string {
 func (*DeleteResponse) ProtoMessage() {}
 
 func (x *DeleteResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_chain_proto_msgTypes[5]
+	mi := &file_chain_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -274,14 +326,17 @@ func (x *DeleteResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteResponse.ProtoReflect.Descriptor instead.
 func (*DeleteResponse) Descriptor() ([]byte, []int) {
-	return file_chain_proto_rawDescGZIP(), []int{5}
+	return file_chain_proto_rawDescGZIP(), []int{6}
 }
 
 var File_chain_proto protoreflect.FileDescriptor
 
 const file_chain_proto_rawDesc = "" +
 	"\n" +
-	"\vchain.proto\x12\x05chain\"\x1e\n" +
+	"\vchain.proto\x12\x05chain\"C\n" +
+	"\rChainMetadata\x12\x18\n" +
+	"\achainID\x18\x01 \x01(\tR\achainID\x12\x18\n" +
+	"\amembers\x18\x02 \x03(\tR\amembers\"\x1e\n" +
 	"\n" +
 	"GetRequest\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\"#\n" +
@@ -312,22 +367,23 @@ func file_chain_proto_rawDescGZIP() []byte {
 	return file_chain_proto_rawDescData
 }
 
-var file_chain_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
+var file_chain_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
 var file_chain_proto_goTypes = []any{
-	(*GetRequest)(nil),     // 0: chain.GetRequest
-	(*GetResponse)(nil),    // 1: chain.GetResponse
-	(*PutRequest)(nil),     // 2: chain.PutRequest
-	(*PutResponse)(nil),    // 3: chain.PutResponse
-	(*DeleteRequest)(nil),  // 4: chain.DeleteRequest
-	(*DeleteResponse)(nil), // 5: chain.DeleteResponse
+	(*ChainMetadata)(nil),  // 0: chain.ChainMetadata
+	(*GetRequest)(nil),     // 1: chain.GetRequest
+	(*GetResponse)(nil),    // 2: chain.GetResponse
+	(*PutRequest)(nil),     // 3: chain.PutRequest
+	(*PutResponse)(nil),    // 4: chain.PutResponse
+	(*DeleteRequest)(nil),  // 5: chain.DeleteRequest
+	(*DeleteResponse)(nil), // 6: chain.DeleteResponse
 }
 var file_chain_proto_depIdxs = []int32{
-	0, // 0: chain.ChainService.Get:input_type -> chain.GetRequest
-	2, // 1: chain.ChainService.Put:input_type -> chain.PutRequest
-	4, // 2: chain.ChainService.Delete:input_type -> chain.DeleteRequest
-	1, // 3: chain.ChainService.Get:output_type -> chain.GetResponse
-	3, // 4: chain.ChainService.Put:output_type -> chain.PutResponse
-	5, // 5: chain.ChainService.Delete:output_type -> chain.DeleteResponse
+	1, // 0: chain.ChainService.Get:input_type -> chain.GetRequest
+	3, // 1: chain.ChainService.Put:input_type -> chain.PutRequest
+	5, // 2: chain.ChainService.Delete:input_type -> chain.DeleteRequest
+	2, // 3: chain.ChainService.Get:output_type -> chain.GetResponse
+	4, // 4: chain.ChainService.Put:output_type -> chain.PutResponse
+	6, // 5: chain.ChainService.Delete:output_type -> chain.DeleteResponse
 	3, // [3:6] is the sub-list for method output_type
 	0, // [0:3] is the sub-list for method input_type
 	0, // [0:0] is the sub-list for extension type_name
@@ -346,7 +402,7 @@ func file_chain_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_chain_proto_rawDesc), len(file_chain_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   6,
+			NumMessages:   7,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
