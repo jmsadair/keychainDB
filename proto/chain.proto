@@ -6,36 +6,56 @@ option go_package = "github.com/jmsadair/zebraos/proto/pbchain";
 
 // ChainService is used by nodes within a chain to communicate with one another.
 service ChainService {
-	// Get handles requests to read a value for a key.
-	rpc Get (GetRequest) returns (GetResponse) {}
-	// Put handles requests to set a value for a key.
-	rpc Put (PutRequest) returns (PutResponse) {}
-	// Delete handles requests to delete a key.
-	rpc Delete (DeleteRequest) returns (DeleteResponse) {}
+	// Write handles requests to write a particular version of a key.
+	rpc Write (WriteRequest) returns (WriteResponse) {}
+	// Read handles requests to read a particular version of a key.
+	rpc Read (ReadRequest) returns (ReadResponse) {}
+	// Backfill handles the backfilling of key-value pairs.
+	// This is typically used to catch up a node recently added to a chain.
+	rpc Backfill (BackfillRequest) returns (stream KeyValuePair) {}
 }
 
+// ChainMetadata contains metadata regarding chain membership.
 message ChainMetadata {
+	// The ID that identifies the chain.
 	string chainID = 1;
+	// The addresses of the members of the chain.
 	repeated string members = 2;
 }
 
-message GetRequest {
+// WriteRequest is a request sent from one node of a chain to another to write a new version of a key.
+message WriteRequest {
+	// The key being written.
+	string key = 1;
+	// The value for the key.
+	bytes value = 2;
+	// The version of the key.
+	uint64 version = 3;
+}
+
+// WriteResponse is the response to a WriteRequest.
+message WriteResponse {}
+
+// ReadRequest is a request sent from one node of chain to another to read the value of a key.
+message ReadRequest {
+	// The key being read.
 	string key = 1;
 }
 
-message GetResponse {
+// ReadResponse is the response to a ReadRequest and contains the value of the key read.
+message ReadResponse {
+	// The value of the key that was read.
 	bytes value = 1;
 }
 
-message PutRequest {
+// BackfillRequest is a request sent from one node of a chain to another to initiate a backfill
+// of all of the key-value pairs.
+message BackfillRequest {}
+
+// KeyValuePair is a key-value pair stored by a node of a chain.
+message KeyValuePair {
+	// The key.
 	string key = 1;
+	// The value associated with the key.
 	bytes value = 2;
 }
-
-message PutResponse {}
-
-message DeleteRequest {
-	string key = 1;
-}
-
-message DeleteResponse {}

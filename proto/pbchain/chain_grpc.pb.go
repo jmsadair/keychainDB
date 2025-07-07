@@ -19,9 +19,9 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	ChainService_Get_FullMethodName    = "/chain.ChainService/Get"
-	ChainService_Put_FullMethodName    = "/chain.ChainService/Put"
-	ChainService_Delete_FullMethodName = "/chain.ChainService/Delete"
+	ChainService_Write_FullMethodName    = "/chain.ChainService/Write"
+	ChainService_Read_FullMethodName     = "/chain.ChainService/Read"
+	ChainService_Backfill_FullMethodName = "/chain.ChainService/Backfill"
 )
 
 // ChainServiceClient is the client API for ChainService service.
@@ -30,12 +30,13 @@ const (
 //
 // ChainService is used by nodes within a chain to communicate with one another.
 type ChainServiceClient interface {
-	// Get handles requests to read a value for a key.
-	Get(ctx context.Context, in *GetRequest, opts ...grpc.CallOption) (*GetResponse, error)
-	// Put handles requests to set a value for a key.
-	Put(ctx context.Context, in *PutRequest, opts ...grpc.CallOption) (*PutResponse, error)
-	// Delete handles requests to delete a key.
-	Delete(ctx context.Context, in *DeleteRequest, opts ...grpc.CallOption) (*DeleteResponse, error)
+	// Write handles requests to write a particular version of a key.
+	Write(ctx context.Context, in *WriteRequest, opts ...grpc.CallOption) (*WriteResponse, error)
+	// Read handles requests to read a particular version of a key.
+	Read(ctx context.Context, in *ReadRequest, opts ...grpc.CallOption) (*ReadResponse, error)
+	// Backfill handles the backfilling of key-value pairs.
+	// This is typically used to catch up a node recently added to a chain.
+	Backfill(ctx context.Context, in *BackfillRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[KeyValuePair], error)
 }
 
 type chainServiceClient struct {
@@ -46,35 +47,44 @@ func NewChainServiceClient(cc grpc.ClientConnInterface) ChainServiceClient {
 	return &chainServiceClient{cc}
 }
 
-func (c *chainServiceClient) Get(ctx context.Context, in *GetRequest, opts ...grpc.CallOption) (*GetResponse, error) {
+func (c *chainServiceClient) Write(ctx context.Context, in *WriteRequest, opts ...grpc.CallOption) (*WriteResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(GetResponse)
-	err := c.cc.Invoke(ctx, ChainService_Get_FullMethodName, in, out, cOpts...)
+	out := new(WriteResponse)
+	err := c.cc.Invoke(ctx, ChainService_Write_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *chainServiceClient) Put(ctx context.Context, in *PutRequest, opts ...grpc.CallOption) (*PutResponse, error) {
+func (c *chainServiceClient) Read(ctx context.Context, in *ReadRequest, opts ...grpc.CallOption) (*ReadResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(PutResponse)
-	err := c.cc.Invoke(ctx, ChainService_Put_FullMethodName, in, out, cOpts...)
+	out := new(ReadResponse)
+	err := c.cc.Invoke(ctx, ChainService_Read_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *chainServiceClient) Delete(ctx context.Context, in *DeleteRequest, opts ...grpc.CallOption) (*DeleteResponse, error) {
+func (c *chainServiceClient) Backfill(ctx context.Context, in *BackfillRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[KeyValuePair], error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(DeleteResponse)
-	err := c.cc.Invoke(ctx, ChainService_Delete_FullMethodName, in, out, cOpts...)
+	stream, err := c.cc.NewStream(ctx, &ChainService_ServiceDesc.Streams[0], ChainService_Backfill_FullMethodName, cOpts...)
 	if err != nil {
 		return nil, err
 	}
-	return out, nil
+	x := &grpc.GenericClientStream[BackfillRequest, KeyValuePair]{ClientStream: stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
 }
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type ChainService_BackfillClient = grpc.ServerStreamingClient[KeyValuePair]
 
 // ChainServiceServer is the server API for ChainService service.
 // All implementations must embed UnimplementedChainServiceServer
@@ -82,12 +92,13 @@ func (c *chainServiceClient) Delete(ctx context.Context, in *DeleteRequest, opts
 //
 // ChainService is used by nodes within a chain to communicate with one another.
 type ChainServiceServer interface {
-	// Get handles requests to read a value for a key.
-	Get(context.Context, *GetRequest) (*GetResponse, error)
-	// Put handles requests to set a value for a key.
-	Put(context.Context, *PutRequest) (*PutResponse, error)
-	// Delete handles requests to delete a key.
-	Delete(context.Context, *DeleteRequest) (*DeleteResponse, error)
+	// Write handles requests to write a particular version of a key.
+	Write(context.Context, *WriteRequest) (*WriteResponse, error)
+	// Read handles requests to read a particular version of a key.
+	Read(context.Context, *ReadRequest) (*ReadResponse, error)
+	// Backfill handles the backfilling of key-value pairs.
+	// This is typically used to catch up a node recently added to a chain.
+	Backfill(*BackfillRequest, grpc.ServerStreamingServer[KeyValuePair]) error
 	mustEmbedUnimplementedChainServiceServer()
 }
 
@@ -98,14 +109,14 @@ type ChainServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedChainServiceServer struct{}
 
-func (UnimplementedChainServiceServer) Get(context.Context, *GetRequest) (*GetResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Get not implemented")
+func (UnimplementedChainServiceServer) Write(context.Context, *WriteRequest) (*WriteResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Write not implemented")
 }
-func (UnimplementedChainServiceServer) Put(context.Context, *PutRequest) (*PutResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Put not implemented")
+func (UnimplementedChainServiceServer) Read(context.Context, *ReadRequest) (*ReadResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Read not implemented")
 }
-func (UnimplementedChainServiceServer) Delete(context.Context, *DeleteRequest) (*DeleteResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Delete not implemented")
+func (UnimplementedChainServiceServer) Backfill(*BackfillRequest, grpc.ServerStreamingServer[KeyValuePair]) error {
+	return status.Errorf(codes.Unimplemented, "method Backfill not implemented")
 }
 func (UnimplementedChainServiceServer) mustEmbedUnimplementedChainServiceServer() {}
 func (UnimplementedChainServiceServer) testEmbeddedByValue()                      {}
@@ -128,59 +139,52 @@ func RegisterChainServiceServer(s grpc.ServiceRegistrar, srv ChainServiceServer)
 	s.RegisterService(&ChainService_ServiceDesc, srv)
 }
 
-func _ChainService_Get_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetRequest)
+func _ChainService_Write_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(WriteRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ChainServiceServer).Get(ctx, in)
+		return srv.(ChainServiceServer).Write(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: ChainService_Get_FullMethodName,
+		FullMethod: ChainService_Write_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ChainServiceServer).Get(ctx, req.(*GetRequest))
+		return srv.(ChainServiceServer).Write(ctx, req.(*WriteRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _ChainService_Put_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(PutRequest)
+func _ChainService_Read_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ReadRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ChainServiceServer).Put(ctx, in)
+		return srv.(ChainServiceServer).Read(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: ChainService_Put_FullMethodName,
+		FullMethod: ChainService_Read_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ChainServiceServer).Put(ctx, req.(*PutRequest))
+		return srv.(ChainServiceServer).Read(ctx, req.(*ReadRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _ChainService_Delete_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(DeleteRequest)
-	if err := dec(in); err != nil {
-		return nil, err
+func _ChainService_Backfill_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(BackfillRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
 	}
-	if interceptor == nil {
-		return srv.(ChainServiceServer).Delete(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: ChainService_Delete_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ChainServiceServer).Delete(ctx, req.(*DeleteRequest))
-	}
-	return interceptor(ctx, in, info, handler)
+	return srv.(ChainServiceServer).Backfill(m, &grpc.GenericServerStream[BackfillRequest, KeyValuePair]{ServerStream: stream})
 }
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type ChainService_BackfillServer = grpc.ServerStreamingServer[KeyValuePair]
 
 // ChainService_ServiceDesc is the grpc.ServiceDesc for ChainService service.
 // It's only intended for direct use with grpc.RegisterService,
@@ -190,18 +194,20 @@ var ChainService_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*ChainServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "Get",
-			Handler:    _ChainService_Get_Handler,
+			MethodName: "Write",
+			Handler:    _ChainService_Write_Handler,
 		},
 		{
-			MethodName: "Put",
-			Handler:    _ChainService_Put_Handler,
-		},
-		{
-			MethodName: "Delete",
-			Handler:    _ChainService_Delete_Handler,
+			MethodName: "Read",
+			Handler:    _ChainService_Read_Handler,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "Backfill",
+			Handler:       _ChainService_Backfill_Handler,
+			ServerStreams: true,
+		},
+	},
 	Metadata: "chain.proto",
 }
