@@ -1,9 +1,18 @@
 package storage
 
 import (
+	"context"
 	"errors"
 
 	badger "github.com/dgraph-io/badger/v4"
+	"github.com/dgraph-io/ristretto/v2/z"
+)
+
+const (
+	// Default umber of go routines used to concurrently stream the key-value pairs from storage.
+	defaultStreamConcurrency = 25
+	// Default logging prefix using by the storage.
+	defaultLoggingPrefix = "Storage.Streaming"
 )
 
 // ErrDirtyRead is returned when a committed read is performed
@@ -125,6 +134,30 @@ func (ps *PersistantStorage) CommittedRead(key string) ([]byte, error) {
 	return value, err
 }
 
+// Stream will concurrently iterate over a snapshot of the storage, pick up the key-value
+// pairs in batches, and call the provided sendFunc function. If at any point during this
+// process an error occurs, the entire process is terminated and the error is returned.
+func (ps *PersistantStorage) Stream(sendFunc func(map[string][]byte) error) error {
+	send := func(buf *z.Buffer) error {
+		kvList, err := badger.BufferToKVList(buf)
+		if err != nil {
+			return err
+		}
+		kvMap := make(map[string][]byte, len(kvList.GetKv()))
+		for _, kv := range kvList.GetKv() {
+			kvMap[string(kv.GetKey())] = kv.GetValue()
+		}
+		return sendFunc(kvMap)
+	}
+
+	stream := ps.db.NewStream()
+	stream.Send = send
+	stream.LogPrefix = defaultLoggingPrefix
+	stream.NumGo = defaultStreamConcurrency
+
+	return stream.Orchestrate(context.Background())
+}
+
 func (ps *PersistantStorage) write(key string, value []byte, version uint64, commit bool, newVersion bool) (uint64, error) {
 	err := ps.db.Update(func(txn *badger.Txn) error {
 		item, err := txn.Get([]byte(key))
@@ -136,8 +169,8 @@ func (ps *PersistantStorage) write(key string, value []byte, version uint64, com
 		case err != nil:
 			return err
 		default:
-			b, copyErr := item.ValueCopy(nil)
-			if copyErr != nil {
+			b, err := item.ValueCopy(nil)
+			if err != nil {
 				return err
 			}
 			keyMetadata, err = NewKeyMetadataFromBytes(b)
