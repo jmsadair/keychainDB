@@ -21,11 +21,15 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// KeyMetadata includes metadata about a particular key.
 type KeyMetadata struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Key           string                 `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
-	LastCommitted uint64                 `protobuf:"varint,2,opt,name=lastCommitted,proto3" json:"lastCommitted,omitempty"`
-	Versions      []uint64               `protobuf:"varint,3,rep,packed,name=versions,proto3" json:"versions,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The client provided key.
+	Key string `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	// The last version of the key that was committed.
+	LastCommitted uint64 `protobuf:"varint,2,opt,name=last_committed,json=lastCommitted,proto3" json:"last_committed,omitempty"`
+	// A list of the versions of the key sorted in ascending order.
+	Versions      []uint64 `protobuf:"varint,3,rep,packed,name=versions,proto3" json:"versions,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -85,10 +89,10 @@ var File_storage_proto protoreflect.FileDescriptor
 
 const file_storage_proto_rawDesc = "" +
 	"\n" +
-	"\rstorage.proto\x12\astorage\"a\n" +
+	"\rstorage.proto\x12\astorage\"b\n" +
 	"\vKeyMetadata\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\x12$\n" +
-	"\rlastCommitted\x18\x02 \x01(\x04R\rlastCommitted\x12\x1a\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12%\n" +
+	"\x0elast_committed\x18\x02 \x01(\x04R\rlastCommitted\x12\x1a\n" +
 	"\bversions\x18\x03 \x03(\x04R\bversionsB-Z+github.com/jmsadair/zebraos/proto/pbstorageb\x06proto3"
 
 var (

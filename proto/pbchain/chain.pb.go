@@ -25,7 +25,7 @@ const (
 type ChainMetadata struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The ID that identifies the chain.
-	ChainID string `protobuf:"bytes,1,opt,name=chainID,proto3" json:"chainID,omitempty"`
+	ChainId string `protobuf:"bytes,1,opt,name=chain_id,json=chainId,proto3" json:"chain_id,omitempty"`
 	// The addresses of the members of the chain.
 	Members       []string `protobuf:"bytes,2,rep,name=members,proto3" json:"members,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -62,9 +62,9 @@ func (*ChainMetadata) Descriptor() ([]byte, []int) {
 	return file_chain_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *ChainMetadata) GetChainID() string {
+func (x *ChainMetadata) GetChainId() string {
 	if x != nil {
-		return x.ChainID
+		return x.ChainId
 	}
 	return ""
 }
@@ -366,9 +366,9 @@ var File_chain_proto protoreflect.FileDescriptor
 
 const file_chain_proto_rawDesc = "" +
 	"\n" +
-	"\vchain.proto\x12\x05chain\"C\n" +
-	"\rChainMetadata\x12\x18\n" +
-	"\achainID\x18\x01 \x01(\tR\achainID\x12\x18\n" +
+	"\vchain.proto\x12\x05chain\"D\n" +
+	"\rChainMetadata\x12\x19\n" +
+	"\bchain_id\x18\x01 \x01(\tR\achainId\x12\x18\n" +
 	"\amembers\x18\x02 \x03(\tR\amembers\"P\n" +
 	"\fWriteRequest\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
