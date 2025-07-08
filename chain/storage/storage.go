@@ -64,16 +64,21 @@ func (ps *PersistantStorage) CommittedWrite(key string, value []byte, version ui
 // Commiting a version earlier than the currently committed version is a no-op.
 func (ps *PersistantStorage) CommitVersion(key string, version uint64) error {
 	err := ps.db.Update(func(txn *badger.Txn) error {
-		item, err := txn.Get([]byte(key))
+		metadataKey := NewInternalKey(key, true, 0)
+		metadataKeyBytes, err := metadataKey.Bytes()
 		if err != nil {
 			return err
 		}
 
-		b, err := item.ValueCopy(nil)
+		item, err := txn.Get(metadataKeyBytes)
 		if err != nil {
 			return err
 		}
-		keyMetadata, err := NewKeyMetadataFromBytes(b)
+		keyMetadataBytes, err := item.ValueCopy(nil)
+		if err != nil {
+			return err
+		}
+		keyMetadata, err := NewKeyMetadataFromBytes(keyMetadataBytes)
 		if err != nil {
 			return err
 		}
@@ -81,11 +86,11 @@ func (ps *PersistantStorage) CommitVersion(key string, version uint64) error {
 		if err := keyMetadata.CommitVersion(version); err != nil {
 			return err
 		}
-		b, err = keyMetadata.Bytes()
+		keyMetadataBytes, err = keyMetadata.Bytes()
 		if err != nil {
 			return err
 		}
-		if err := txn.Set([]byte(key), b); err != nil {
+		if err := txn.Set(metadataKeyBytes, keyMetadataBytes); err != nil {
 			return err
 		}
 
@@ -101,15 +106,21 @@ func (ps *PersistantStorage) CommittedRead(key string) ([]byte, error) {
 	var value []byte
 
 	err := ps.db.View(func(txn *badger.Txn) error {
-		item, err := txn.Get([]byte(key))
+		metadataKey := NewInternalKey(key, true, 0)
+		metadataKeyBytes, err := metadataKey.Bytes()
 		if err != nil {
 			return err
 		}
-		b, err := item.ValueCopy(nil)
+
+		item, err := txn.Get(metadataKeyBytes)
 		if err != nil {
 			return err
 		}
-		keyMetadata, err := NewKeyMetadataFromBytes(b)
+		keyMetadataBytes, err := item.ValueCopy(nil)
+		if err != nil {
+			return err
+		}
+		keyMetadata, err := NewKeyMetadataFromBytes(keyMetadataBytes)
 		if err != nil {
 			return err
 		}
@@ -118,8 +129,12 @@ func (ps *PersistantStorage) CommittedRead(key string) ([]byte, error) {
 			return ErrDirtyRead
 		}
 
-		versionedKey := makeVersionedKey(key, keyMetadata.NewestVersion())
-		item, err = txn.Get([]byte(versionedKey))
+		dataKey := NewInternalKey(key, false, keyMetadata.LastCommitted)
+		dataKeyBytes, err := dataKey.Bytes()
+		if err != nil {
+			return err
+		}
+		item, err = txn.Get(dataKeyBytes)
 		if err != nil {
 			return err
 		}
@@ -160,20 +175,25 @@ func (ps *PersistantStorage) Stream(sendFunc func(map[string][]byte) error) erro
 
 func (ps *PersistantStorage) write(key string, value []byte, version uint64, commit bool, newVersion bool) (uint64, error) {
 	err := ps.db.Update(func(txn *badger.Txn) error {
-		item, err := txn.Get([]byte(key))
-		var keyMetadata *KeyMetadata
+		metadataKey := NewInternalKey(key, true, 0)
+		metadataKeyBytes, err := metadataKey.Bytes()
+		if err != nil {
+			return err
+		}
 
+		var keyMetadata *KeyMetadata
+		item, err := txn.Get(metadataKeyBytes)
 		switch {
 		case errors.Is(err, badger.ErrKeyNotFound):
 			keyMetadata = NewKeyMetadata(key)
 		case err != nil:
 			return err
 		default:
-			b, err := item.ValueCopy(nil)
+			keyMetadataBytes, err := item.ValueCopy(nil)
 			if err != nil {
 				return err
 			}
-			keyMetadata, err = NewKeyMetadataFromBytes(b)
+			keyMetadata, err = NewKeyMetadataFromBytes(keyMetadataBytes)
 			if err != nil {
 				return err
 			}
@@ -184,15 +204,18 @@ func (ps *PersistantStorage) write(key string, value []byte, version uint64, com
 		} else if err := keyMetadata.AddVersion(version); err != nil {
 			return err
 		}
-
 		if commit {
 			if err := keyMetadata.CommitVersion(version); err != nil {
 				return err
 			}
 		}
 
-		versionedKey := makeVersionedKey(key, version)
-		if err = txn.Set([]byte(versionedKey), value); err != nil {
+		dataKey := NewInternalKey(key, false, version)
+		dataKeyBytes, err := dataKey.Bytes()
+		if err != nil {
+			return err
+		}
+		if err = txn.Set(dataKeyBytes, value); err != nil {
 			return err
 		}
 
@@ -200,7 +223,7 @@ func (ps *PersistantStorage) write(key string, value []byte, version uint64, com
 		if err != nil {
 			return err
 		}
-		if err := txn.Set([]byte(key), keyMetadataBytes); err != nil {
+		if err := txn.Set(metadataKeyBytes, keyMetadataBytes); err != nil {
 			return err
 		}
 

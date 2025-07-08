@@ -2,7 +2,6 @@ package storage
 
 import (
 	"errors"
-	"fmt"
 	"slices"
 
 	pb "github.com/jmsadair/zebraos/proto/pbstorage"
@@ -15,10 +14,6 @@ var (
 	// Returned when there is an attempt to commit a version of a key that does not exist.
 	ErrCommittingUnexpectedVersion = errors.New("cannot commit a key version that does not exist")
 )
-
-func makeVersionedKey(key string, version uint64) string {
-	return fmt.Sprintf("%s-%d", key, version)
-}
 
 // KeyMetadata contains all metadata associated with a key.
 type KeyMetadata struct {
