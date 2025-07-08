@@ -101,7 +101,7 @@ func (km *KeyMetadata) IncrementVersion() uint64 {
 	return nextVersion
 }
 
-// Add adds a new version of the key.
+// AddVersion adds a new version of the key.
 // If the version is not newer than all existing versions, an error is returned.
 func (km *KeyMetadata) AddVersion(version uint64) error {
 	if km.NewestVersion() >= version {
