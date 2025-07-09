@@ -7,9 +7,9 @@ import (
 
 // InternalKey is an internal representation of a key used by storage.
 type InternalKey struct {
-	// A client provided key.
+	// A key associated with an object.
 	Key string
-	// Indicates whether this key is a pointer to key metadata or client data.
+	// Indicates whether this key is a pointer to object metadata or not.
 	IsMetadataKey bool
 	// The version of the key. This is only applies to keys that point to client data.
 	Version uint64
@@ -44,6 +44,7 @@ func NewInternalKeyFromBytes(b []byte) (*InternalKey, error) {
 	return &InternalKey{Key: string(key), Version: version, IsMetadataKey: isMetadataKey == 1}, nil
 }
 
+// Bytes converts an InternalKey instance into bytes.
 func (ik *InternalKey) Bytes() ([]byte, error) {
 	buf := new(bytes.Buffer)
 

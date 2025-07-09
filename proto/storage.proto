@@ -4,9 +4,9 @@ package storage;
 
 option go_package = "github.com/jmsadair/zebraos/proto/pbstorage";
 
-// KeyMetadata includes metadata about a particular key.
-message KeyMetadata {
-	// The client provided key.
+// ObjectMetadata includes metadata about a particular object.
+message ObjectMetadata {
+	// The key of the object that this metadata is associated with.
 	string key = 1;
 	// The last version of the key that was committed.
 	uint64 last_committed = 2;

@@ -21,10 +21,10 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// KeyMetadata includes metadata about a particular key.
-type KeyMetadata struct {
+// ObjectMetadata includes metadata about a particular object.
+type ObjectMetadata struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The client provided key.
+	// The key of the object that this metadata is associated with.
 	Key string `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
 	// The last version of the key that was committed.
 	LastCommitted uint64 `protobuf:"varint,2,opt,name=last_committed,json=lastCommitted,proto3" json:"last_committed,omitempty"`
@@ -34,20 +34,20 @@ type KeyMetadata struct {
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *KeyMetadata) Reset() {
-	*x = KeyMetadata{}
+func (x *ObjectMetadata) Reset() {
+	*x = ObjectMetadata{}
 	mi := &file_storage_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *KeyMetadata) String() string {
+func (x *ObjectMetadata) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*KeyMetadata) ProtoMessage() {}
+func (*ObjectMetadata) ProtoMessage() {}
 
-func (x *KeyMetadata) ProtoReflect() protoreflect.Message {
+func (x *ObjectMetadata) ProtoReflect() protoreflect.Message {
 	mi := &file_storage_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -59,26 +59,26 @@ func (x *KeyMetadata) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use KeyMetadata.ProtoReflect.Descriptor instead.
-func (*KeyMetadata) Descriptor() ([]byte, []int) {
+// Deprecated: Use ObjectMetadata.ProtoReflect.Descriptor instead.
+func (*ObjectMetadata) Descriptor() ([]byte, []int) {
 	return file_storage_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *KeyMetadata) GetKey() string {
+func (x *ObjectMetadata) GetKey() string {
 	if x != nil {
 		return x.Key
 	}
 	return ""
 }
 
-func (x *KeyMetadata) GetLastCommitted() uint64 {
+func (x *ObjectMetadata) GetLastCommitted() uint64 {
 	if x != nil {
 		return x.LastCommitted
 	}
 	return 0
 }
 
-func (x *KeyMetadata) GetVersions() []uint64 {
+func (x *ObjectMetadata) GetVersions() []uint64 {
 	if x != nil {
 		return x.Versions
 	}
@@ -89,8 +89,8 @@ var File_storage_proto protoreflect.FileDescriptor
 
 const file_storage_proto_rawDesc = "" +
 	"\n" +
-	"\rstorage.proto\x12\astorage\"b\n" +
-	"\vKeyMetadata\x12\x10\n" +
+	"\rstorage.proto\x12\astorage\"e\n" +
+	"\x0eObjectMetadata\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12%\n" +
 	"\x0elast_committed\x18\x02 \x01(\x04R\rlastCommitted\x12\x1a\n" +
 	"\bversions\x18\x03 \x03(\x04R\bversionsB-Z+github.com/jmsadair/zebraos/proto/pbstorageb\x06proto3"
@@ -109,7 +109,7 @@ func file_storage_proto_rawDescGZIP() []byte {
 
 var file_storage_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
 var file_storage_proto_goTypes = []any{
-	(*KeyMetadata)(nil), // 0: storage.KeyMetadata
+	(*ObjectMetadata)(nil), // 0: storage.ObjectMetadata
 }
 var file_storage_proto_depIdxs = []int32{
 	0, // [0:0] is the sub-list for method output_type
