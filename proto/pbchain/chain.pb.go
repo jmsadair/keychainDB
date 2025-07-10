@@ -21,10 +21,13 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// ChainMetadata contains metadata regarding chain membership.
 type ChainMetadata struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	ChainID       string                 `protobuf:"bytes,1,opt,name=chainID,proto3" json:"chainID,omitempty"`
-	Members       []string               `protobuf:"bytes,2,rep,name=members,proto3" json:"members,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The ID that identifies the chain.
+	ChainId string `protobuf:"bytes,1,opt,name=chain_id,json=chainId,proto3" json:"chain_id,omitempty"`
+	// The addresses of the members of the chain.
+	Members       []string `protobuf:"bytes,2,rep,name=members,proto3" json:"members,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -59,9 +62,9 @@ func (*ChainMetadata) Descriptor() ([]byte, []int) {
 	return file_chain_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *ChainMetadata) GetChainID() string {
+func (x *ChainMetadata) GetChainId() string {
 	if x != nil {
-		return x.ChainID
+		return x.ChainId
 	}
 	return ""
 }
@@ -73,27 +76,33 @@ func (x *ChainMetadata) GetMembers() []string {
 	return nil
 }
 
-type GetRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Key           string                 `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+// WriteRequest is a request sent from one node of a chain to another to write a new version of a key.
+type WriteRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The key being written.
+	Key string `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	// The value for the key.
+	Value []byte `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
+	// The version of the key.
+	Version       uint64 `protobuf:"varint,3,opt,name=version,proto3" json:"version,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *GetRequest) Reset() {
-	*x = GetRequest{}
+func (x *WriteRequest) Reset() {
+	*x = WriteRequest{}
 	mi := &file_chain_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *GetRequest) String() string {
+func (x *WriteRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*GetRequest) ProtoMessage() {}
+func (*WriteRequest) ProtoMessage() {}
 
-func (x *GetRequest) ProtoReflect() protoreflect.Message {
+func (x *WriteRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_chain_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -105,39 +114,53 @@ func (x *GetRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use GetRequest.ProtoReflect.Descriptor instead.
-func (*GetRequest) Descriptor() ([]byte, []int) {
+// Deprecated: Use WriteRequest.ProtoReflect.Descriptor instead.
+func (*WriteRequest) Descriptor() ([]byte, []int) {
 	return file_chain_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *GetRequest) GetKey() string {
+func (x *WriteRequest) GetKey() string {
 	if x != nil {
 		return x.Key
 	}
 	return ""
 }
 
-type GetResponse struct {
+func (x *WriteRequest) GetValue() []byte {
+	if x != nil {
+		return x.Value
+	}
+	return nil
+}
+
+func (x *WriteRequest) GetVersion() uint64 {
+	if x != nil {
+		return x.Version
+	}
+	return 0
+}
+
+// WriteResponse is the response to a WriteRequest.
+type WriteResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Value         []byte                 `protobuf:"bytes,1,opt,name=value,proto3" json:"value,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *GetResponse) Reset() {
-	*x = GetResponse{}
+func (x *WriteResponse) Reset() {
+	*x = WriteResponse{}
 	mi := &file_chain_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *GetResponse) String() string {
+func (x *WriteResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*GetResponse) ProtoMessage() {}
+func (*WriteResponse) ProtoMessage() {}
 
-func (x *GetResponse) ProtoReflect() protoreflect.Message {
+func (x *WriteResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_chain_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -149,40 +172,34 @@ func (x *GetResponse) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use GetResponse.ProtoReflect.Descriptor instead.
-func (*GetResponse) Descriptor() ([]byte, []int) {
+// Deprecated: Use WriteResponse.ProtoReflect.Descriptor instead.
+func (*WriteResponse) Descriptor() ([]byte, []int) {
 	return file_chain_proto_rawDescGZIP(), []int{2}
 }
 
-func (x *GetResponse) GetValue() []byte {
-	if x != nil {
-		return x.Value
-	}
-	return nil
-}
-
-type PutRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Key           string                 `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
-	Value         []byte                 `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
+// ReadRequest is a request sent from one node of chain to another to read the value of a key.
+type ReadRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The key being read.
+	Key           string `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *PutRequest) Reset() {
-	*x = PutRequest{}
+func (x *ReadRequest) Reset() {
+	*x = ReadRequest{}
 	mi := &file_chain_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *PutRequest) String() string {
+func (x *ReadRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*PutRequest) ProtoMessage() {}
+func (*ReadRequest) ProtoMessage() {}
 
-func (x *PutRequest) ProtoReflect() protoreflect.Message {
+func (x *ReadRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_chain_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -194,82 +211,89 @@ func (x *PutRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use PutRequest.ProtoReflect.Descriptor instead.
-func (*PutRequest) Descriptor() ([]byte, []int) {
+// Deprecated: Use ReadRequest.ProtoReflect.Descriptor instead.
+func (*ReadRequest) Descriptor() ([]byte, []int) {
 	return file_chain_proto_rawDescGZIP(), []int{3}
 }
 
-func (x *PutRequest) GetKey() string {
+func (x *ReadRequest) GetKey() string {
 	if x != nil {
 		return x.Key
 	}
 	return ""
 }
 
-func (x *PutRequest) GetValue() []byte {
+// ReadResponse is the response to a ReadRequest and contains the value of the key read.
+type ReadResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The value of the key that was read.
+	Value         []byte `protobuf:"bytes,1,opt,name=value,proto3" json:"value,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ReadResponse) Reset() {
+	*x = ReadResponse{}
+	mi := &file_chain_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ReadResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ReadResponse) ProtoMessage() {}
+
+func (x *ReadResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_chain_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ReadResponse.ProtoReflect.Descriptor instead.
+func (*ReadResponse) Descriptor() ([]byte, []int) {
+	return file_chain_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *ReadResponse) GetValue() []byte {
 	if x != nil {
 		return x.Value
 	}
 	return nil
 }
 
-type PutResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
+// KeyValuePair is a key-value pair stored by a node of a chain.
+type KeyValuePair struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The key.
+	Key string `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	// The value associated with the key.
+	Value         []byte `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *PutResponse) Reset() {
-	*x = PutResponse{}
-	mi := &file_chain_proto_msgTypes[4]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *PutResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*PutResponse) ProtoMessage() {}
-
-func (x *PutResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_chain_proto_msgTypes[4]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use PutResponse.ProtoReflect.Descriptor instead.
-func (*PutResponse) Descriptor() ([]byte, []int) {
-	return file_chain_proto_rawDescGZIP(), []int{4}
-}
-
-type DeleteRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Key           string                 `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *DeleteRequest) Reset() {
-	*x = DeleteRequest{}
+func (x *KeyValuePair) Reset() {
+	*x = KeyValuePair{}
 	mi := &file_chain_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *DeleteRequest) String() string {
+func (x *KeyValuePair) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*DeleteRequest) ProtoMessage() {}
+func (*KeyValuePair) ProtoMessage() {}
 
-func (x *DeleteRequest) ProtoReflect() protoreflect.Message {
+func (x *KeyValuePair) ProtoReflect() protoreflect.Message {
 	mi := &file_chain_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -281,79 +305,48 @@ func (x *DeleteRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use DeleteRequest.ProtoReflect.Descriptor instead.
-func (*DeleteRequest) Descriptor() ([]byte, []int) {
+// Deprecated: Use KeyValuePair.ProtoReflect.Descriptor instead.
+func (*KeyValuePair) Descriptor() ([]byte, []int) {
 	return file_chain_proto_rawDescGZIP(), []int{5}
 }
 
-func (x *DeleteRequest) GetKey() string {
+func (x *KeyValuePair) GetKey() string {
 	if x != nil {
 		return x.Key
 	}
 	return ""
 }
 
-type DeleteResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *DeleteResponse) Reset() {
-	*x = DeleteResponse{}
-	mi := &file_chain_proto_msgTypes[6]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *DeleteResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*DeleteResponse) ProtoMessage() {}
-
-func (x *DeleteResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_chain_proto_msgTypes[6]
+func (x *KeyValuePair) GetValue() []byte {
 	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
+		return x.Value
 	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use DeleteResponse.ProtoReflect.Descriptor instead.
-func (*DeleteResponse) Descriptor() ([]byte, []int) {
-	return file_chain_proto_rawDescGZIP(), []int{6}
+	return nil
 }
 
 var File_chain_proto protoreflect.FileDescriptor
 
 const file_chain_proto_rawDesc = "" +
 	"\n" +
-	"\vchain.proto\x12\x05chain\"C\n" +
-	"\rChainMetadata\x12\x18\n" +
-	"\achainID\x18\x01 \x01(\tR\achainID\x12\x18\n" +
-	"\amembers\x18\x02 \x03(\tR\amembers\"\x1e\n" +
-	"\n" +
-	"GetRequest\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\"#\n" +
-	"\vGetResponse\x12\x14\n" +
-	"\x05value\x18\x01 \x01(\fR\x05value\"4\n" +
-	"\n" +
-	"PutRequest\x12\x10\n" +
+	"\vchain.proto\x12\x05chain\"D\n" +
+	"\rChainMetadata\x12\x19\n" +
+	"\bchain_id\x18\x01 \x01(\tR\achainId\x12\x18\n" +
+	"\amembers\x18\x02 \x03(\tR\amembers\"P\n" +
+	"\fWriteRequest\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\fR\x05value\"\r\n" +
-	"\vPutResponse\"!\n" +
-	"\rDeleteRequest\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\"\x10\n" +
-	"\x0eDeleteResponse2\xa7\x01\n" +
-	"\fChainService\x12.\n" +
-	"\x03Get\x12\x11.chain.GetRequest\x1a\x12.chain.GetResponse\"\x00\x12.\n" +
-	"\x03Put\x12\x11.chain.PutRequest\x1a\x12.chain.PutResponse\"\x00\x127\n" +
-	"\x06Delete\x12\x14.chain.DeleteRequest\x1a\x15.chain.DeleteResponse\"\x00B+Z)github.com/jmsadair/zebraos/proto/pbchainb\x06proto3"
+	"\x05value\x18\x02 \x01(\fR\x05value\x12\x18\n" +
+	"\aversion\x18\x03 \x01(\x04R\aversion\"\x0f\n" +
+	"\rWriteResponse\"\x1f\n" +
+	"\vReadRequest\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\"$\n" +
+	"\fReadResponse\x12\x14\n" +
+	"\x05value\x18\x01 \x01(\fR\x05value\"6\n" +
+	"\fKeyValuePair\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\fR\x05value2w\n" +
+	"\fChainService\x124\n" +
+	"\x05Write\x12\x13.chain.WriteRequest\x1a\x14.chain.WriteResponse\"\x00\x121\n" +
+	"\x04Read\x12\x12.chain.ReadRequest\x1a\x13.chain.ReadResponse\"\x00B+Z)github.com/jmsadair/zebraos/proto/pbchainb\x06proto3"
 
 var (
 	file_chain_proto_rawDescOnce sync.Once
@@ -367,25 +360,22 @@ func file_chain_proto_rawDescGZIP() []byte {
 	return file_chain_proto_rawDescData
 }
 
-var file_chain_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
+var file_chain_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
 var file_chain_proto_goTypes = []any{
-	(*ChainMetadata)(nil),  // 0: chain.ChainMetadata
-	(*GetRequest)(nil),     // 1: chain.GetRequest
-	(*GetResponse)(nil),    // 2: chain.GetResponse
-	(*PutRequest)(nil),     // 3: chain.PutRequest
-	(*PutResponse)(nil),    // 4: chain.PutResponse
-	(*DeleteRequest)(nil),  // 5: chain.DeleteRequest
-	(*DeleteResponse)(nil), // 6: chain.DeleteResponse
+	(*ChainMetadata)(nil), // 0: chain.ChainMetadata
+	(*WriteRequest)(nil),  // 1: chain.WriteRequest
+	(*WriteResponse)(nil), // 2: chain.WriteResponse
+	(*ReadRequest)(nil),   // 3: chain.ReadRequest
+	(*ReadResponse)(nil),  // 4: chain.ReadResponse
+	(*KeyValuePair)(nil),  // 5: chain.KeyValuePair
 }
 var file_chain_proto_depIdxs = []int32{
-	1, // 0: chain.ChainService.Get:input_type -> chain.GetRequest
-	3, // 1: chain.ChainService.Put:input_type -> chain.PutRequest
-	5, // 2: chain.ChainService.Delete:input_type -> chain.DeleteRequest
-	2, // 3: chain.ChainService.Get:output_type -> chain.GetResponse
-	4, // 4: chain.ChainService.Put:output_type -> chain.PutResponse
-	6, // 5: chain.ChainService.Delete:output_type -> chain.DeleteResponse
-	3, // [3:6] is the sub-list for method output_type
-	0, // [0:3] is the sub-list for method input_type
+	1, // 0: chain.ChainService.Write:input_type -> chain.WriteRequest
+	3, // 1: chain.ChainService.Read:input_type -> chain.ReadRequest
+	2, // 2: chain.ChainService.Write:output_type -> chain.WriteResponse
+	4, // 3: chain.ChainService.Read:output_type -> chain.ReadResponse
+	2, // [2:4] is the sub-list for method output_type
+	0, // [0:2] is the sub-list for method input_type
 	0, // [0:0] is the sub-list for extension type_name
 	0, // [0:0] is the sub-list for extension extendee
 	0, // [0:0] is the sub-list for field type_name
@@ -402,7 +392,7 @@ func file_chain_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_chain_proto_rawDesc), len(file_chain_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   7,
+			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

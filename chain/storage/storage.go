@@ -1,14 +1,27 @@
 package storage
 
 import (
+	"context"
 	"errors"
 
 	badger "github.com/dgraph-io/badger/v4"
+	"github.com/dgraph-io/ristretto/v2/z"
 )
 
-// ErrDirtyRead is returned when a committed read is performed
-// and there are one or more uncommitted writes.
+// ErrDirtyRead is returned when a committed read is performed and there are one or more uncommitted writes.
 var ErrDirtyRead = errors.New("latest object version is dirty")
+
+// KeyFilter is a filter for selecting specific keys when listing keys from storage.
+type KeyFilter int
+
+const (
+	// AllKeys will select all keys.
+	AllKeys KeyFilter = iota
+	// DirtyKeys will select only dirty keys.
+	DirtyKeys
+	// CommittedKeys will select only uncommitted keys.
+	CommittedKeys
+)
 
 // PersistantStorage is a disk-backed key-value storage system that is
 // capable of performing transactional reads and writes.
@@ -35,144 +48,228 @@ func (ps *PersistantStorage) Close() {
 // UncommittedWriteNewVersion will transactionally generate a new version for the key and write the key to storage
 // but will not commit it.
 func (ps *PersistantStorage) UncommittedWriteNewVersion(key string, value []byte) (uint64, error) {
-	return ps.write(key, value, 0, false, true)
+	var err error
+	var version uint64
+
+	err = ps.db.Update(func(txn *badger.Txn) error {
+		version, err = write(txn, key, value, 0, false, true)
+		return err
+	})
+
+	return version, err
 }
 
 // UncommittedWrite will transactionally write the provided version of key to storage but will not commit it.
 func (ps *PersistantStorage) UncommittedWrite(key string, value []byte, version uint64) error {
-	_, err := ps.write(key, value, version, false, false)
-	return err
+	return ps.db.Update(func(txn *badger.Txn) error {
+		_, err := write(txn, key, value, version, false, false)
+		return err
+	})
 }
 
 // CommittedWrite will transactionally write the provided version of key to storage and will immediately commit it.
 func (ps *PersistantStorage) CommittedWrite(key string, value []byte, version uint64) error {
-	_, err := ps.write(key, value, version, true, false)
-	return err
+	return ps.db.Update(func(txn *badger.Txn) error {
+		_, err := write(txn, key, value, version, true, false)
+		return err
+	})
 }
 
 // CommitVersion will transactionally commit the provided version of the key.
 // All versions of the key earlier than the committed version will be deleted.
 // Commiting a version earlier than the currently committed version is a no-op.
 func (ps *PersistantStorage) CommitVersion(key string, version uint64) error {
-	err := ps.db.Update(func(txn *badger.Txn) error {
-		item, err := txn.Get([]byte(key))
-		if err != nil {
-			return err
-		}
-
-		b, err := item.ValueCopy(nil)
-		if err != nil {
-			return err
-		}
-		keyMetadata, err := NewKeyMetadataFromBytes(b)
-		if err != nil {
-			return err
-		}
-
-		if err := keyMetadata.CommitVersion(version); err != nil {
-			return err
-		}
-		b, err = keyMetadata.Bytes()
-		if err != nil {
-			return err
-		}
-		if err := txn.Set([]byte(key), b); err != nil {
-			return err
-		}
-
-		return nil
+	return ps.db.Update(func(txn *badger.Txn) error {
+		return commit(txn, key, version)
 	})
-
-	return err
 }
 
 // CommittedRead will transactionally read the value of the key.
 // If there are uncommitted writes, an error will be returned.
 func (ps *PersistantStorage) CommittedRead(key string) ([]byte, error) {
+	var err error
 	var value []byte
 
-	err := ps.db.View(func(txn *badger.Txn) error {
-		item, err := txn.Get([]byte(key))
-		if err != nil {
-			return err
-		}
-		b, err := item.ValueCopy(nil)
-		if err != nil {
-			return err
-		}
-		keyMetadata, err := NewKeyMetadataFromBytes(b)
-		if err != nil {
-			return err
-		}
-
-		if keyMetadata.IsDirty() {
-			return ErrDirtyRead
-		}
-
-		versionedKey := makeVersionedKey(key, keyMetadata.NewestVersion())
-		item, err = txn.Get([]byte(versionedKey))
-		if err != nil {
-			return err
-		}
-		value, err = item.ValueCopy(nil)
-		if err != nil {
-			return err
-		}
-
-		return nil
+	err = ps.db.View(func(txn *badger.Txn) error {
+		value, err = read(txn, key)
+		return err
 	})
 
 	return value, err
 }
 
-func (ps *PersistantStorage) write(key string, value []byte, version uint64, commit bool, newVersion bool) (uint64, error) {
-	err := ps.db.Update(func(txn *badger.Txn) error {
-		item, err := txn.Get([]byte(key))
-		var keyMetadata *KeyMetadata
+// SendKeys will iterate over all keys in storage, group the keys that satisfy the provided keyFilter into
+// batches, and call the provided sendFunc with the batch as the argument. If at any point during the process
+// an error occurs, the process will be terminated and the error will be returned.
+func (ps *PersistantStorage) SendKeys(sendFunc func([]string) error, keyFilter KeyFilter) error {
+	stream := ps.db.NewStream()
 
-		switch {
-		case errors.Is(err, badger.ErrKeyNotFound):
-			keyMetadata = NewKeyMetadata(key)
-		case err != nil:
-			return err
-		default:
-			b, copyErr := item.ValueCopy(nil)
-			if copyErr != nil {
-				return err
-			}
-			keyMetadata, err = NewKeyMetadataFromBytes(b)
-			if err != nil {
-				return err
-			}
-		}
-
-		if newVersion {
-			version = keyMetadata.IncrementVersion()
-		} else if err := keyMetadata.AddVersion(version); err != nil {
-			return err
-		}
-
-		if commit {
-			if err := keyMetadata.CommitVersion(version); err != nil {
-				return err
-			}
-		}
-
-		versionedKey := makeVersionedKey(key, version)
-		if err = txn.Set([]byte(versionedKey), value); err != nil {
-			return err
-		}
-
-		keyMetadataBytes, err := keyMetadata.Bytes()
+	stream.Send = func(buf *z.Buffer) error {
+		kvList, err := badger.BufferToKVList(buf)
 		if err != nil {
 			return err
 		}
-		if err := txn.Set([]byte(key), keyMetadataBytes); err != nil {
-			return err
+
+		var keys []string
+		for _, kv := range kvList.GetKv() {
+			value := kv.GetValue()
+			metadata, err := NewObjectMetadataFromBytes(value)
+			if err != nil {
+				return err
+			}
+
+			shouldSend := false
+			switch keyFilter {
+			case AllKeys:
+				shouldSend = true
+			case DirtyKeys:
+				shouldSend = metadata.IsDirty()
+			case CommittedKeys:
+				shouldSend = !metadata.IsDirty()
+			}
+
+			if shouldSend {
+				keys = append(keys, CanonicalKey(kv.GetKey()).Key())
+			}
 		}
 
-		return nil
-	})
+		return sendFunc(keys)
+	}
+	stream.ChooseKey = func(item *badger.Item) bool {
+		return CanonicalKey(item.Key()).IsMetadataKey()
+	}
 
-	return version, err
+	return stream.Orchestrate(context.Background())
+}
+
+func commit(txn *badger.Txn, key string, version uint64) error {
+	md, err := getOrCreateMetadata(txn, key)
+	if err != nil {
+		return err
+	}
+
+	// Remove all versions of the object older than the version being committed.
+	for _, oldVersion := range md.Versions {
+		if oldVersion >= version {
+			break
+		}
+		dataKey, err := NewDataKey(key, oldVersion)
+		if err != nil {
+			return err
+		}
+		if err := txn.Delete(dataKey); err != nil {
+			return err
+		}
+	}
+
+	// Update the metadata to reflect the latest committed version.
+	if err := md.CommitVersion(version); err != nil {
+		return err
+	}
+	mdKey, err := NewMetadataKey(key)
+	if err != nil {
+		return err
+	}
+	mdBytes, err := md.Bytes()
+	if err != nil {
+		return err
+	}
+	if err := txn.Set(mdKey, mdBytes); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func read(txn *badger.Txn, key string) ([]byte, error) {
+	md, err := getOrCreateMetadata(txn, key)
+	if err != nil {
+		return nil, err
+	}
+	if md.IsDirty() {
+		return nil, ErrDirtyRead
+	}
+
+	dataKey, err := NewDataKey(key, md.LastCommitted)
+	if err != nil {
+		return nil, err
+	}
+
+	item, err := txn.Get(dataKey)
+	if err != nil {
+		return nil, err
+	}
+	value, err := item.ValueCopy(nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return value, nil
+}
+
+func write(txn *badger.Txn, key string, value []byte, version uint64, shouldCommit bool, newVersion bool) (uint64, error) {
+	md, err := getOrCreateMetadata(txn, key)
+	if err != nil {
+		return 0, err
+	}
+
+	if newVersion {
+		version = md.NextVersion()
+	}
+	if err := md.AddVersion(version); err != nil {
+		return 0, err
+	}
+
+	mdBytes, err := md.Bytes()
+	if err != nil {
+		return 0, err
+	}
+	mdKey, err := NewMetadataKey(key)
+	if err != nil {
+		return 0, err
+	}
+	if err := txn.Set(mdKey, mdBytes); err != nil {
+		return 0, err
+	}
+
+	dataKey, err := NewDataKey(key, version)
+	if err != nil {
+		return 0, err
+	}
+	if err = txn.Set(dataKey, value); err != nil {
+		return 0, err
+	}
+
+	if shouldCommit {
+		return version, commit(txn, key, version)
+	}
+
+	return version, nil
+}
+
+func getOrCreateMetadata(txn *badger.Txn, key string) (*ObjectMetadata, error) {
+	mdKey, err := NewMetadataKey(key)
+	if err != nil {
+		return nil, err
+	}
+
+	var md *ObjectMetadata
+	item, err := txn.Get(mdKey)
+	switch {
+	case errors.Is(err, badger.ErrKeyNotFound):
+		md = NewObjectMetadata(key)
+	case err != nil:
+		return nil, err
+	default:
+		mdBytes, err := item.ValueCopy(nil)
+		if err != nil {
+			return nil, err
+		}
+		md, err = NewObjectMetadataFromBytes(mdBytes)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return md, nil
 }

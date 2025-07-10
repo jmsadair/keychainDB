@@ -60,7 +60,7 @@ func TestChainMetadataBytes(t *testing.T) {
 	var chainMetadataProto pb.ChainMetadata
 	expectedMembers := []string{head.String(), middle.String(), tail.String()}
 	require.NoError(t, proto.Unmarshal(b, &chainMetadataProto))
-	require.Equal(t, string(chainID), chainMetadataProto.GetChainID())
+	require.Equal(t, string(chainID), chainMetadataProto.GetChainId())
 	require.Equal(t, expectedMembers, chainMetadataProto.GetMembers())
 }
 
