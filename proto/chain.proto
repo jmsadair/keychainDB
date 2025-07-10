@@ -10,9 +10,6 @@ service ChainService {
 	rpc Write (WriteRequest) returns (WriteResponse) {}
 	// Read handles requests to read a particular version of a key.
 	rpc Read (ReadRequest) returns (ReadResponse) {}
-	// Backfill handles the backfilling of key-value pairs.
-	// This is typically used to catch up a node recently added to a chain.
-	rpc Backfill (BackfillRequest) returns (stream KeyValuePair) {}
 }
 
 // ChainMetadata contains metadata regarding chain membership.
@@ -47,10 +44,6 @@ message ReadResponse {
 	// The value of the key that was read.
 	bytes value = 1;
 }
-
-// BackfillRequest is a request sent from one node of a chain to another to initiate a backfill
-// of all of the key-value pairs.
-message BackfillRequest {}
 
 // KeyValuePair is a key-value pair stored by a node of a chain.
 message KeyValuePair {

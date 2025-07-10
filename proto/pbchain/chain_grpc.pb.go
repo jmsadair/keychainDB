@@ -19,9 +19,8 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	ChainService_Write_FullMethodName    = "/chain.ChainService/Write"
-	ChainService_Read_FullMethodName     = "/chain.ChainService/Read"
-	ChainService_Backfill_FullMethodName = "/chain.ChainService/Backfill"
+	ChainService_Write_FullMethodName = "/chain.ChainService/Write"
+	ChainService_Read_FullMethodName  = "/chain.ChainService/Read"
 )
 
 // ChainServiceClient is the client API for ChainService service.
@@ -34,9 +33,6 @@ type ChainServiceClient interface {
 	Write(ctx context.Context, in *WriteRequest, opts ...grpc.CallOption) (*WriteResponse, error)
 	// Read handles requests to read a particular version of a key.
 	Read(ctx context.Context, in *ReadRequest, opts ...grpc.CallOption) (*ReadResponse, error)
-	// Backfill handles the backfilling of key-value pairs.
-	// This is typically used to catch up a node recently added to a chain.
-	Backfill(ctx context.Context, in *BackfillRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[KeyValuePair], error)
 }
 
 type chainServiceClient struct {
@@ -67,25 +63,6 @@ func (c *chainServiceClient) Read(ctx context.Context, in *ReadRequest, opts ...
 	return out, nil
 }
 
-func (c *chainServiceClient) Backfill(ctx context.Context, in *BackfillRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[KeyValuePair], error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	stream, err := c.cc.NewStream(ctx, &ChainService_ServiceDesc.Streams[0], ChainService_Backfill_FullMethodName, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	x := &grpc.GenericClientStream[BackfillRequest, KeyValuePair]{ClientStream: stream}
-	if err := x.ClientStream.SendMsg(in); err != nil {
-		return nil, err
-	}
-	if err := x.ClientStream.CloseSend(); err != nil {
-		return nil, err
-	}
-	return x, nil
-}
-
-// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
-type ChainService_BackfillClient = grpc.ServerStreamingClient[KeyValuePair]
-
 // ChainServiceServer is the server API for ChainService service.
 // All implementations must embed UnimplementedChainServiceServer
 // for forward compatibility.
@@ -96,9 +73,6 @@ type ChainServiceServer interface {
 	Write(context.Context, *WriteRequest) (*WriteResponse, error)
 	// Read handles requests to read a particular version of a key.
 	Read(context.Context, *ReadRequest) (*ReadResponse, error)
-	// Backfill handles the backfilling of key-value pairs.
-	// This is typically used to catch up a node recently added to a chain.
-	Backfill(*BackfillRequest, grpc.ServerStreamingServer[KeyValuePair]) error
 	mustEmbedUnimplementedChainServiceServer()
 }
 
@@ -114,9 +88,6 @@ func (UnimplementedChainServiceServer) Write(context.Context, *WriteRequest) (*W
 }
 func (UnimplementedChainServiceServer) Read(context.Context, *ReadRequest) (*ReadResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Read not implemented")
-}
-func (UnimplementedChainServiceServer) Backfill(*BackfillRequest, grpc.ServerStreamingServer[KeyValuePair]) error {
-	return status.Errorf(codes.Unimplemented, "method Backfill not implemented")
 }
 func (UnimplementedChainServiceServer) mustEmbedUnimplementedChainServiceServer() {}
 func (UnimplementedChainServiceServer) testEmbeddedByValue()                      {}
@@ -175,17 +146,6 @@ func _ChainService_Read_Handler(srv interface{}, ctx context.Context, dec func(i
 	return interceptor(ctx, in, info, handler)
 }
 
-func _ChainService_Backfill_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(BackfillRequest)
-	if err := stream.RecvMsg(m); err != nil {
-		return err
-	}
-	return srv.(ChainServiceServer).Backfill(m, &grpc.GenericServerStream[BackfillRequest, KeyValuePair]{ServerStream: stream})
-}
-
-// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
-type ChainService_BackfillServer = grpc.ServerStreamingServer[KeyValuePair]
-
 // ChainService_ServiceDesc is the grpc.ServiceDesc for ChainService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -202,12 +162,6 @@ var ChainService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _ChainService_Read_Handler,
 		},
 	},
-	Streams: []grpc.StreamDesc{
-		{
-			StreamName:    "Backfill",
-			Handler:       _ChainService_Backfill_Handler,
-			ServerStreams: true,
-		},
-	},
+	Streams:  []grpc.StreamDesc{},
 	Metadata: "chain.proto",
 }

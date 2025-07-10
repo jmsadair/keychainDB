@@ -269,44 +269,6 @@ func (x *ReadResponse) GetValue() []byte {
 	return nil
 }
 
-// BackfillRequest is a request sent from one node of a chain to another to initiate a backfill
-// of all of the key-value pairs.
-type BackfillRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *BackfillRequest) Reset() {
-	*x = BackfillRequest{}
-	mi := &file_chain_proto_msgTypes[5]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *BackfillRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*BackfillRequest) ProtoMessage() {}
-
-func (x *BackfillRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_chain_proto_msgTypes[5]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use BackfillRequest.ProtoReflect.Descriptor instead.
-func (*BackfillRequest) Descriptor() ([]byte, []int) {
-	return file_chain_proto_rawDescGZIP(), []int{5}
-}
-
 // KeyValuePair is a key-value pair stored by a node of a chain.
 type KeyValuePair struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -320,7 +282,7 @@ type KeyValuePair struct {
 
 func (x *KeyValuePair) Reset() {
 	*x = KeyValuePair{}
-	mi := &file_chain_proto_msgTypes[6]
+	mi := &file_chain_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -332,7 +294,7 @@ func (x *KeyValuePair) String() string {
 func (*KeyValuePair) ProtoMessage() {}
 
 func (x *KeyValuePair) ProtoReflect() protoreflect.Message {
-	mi := &file_chain_proto_msgTypes[6]
+	mi := &file_chain_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -345,7 +307,7 @@ func (x *KeyValuePair) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use KeyValuePair.ProtoReflect.Descriptor instead.
 func (*KeyValuePair) Descriptor() ([]byte, []int) {
-	return file_chain_proto_rawDescGZIP(), []int{6}
+	return file_chain_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *KeyValuePair) GetKey() string {
@@ -378,15 +340,13 @@ const file_chain_proto_rawDesc = "" +
 	"\vReadRequest\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\"$\n" +
 	"\fReadResponse\x12\x14\n" +
-	"\x05value\x18\x01 \x01(\fR\x05value\"\x11\n" +
-	"\x0fBackfillRequest\"6\n" +
+	"\x05value\x18\x01 \x01(\fR\x05value\"6\n" +
 	"\fKeyValuePair\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\fR\x05value2\xb4\x01\n" +
+	"\x05value\x18\x02 \x01(\fR\x05value2w\n" +
 	"\fChainService\x124\n" +
 	"\x05Write\x12\x13.chain.WriteRequest\x1a\x14.chain.WriteResponse\"\x00\x121\n" +
-	"\x04Read\x12\x12.chain.ReadRequest\x1a\x13.chain.ReadResponse\"\x00\x12;\n" +
-	"\bBackfill\x12\x16.chain.BackfillRequest\x1a\x13.chain.KeyValuePair\"\x000\x01B+Z)github.com/jmsadair/zebraos/proto/pbchainb\x06proto3"
+	"\x04Read\x12\x12.chain.ReadRequest\x1a\x13.chain.ReadResponse\"\x00B+Z)github.com/jmsadair/zebraos/proto/pbchainb\x06proto3"
 
 var (
 	file_chain_proto_rawDescOnce sync.Once
@@ -400,25 +360,22 @@ func file_chain_proto_rawDescGZIP() []byte {
 	return file_chain_proto_rawDescData
 }
 
-var file_chain_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
+var file_chain_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
 var file_chain_proto_goTypes = []any{
-	(*ChainMetadata)(nil),   // 0: chain.ChainMetadata
-	(*WriteRequest)(nil),    // 1: chain.WriteRequest
-	(*WriteResponse)(nil),   // 2: chain.WriteResponse
-	(*ReadRequest)(nil),     // 3: chain.ReadRequest
-	(*ReadResponse)(nil),    // 4: chain.ReadResponse
-	(*BackfillRequest)(nil), // 5: chain.BackfillRequest
-	(*KeyValuePair)(nil),    // 6: chain.KeyValuePair
+	(*ChainMetadata)(nil), // 0: chain.ChainMetadata
+	(*WriteRequest)(nil),  // 1: chain.WriteRequest
+	(*WriteResponse)(nil), // 2: chain.WriteResponse
+	(*ReadRequest)(nil),   // 3: chain.ReadRequest
+	(*ReadResponse)(nil),  // 4: chain.ReadResponse
+	(*KeyValuePair)(nil),  // 5: chain.KeyValuePair
 }
 var file_chain_proto_depIdxs = []int32{
 	1, // 0: chain.ChainService.Write:input_type -> chain.WriteRequest
 	3, // 1: chain.ChainService.Read:input_type -> chain.ReadRequest
-	5, // 2: chain.ChainService.Backfill:input_type -> chain.BackfillRequest
-	2, // 3: chain.ChainService.Write:output_type -> chain.WriteResponse
-	4, // 4: chain.ChainService.Read:output_type -> chain.ReadResponse
-	6, // 5: chain.ChainService.Backfill:output_type -> chain.KeyValuePair
-	3, // [3:6] is the sub-list for method output_type
-	0, // [0:3] is the sub-list for method input_type
+	2, // 2: chain.ChainService.Write:output_type -> chain.WriteResponse
+	4, // 3: chain.ChainService.Read:output_type -> chain.ReadResponse
+	2, // [2:4] is the sub-list for method output_type
+	0, // [0:2] is the sub-list for method input_type
 	0, // [0:0] is the sub-list for extension type_name
 	0, // [0:0] is the sub-list for extension extendee
 	0, // [0:0] is the sub-list for field type_name
@@ -435,7 +392,7 @@ func file_chain_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_chain_proto_rawDesc), len(file_chain_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   7,
+			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
