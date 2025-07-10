@@ -2,9 +2,7 @@ package chainnode
 
 import (
 	"net"
-	"sync/atomic"
 
-	"github.com/jmsadair/zebraos/chain/metadata"
 	"github.com/jmsadair/zebraos/chain/storage"
 )
 
@@ -25,9 +23,6 @@ type Client interface {
 type ChainNode struct {
 	// The address of this node.
 	address net.Addr
-	// The metadata that describes the chain this node is a member of.
-	// This value will be nil unless the node has been added to a chain.
-	chainMetadata atomic.Pointer[metadata.ChainMetadata]
 	// The local storage for this node.
 	storage Storage
 	// A client for communicating with other nodes in the chain.
