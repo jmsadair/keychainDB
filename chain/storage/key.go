@@ -5,68 +5,60 @@ import (
 	"encoding/binary"
 )
 
-// InternalKey is an internal representation of a key used by storage.
-type InternalKey struct {
-	// A key associated with an object.
-	Key string
-	// Indicates whether this key is a pointer to object metadata or not.
-	IsMetadataKey bool
-	// The version of the key. This is only applies to keys that point to client data.
-	Version uint64
-}
+const (
+	isMetadataKeyOffset = 0
+	versionOffset       = 1
+	metdataLenBytes     = 9
+)
 
-// NewInternalKey creates an InternalKey instance from the provided key and version.
-func NewInternalKey(key string, isMetadataKey bool, version uint64) *InternalKey {
-	return &InternalKey{Key: key, IsMetadataKey: isMetadataKey, Version: version}
-}
+// CanonicalKey is an internal representation of a key that is meant to uniquely identify an item in the storage system.
+// | IsMetadataKey (uint8) | Version (uint64) | Client Key (variable length string) |
+type CanonicalKey []byte
 
-// NewInternalKeyFromBytes creates an InternalKey instance from bytes.
-func NewInternalKeyFromBytes(b []byte) (*InternalKey, error) {
-	buf := bytes.NewReader(b)
-
-	var keyLen uint16
-	if err := binary.Read(buf, binary.BigEndian, &keyLen); err != nil {
-		return nil, err
-	}
-	key := make([]byte, keyLen)
-	if _, err := buf.Read(key); err != nil {
-		return nil, err
-	}
-	var version uint64
-	if err := binary.Read(buf, binary.BigEndian, &version); err != nil {
-		return nil, err
-	}
-	isMetadataKey, err := buf.ReadByte()
-	if err != nil {
-		return nil, err
-	}
-
-	return &InternalKey{Key: string(key), Version: version, IsMetadataKey: isMetadataKey == 1}, nil
-}
-
-// Bytes converts an InternalKey instance into bytes.
-func (ik *InternalKey) Bytes() ([]byte, error) {
+// NewCanonicalKey creates a new CanonicalKey instance.
+func NewCanonicalKey(key string, isMetadataKey bool, version uint64) (CanonicalKey, error) {
 	buf := new(bytes.Buffer)
 
-	keyBytes := []byte(ik.Key)
-	if err := binary.Write(buf, binary.BigEndian, uint16(len(keyBytes))); err != nil {
+	var isMetadataKeyByte byte
+	if isMetadataKey {
+		isMetadataKeyByte = 1
+	}
+	if err := buf.WriteByte(isMetadataKeyByte); err != nil {
 		return nil, err
 	}
+	if err := binary.Write(buf, binary.BigEndian, version); err != nil {
+		return nil, err
+	}
+	keyBytes := []byte(key)
 	if _, err := buf.Write(keyBytes); err != nil {
 		return nil, err
 	}
 
-	if err := binary.Write(buf, binary.BigEndian, ik.Version); err != nil {
-		return nil, err
-	}
-
-	var isMetadataKey byte
-	if ik.IsMetadataKey {
-		isMetadataKey = 1
-	}
-	if err := buf.WriteByte(isMetadataKey); err != nil {
-		return nil, err
-	}
-
 	return buf.Bytes(), nil
+}
+
+// NewMetadataKey creates a new CanonicalKey instance that is intended to identify object metadata.
+func NewMetadataKey(key string) (CanonicalKey, error) {
+	return NewCanonicalKey(key, true, 0)
+}
+
+// NewDataKey creates a new CanonicalKey instance that is intended to identify an object.
+func NewDataKey(key string, version uint64) (CanonicalKey, error) {
+	return NewCanonicalKey(key, false, version)
+}
+
+// IsMetadataKey returns true is this key identifies object metadata and false otherwise.
+func (ck CanonicalKey) IsMetadataKey() bool {
+	return ck[isMetadataKeyOffset]&1 == 1
+}
+
+// Version returns the version of the key.
+// If the key is one that identifies object metadata, then the version will always be zero.
+func (ck CanonicalKey) Version() uint64 {
+	return binary.BigEndian.Uint64(ck[versionOffset:])
+}
+
+// Key returns the client key.
+func (ck CanonicalKey) Key() string {
+	return string(ck[metdataLenBytes:])
 }

@@ -1,6 +1,8 @@
 package storage
 
 import (
+	"fmt"
+	"slices"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -129,4 +131,50 @@ func TestInterleavedUncommittedWriteCommitsReads(t *testing.T) {
 	readValue, err := store.CommittedRead(key)
 	require.NoError(t, err)
 	require.Equal(t, string(value3), string(readValue))
+}
+
+func TestSendKeys(t *testing.T) {
+	store, err := NewPersistantStorage(t.TempDir())
+	require.NoError(t, err)
+	defer store.Close()
+
+	// Perform some uncommitted and committed writes.
+	expectedDirtyKeys := make([]string, 25)
+	expectedCommittedKeys := make([]string, 25)
+	version := uint64(1)
+	for i := range 50 {
+		key := fmt.Sprintf("key%d", i)
+		value := fmt.Appendf([]byte{}, "value%d", i)
+		if i < 25 {
+			err := store.CommittedWrite(key, value, version)
+			require.NoError(t, err)
+			expectedCommittedKeys[i] = key
+			continue
+		}
+		err := store.UncommittedWrite(key, value, version)
+		require.NoError(t, err)
+		expectedDirtyKeys[i-25] = key
+	}
+
+	// Now check that the keys are correctly listed.
+	actualDirtyKeys := make([]string, 0, 25)
+	actualCommittedKeys := make([]string, 0, 25)
+	send := func(keys map[string]bool) error {
+		for key, isCommitted := range keys {
+			if isCommitted {
+				actualCommittedKeys = append(actualCommittedKeys, key)
+				continue
+			}
+			actualDirtyKeys = append(actualDirtyKeys, key)
+		}
+		return nil
+	}
+	err = store.SendKeys(send)
+	require.NoError(t, err)
+	slices.Sort(actualDirtyKeys)
+	slices.Sort(expectedDirtyKeys)
+	slices.Sort(actualCommittedKeys)
+	slices.Sort(expectedCommittedKeys)
+	require.Equal(t, expectedDirtyKeys, actualDirtyKeys)
+	require.Equal(t, expectedCommittedKeys, actualCommittedKeys)
 }
