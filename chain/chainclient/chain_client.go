@@ -19,22 +19,25 @@ func NewChainClient(dialOpts ...grpc.DialOption) (*ChainClient, error) {
 	return &ChainClient{dialOpts: dialOpts}, nil
 }
 
-func (cc *ChainClient) Put(address net.Addr, key string, value []byte) error {
+func (cc *ChainClient) Write(address net.Addr, key string, value []byte, version uint64) error {
 	client, err := cc.getOrCreateClient(address)
 	if err != nil {
 		return err
 	}
-	_, err = client.Put(context.Background(), &pb.PutRequest{Key: key, Value: value})
+	_, err = client.Write(context.Background(), &pb.WriteRequest{Key: key, Value: value, Version: version})
 	return err
 }
 
-func (cc *ChainClient) Delete(address net.Addr, key string) error {
+func (cc *ChainClient) Read(address net.Addr, key string) ([]byte, error) {
 	client, err := cc.getOrCreateClient(address)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	_, err = client.Delete(context.Background(), &pb.DeleteRequest{Key: key})
-	return err
+	response, err := client.Read(context.Background(), &pb.ReadRequest{Key: key})
+	if err != nil {
+		return nil, err
+	}
+	return response.GetValue(), nil
 }
 
 func (cc *ChainClient) getOrCreateClient(address net.Addr) (pb.ChainServiceClient, error) {

@@ -1,12 +1,11 @@
 package chainnode
 
 import (
-	"errors"
 	"net"
-	"sync"
 	"sync/atomic"
 
 	"github.com/jmsadair/zebraos/chain/metadata"
+	"github.com/jmsadair/zebraos/chain/storage"
 )
 
 type Storage interface {
@@ -14,6 +13,8 @@ type Storage interface {
 	UncommittedWriteNewVersion(key string, value []byte) (uint64, error)
 	CommittedWrite(key string, value []byte, version uint64) error
 	CommittedRead(key string) ([]byte, error)
+	CommitVersion(key string, version uint64) error
+	SendKeys(sendFunc func([]string) error, keyFilter storage.KeyFilter) error
 }
 
 type Client interface {
@@ -31,8 +32,6 @@ type ChainNode struct {
 	storage Storage
 	// A client for communicating with other nodes in the chain.
 	client Client
-
-	mu sync.RWMutex
 }
 
 func NewChainNode(address net.Addr, storage Storage, client Client) *ChainNode {
@@ -40,37 +39,11 @@ func NewChainNode(address net.Addr, storage Storage, client Client) *ChainNode {
 }
 
 func (c *ChainNode) WriteWithVersion(key string, value []byte, version uint64) error {
-	metadata := c.chainMetadata.Load()
-	if metadata == nil {
-		return errors.New("not a member of a chain")
-	}
-	if metadata.IsTail(c.address) {
-		return c.storage.CommittedWrite(key, value, version)
-	}
-	if err := c.storage.UncommittedWrite(key, value, version); err != nil {
-		return err
-	}
-
-	successor, err := metadata.Successor(c.address)
-	if err != nil {
-		return err
-	}
-	return c.client.Write(successor, key, value, version)
+	return nil
 }
 
 func (c *ChainNode) ReplicatedWrite(key string, value []byte) error {
-	metadata := c.chainMetadata.Load()
-	if metadata == nil {
-		return errors.New("not a member of a chain")
-	}
-	if !metadata.IsHead(c.address) {
-		return errors.New("only the head of a chain can initiate replicated writes")
-	}
-	version, err := c.storage.UncommittedWriteNewVersion(key, value)
-	if err != nil {
-		return err
-	}
-	return c.client.Write(c.address, key, value, version)
+	return nil
 }
 
 func (c *ChainNode) Read(key string) ([]byte, error) {

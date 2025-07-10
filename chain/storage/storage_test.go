@@ -141,10 +141,12 @@ func TestSendKeys(t *testing.T) {
 	// Perform some uncommitted and committed writes.
 	expectedDirtyKeys := make([]string, 25)
 	expectedCommittedKeys := make([]string, 25)
+	expectedAllKeys := make([]string, 50)
 	version := uint64(1)
 	for i := range 50 {
 		key := fmt.Sprintf("key%d", i)
 		value := fmt.Appendf([]byte{}, "value%d", i)
+		expectedAllKeys[i] = key
 		if i < 25 {
 			err := store.CommittedWrite(key, value, version)
 			require.NoError(t, err)
@@ -156,25 +158,32 @@ func TestSendKeys(t *testing.T) {
 		expectedDirtyKeys[i-25] = key
 	}
 
-	// Now check that the keys are correctly listed.
-	actualDirtyKeys := make([]string, 0, 25)
-	actualCommittedKeys := make([]string, 0, 25)
-	send := func(keys map[string]bool) error {
-		for key, isCommitted := range keys {
-			if isCommitted {
-				actualCommittedKeys = append(actualCommittedKeys, key)
-				continue
-			}
-			actualDirtyKeys = append(actualDirtyKeys, key)
-		}
+	var actualKeys []string
+	send := func(keys []string) error {
+		actualKeys = append(actualKeys, keys...)
 		return nil
 	}
-	err = store.SendKeys(send)
+
+	// Check that all keys are listed correctly.
+	err = store.SendKeys(send, AllKeys)
 	require.NoError(t, err)
-	slices.Sort(actualDirtyKeys)
-	slices.Sort(expectedDirtyKeys)
-	slices.Sort(actualCommittedKeys)
+	slices.Sort(actualKeys)
+	slices.Sort(expectedAllKeys)
+	require.Equal(t, expectedAllKeys, actualKeys)
+
+	// Check that committed keys are listed correctly.
+	actualKeys = []string{}
+	err = store.SendKeys(send, CommittedKeys)
+	require.NoError(t, err)
+	slices.Sort(actualKeys)
 	slices.Sort(expectedCommittedKeys)
-	require.Equal(t, expectedDirtyKeys, actualDirtyKeys)
-	require.Equal(t, expectedCommittedKeys, actualCommittedKeys)
+	require.Equal(t, expectedCommittedKeys, actualKeys)
+
+	// Check that dirty keys are listed correctly.
+	actualKeys = []string{}
+	err = store.SendKeys(send, DirtyKeys)
+	require.NoError(t, err)
+	slices.Sort(actualKeys)
+	slices.Sort(expectedDirtyKeys)
+	require.Equal(t, expectedDirtyKeys, actualKeys)
 }

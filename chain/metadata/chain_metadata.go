@@ -42,7 +42,7 @@ func NewChainMetadataFromProto(chainMetadataProto *pb.ChainMetadata) (*ChainMeta
 		}
 		members[i] = member
 	}
-	return NewChainMetadata(ChainID(chainMetadataProto.GetChainID()), members)
+	return NewChainMetadata(ChainID(chainMetadataProto.GetChainId()), members)
 }
 
 // Bytes converts the ChainMetadata instance into bytes.
@@ -51,7 +51,7 @@ func (cm *ChainMetadata) Bytes() ([]byte, error) {
 	for i, member := range cm.members {
 		members[i] = member.String()
 	}
-	chainMetadataProto := &pb.ChainMetadata{ChainID: string(cm.ID), Members: members}
+	chainMetadataProto := &pb.ChainMetadata{ChainId: string(cm.ID), Members: members}
 	return proto.Marshal(chainMetadataProto)
 }
 

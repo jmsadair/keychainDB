@@ -22,7 +22,7 @@ func NewServer(address net.Addr, dialOpts ...grpc.DialOption) (*Server, error) {
 	if err != nil {
 		return nil, err
 	}
-	chainNode := chainnode.NewChainNode(address, nil, nil, nil, chainClient)
+	chainNode := chainnode.NewChainNode(address, nil, chainClient)
 	return &Server{dialOpts: dialOpts, chainNode: chainNode}, nil
 }
 
@@ -31,9 +31,5 @@ func (s *Server) Write(ctx context.Context, request *pb.WriteRequest) (*pb.Write
 }
 
 func (s *Server) Read(ctx context.Context, request *pb.ReadRequest) (*pb.ReadResponse, error) {
-	return nil, nil
-}
-
-func (s *Server) Backfill(request *pb.BackfillRequest, stream pb.ChainService_BackfillServer) (*pb.KeyValuePair, error) {
 	return nil, nil
 }

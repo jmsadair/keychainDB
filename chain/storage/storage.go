@@ -8,9 +8,20 @@ import (
 	"github.com/dgraph-io/ristretto/v2/z"
 )
 
-// ErrDirtyRead is returned when a committed read is performed
-// and there are one or more uncommitted writes.
+// ErrDirtyRead is returned when a committed read is performed and there are one or more uncommitted writes.
 var ErrDirtyRead = errors.New("latest object version is dirty")
+
+// KeyFilter is a filter for selecting specific keys when listing keys from storage.
+type KeyFilter int
+
+const (
+	// AllKeys will select all keys.
+	AllKeys KeyFilter = iota
+	// DirtyKeys will select only dirty keys.
+	DirtyKeys
+	// CommittedKeys will select only uncommitted keys.
+	CommittedKeys
+)
 
 // PersistantStorage is a disk-backed key-value storage system that is
 // capable of performing transactional reads and writes.
@@ -87,11 +98,10 @@ func (ps *PersistantStorage) CommittedRead(key string) ([]byte, error) {
 	return value, err
 }
 
-// SendKeys will iterate over all keys in storage, group them into batches where each key is mapped
-// to a boolean value indicating whether is is committed or not, and calls the provided sendFunc with
-// the batch as the argument. If at any point during the process an error occurs, the process will be
-// terminated and the error will be returned.
-func (ps *PersistantStorage) SendKeys(sendFunc func(map[string]bool) error) error {
+// SendKeys will iterate over all keys in storage, group the keys that satisfy the provided keyFilter into
+// batches, and call the provided sendFunc with the batch as the argument. If at any point during the process
+// an error occurs, the process will be terminated and the error will be returned.
+func (ps *PersistantStorage) SendKeys(sendFunc func([]string) error, keyFilter KeyFilter) error {
 	stream := ps.db.NewStream()
 
 	stream.Send = func(buf *z.Buffer) error {
@@ -99,14 +109,28 @@ func (ps *PersistantStorage) SendKeys(sendFunc func(map[string]bool) error) erro
 		if err != nil {
 			return err
 		}
-		keys := make(map[string]bool, len(kvList.GetKv()))
+
+		var keys []string
 		for _, kv := range kvList.GetKv() {
 			value := kv.GetValue()
 			metadata, err := NewObjectMetadataFromBytes(value)
 			if err != nil {
 				return err
 			}
-			keys[CanonicalKey(kv.GetKey()).Key()] = !metadata.IsDirty()
+
+			shouldSend := false
+			switch keyFilter {
+			case AllKeys:
+				shouldSend = true
+			case DirtyKeys:
+				shouldSend = metadata.IsDirty()
+			case CommittedKeys:
+				shouldSend = !metadata.IsDirty()
+			}
+
+			if shouldSend {
+				keys = append(keys, CanonicalKey(kv.GetKey()).Key())
+			}
 		}
 
 		return sendFunc(keys)
