@@ -40,6 +40,11 @@ func (ms *mockStorage) CommittedWrite(key string, value []byte, version uint64) 
 	return args.Error(0)
 }
 
+func (ms *mockStorage) CommittedWriteNewVersion(key string, value []byte) (uint64, error) {
+	args := ms.MethodCalled("UncommittedWriteNewVersion", key, value)
+	return args.Get(0).(uint64), args.Error(1)
+}
+
 func (ms *mockStorage) CommittedRead(key string) ([]byte, error) {
 	args := ms.MethodCalled("CommittedRead", key)
 	return args.Get(0).([]byte), args.Error(1)
