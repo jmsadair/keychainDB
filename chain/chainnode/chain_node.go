@@ -70,7 +70,6 @@ func (c *ChainNode) WriteWithVersion(key string, value []byte, version uint64) e
 }
 
 func (c *ChainNode) InitiateReplicatedWrite(key string, value []byte) error {
-	// Ensure this node is the head of the chain. Writes must always be initiated at the head.
 	membership := c.membership.Load()
 	if membership == nil {
 		return ErrNotMemberOfChain
@@ -80,8 +79,6 @@ func (c *ChainNode) InitiateReplicatedWrite(key string, value []byte) error {
 		return ErrNotHead
 	}
 
-	// If this node is the tail, the write can be committed immediately.
-	// Otherwise, the write needs to be forwarded to the next node in the chain.
 	succ, err := membership.Successor(c.address)
 	if err != nil {
 		return err
@@ -101,18 +98,16 @@ func (c *ChainNode) InitiateReplicatedWrite(key string, value []byte) error {
 }
 
 func (c *ChainNode) Read(key string) ([]byte, error) {
-	// Ensure this node is a member of a chain.
 	membership := c.membership.Load()
 	if membership == nil {
 		return nil, ErrNotMemberOfChain
 	}
 
-	// If the key is committed, it's safe to perform a local read.
-	// Otherwise, it needs to be read from the tail.
 	value, err := c.store.CommittedRead(key)
-	if errors.Is(err, storage.ErrDirtyRead) {
+	if err != nil && errors.Is(err, storage.ErrDirtyRead) {
 		tail := membership.Tail()
 		return c.client.Read(tail, key)
 	}
+
 	return value, err
 }

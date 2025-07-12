@@ -45,8 +45,7 @@ func (ps *PersistantStorage) Close() {
 	ps.db.Close()
 }
 
-// UncommittedWriteNewVersion will transactionally generate a new version for the key and write the key to storage
-// but will not commit it.
+// UncommittedWriteNewVersion will transactionally generate a new version of the key and write the key-value pair to storage.
 func (ps *PersistantStorage) UncommittedWriteNewVersion(key string, value []byte) (uint64, error) {
 	var err error
 	var version uint64
@@ -73,6 +72,20 @@ func (ps *PersistantStorage) CommittedWrite(key string, value []byte, version ui
 		_, err := write(txn, key, value, version, true, false)
 		return err
 	})
+}
+
+// CommittedWriteNewVersion will transactionally generate a new version of the key, write the key-value pair to storage,
+// and immediately commit the new version.
+func (ps *PersistantStorage) CommittedWriteNewVersion(key string, value []byte) (uint64, error) {
+	var err error
+	var version uint64
+
+	ps.db.Update(func(txn *badger.Txn) error {
+		version, err = write(txn, key, value, version, true, true)
+		return err
+	})
+
+	return version, err
 }
 
 // CommitVersion will transactionally commit the provided version of the key.
