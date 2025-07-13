@@ -142,14 +142,14 @@ func (ps *PersistantStorage) SendKeys(sendFunc func([]string) error, keyFilter K
 			}
 
 			if shouldSend {
-				keys = append(keys, CanonicalKey(kv.GetKey()).Key())
+				keys = append(keys, Key(kv.GetKey()).ClientKey())
 			}
 		}
 
 		return sendFunc(keys)
 	}
 	stream.ChooseKey = func(item *badger.Item) bool {
-		return CanonicalKey(item.Key()).IsMetadataKey()
+		return Key(item.Key()).IsMetadata()
 	}
 
 	return stream.Orchestrate(context.Background())
@@ -161,16 +161,28 @@ func commit(txn *badger.Txn, key string, version uint64) error {
 		return err
 	}
 
-	// Remove all versions of the object older than the version being committed.
+	// Delete all versions of the key that are dirty up to and including the version being committed.
+	// Update the value of the committed key to be the value of the version that was just committed.
 	for _, oldVersion := range md.Versions {
-		if oldVersion >= version {
+		if oldVersion > version {
 			break
 		}
-		dataKey, err := NewDataKey(key, oldVersion)
-		if err != nil {
-			return err
+		dirtyKey := NewDirtyKey(key, oldVersion)
+		if oldVersion == version {
+			item, err := txn.Get(dirtyKey)
+			if err != nil {
+				return err
+			}
+			value, err := item.ValueCopy(nil)
+			if err != nil {
+				return err
+			}
+			committedKey := NewCommittedKey(key)
+			if err := txn.Set(committedKey, value); err != nil {
+				return err
+			}
 		}
-		if err := txn.Delete(dataKey); err != nil {
+		if err := txn.Delete(dirtyKey); err != nil {
 			return err
 		}
 	}
@@ -179,10 +191,7 @@ func commit(txn *badger.Txn, key string, version uint64) error {
 	if err := md.CommitVersion(version); err != nil {
 		return err
 	}
-	mdKey, err := NewMetadataKey(key)
-	if err != nil {
-		return err
-	}
+	mdKey := NewMetadataKey(key)
 	mdBytes, err := md.Bytes()
 	if err != nil {
 		return err
@@ -203,12 +212,8 @@ func read(txn *badger.Txn, key string) ([]byte, error) {
 		return nil, ErrDirtyRead
 	}
 
-	dataKey, err := NewDataKey(key, md.LastCommitted)
-	if err != nil {
-		return nil, err
-	}
-
-	item, err := txn.Get(dataKey)
+	committedKey := NewCommittedKey(key)
+	item, err := txn.Get(committedKey)
 	if err != nil {
 		return nil, err
 	}
@@ -237,19 +242,13 @@ func write(txn *badger.Txn, key string, value []byte, version uint64, shouldComm
 	if err != nil {
 		return 0, err
 	}
-	mdKey, err := NewMetadataKey(key)
-	if err != nil {
-		return 0, err
-	}
+	mdKey := NewMetadataKey(key)
 	if err := txn.Set(mdKey, mdBytes); err != nil {
 		return 0, err
 	}
 
-	dataKey, err := NewDataKey(key, version)
-	if err != nil {
-		return 0, err
-	}
-	if err = txn.Set(dataKey, value); err != nil {
+	dirtyKey := NewDirtyKey(key, version)
+	if err = txn.Set(dirtyKey, value); err != nil {
 		return 0, err
 	}
 
@@ -261,13 +260,10 @@ func write(txn *badger.Txn, key string, value []byte, version uint64, shouldComm
 }
 
 func getOrCreateMetadata(txn *badger.Txn, key string) (*ObjectMetadata, error) {
-	mdKey, err := NewMetadataKey(key)
-	if err != nil {
-		return nil, err
-	}
+	mdKey := NewMetadataKey(key)
+	item, err := txn.Get(mdKey)
 
 	var md *ObjectMetadata
-	item, err := txn.Get(mdKey)
 	switch {
 	case errors.Is(err, badger.ErrKeyNotFound):
 		md = NewObjectMetadata(key)

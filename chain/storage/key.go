@@ -1,64 +1,66 @@
 package storage
 
 import (
-	"bytes"
 	"encoding/binary"
 )
 
+type keyType uint8
+
 const (
-	isMetadataKeyOffset = 0
-	versionOffset       = 1
-	metdataLenBytes     = 9
+	metadata keyType = iota
+	dirty
+	committed
 )
 
-// CanonicalKey is an internal representation of a key that is meant to uniquely identify an item in the storage system.
-// | IsMetadataKey (uint8) | Version (uint64) | Client Key (variable length string) |
-type CanonicalKey []byte
+const (
+	keyTypeOffset = 0
+	versionOffset = 1
+)
 
-// NewCanonicalKey creates a new CanonicalKey instance.
-func NewCanonicalKey(key string, isMetadataKey bool, version uint64) (CanonicalKey, error) {
-	buf := new(bytes.Buffer)
+// Key is an internal representation of a key that is meant to uniquely identify an item in the storage system.
+type Key []byte
 
-	var isMetadataKeyByte byte
-	if isMetadataKey {
-		isMetadataKeyByte = 1
+// NewMetadataKey creates a new key that is intended to identify object metadata.
+func NewMetadataKey(key string) Key {
+	b := []byte{byte(metadata)}
+	return append(b, []byte(key)...)
+}
+
+// NewDirtyKey creates a new key that is intended to identify a an object that has not been committed.
+func NewDirtyKey(key string, version uint64) Key {
+	b := []byte{byte(dirty)}
+	b = binary.BigEndian.AppendUint64(b, version)
+	return append(b, []byte(key)...)
+}
+
+// NewCommittedKey creates a new key that is intended to identify a an object that has not been committed.
+func NewCommittedKey(key string) Key {
+	b := []byte{byte(committed)}
+	return append(b, []byte(key)...)
+}
+
+// IsMetadata returns true is this key identifies object metadata and false otherwise.
+func (k Key) IsMetadata() bool {
+	return k[keyTypeOffset]^byte(metadata) == 0
+}
+
+// IsCommitted returns true is this key identifies a version of an object that has been committed and false otherwise.
+func (k Key) IsCommitted() bool {
+	return k[keyTypeOffset]^byte(committed) == 0
+}
+
+// IsDirty returns true is this key identifies a version of an object that has not been committed and false otherwise.
+func (k Key) IsDirty() bool {
+	return k[keyTypeOffset]^byte(dirty) == 0
+}
+
+// ClientKey returns the client key.
+func (k Key) ClientKey() string {
+	switch keyType(k[keyTypeOffset]) {
+	case committed, metadata:
+		return string(k[keyTypeOffset+1:])
+	case dirty:
+		return string(k[versionOffset+8:])
 	}
-	if err := buf.WriteByte(isMetadataKeyByte); err != nil {
-		return nil, err
-	}
-	if err := binary.Write(buf, binary.BigEndian, version); err != nil {
-		return nil, err
-	}
-	keyBytes := []byte(key)
-	if _, err := buf.Write(keyBytes); err != nil {
-		return nil, err
-	}
-
-	return buf.Bytes(), nil
-}
-
-// NewMetadataKey creates a new CanonicalKey instance that is intended to identify object metadata.
-func NewMetadataKey(key string) (CanonicalKey, error) {
-	return NewCanonicalKey(key, true, 0)
-}
-
-// NewDataKey creates a new CanonicalKey instance that is intended to identify an object.
-func NewDataKey(key string, version uint64) (CanonicalKey, error) {
-	return NewCanonicalKey(key, false, version)
-}
-
-// IsMetadataKey returns true is this key identifies object metadata and false otherwise.
-func (ck CanonicalKey) IsMetadataKey() bool {
-	return ck[isMetadataKeyOffset]&1 == 1
-}
-
-// Version returns the version of the key.
-// If the key is one that identifies object metadata, then the version will always be zero.
-func (ck CanonicalKey) Version() uint64 {
-	return binary.BigEndian.Uint64(ck[versionOffset:])
-}
-
-// Key returns the client key.
-func (ck CanonicalKey) Key() string {
-	return string(ck[metdataLenBytes:])
+	panic("unexpected key type")
 }
