@@ -23,6 +23,17 @@ const (
 	CommittedKeys
 )
 
+type KeyValuePair struct {
+	// A client provided key.
+	Key string
+	// The value associated with the key.
+	Value []byte
+	// The version of the key.
+	Version uint64
+	// Indicates whether this version of the key has been committed.
+	Committed bool
+}
+
 // PersistantStorage is a disk-backed key-value storage system that is
 // capable of performing transactional reads and writes.
 type PersistantStorage struct {
@@ -111,45 +122,37 @@ func (ps *PersistantStorage) CommittedRead(key string) ([]byte, error) {
 	return value, err
 }
 
-// SendKeys will iterate over all keys in storage, group the keys that satisfy the provided keyFilter into
-// batches, and call the provided sendFunc with the batch as the argument. If at any point during the process
-// an error occurs, the process will be terminated and the error will be returned.
-func (ps *PersistantStorage) SendKeys(sendFunc func([]string) error, keyFilter KeyFilter) error {
+// SendKeys will iterate over the key-value pairs in storage that satisfy the provided keyFilterm, group them
+// into batches, and call the provided sendFunc with the batch as the argument. If at any point during the
+// process an error occurs, the process will be terminated and the error will be returned.
+func (ps *PersistantStorage) SendKeys(ctx context.Context, sendFunc func(context.Context, []KeyValuePair) error, keyFilter KeyFilter) error {
 	stream := ps.db.NewStream()
+
+	switch keyFilter {
+	case CommittedKeys:
+		stream.Prefix = []byte{byte(committed)}
+	case DirtyKeys:
+		stream.Prefix = []byte{byte(dirty)}
+	}
 
 	stream.Send = func(buf *z.Buffer) error {
 		kvList, err := badger.BufferToKVList(buf)
 		if err != nil {
 			return err
 		}
-
-		var keys []string
+		kvPairs := make([]KeyValuePair, 0, len(kvList.GetKv()))
 		for _, kv := range kvList.GetKv() {
-			value := kv.GetValue()
-			metadata, err := NewObjectMetadataFromBytes(value)
-			if err != nil {
-				return err
-			}
-
-			shouldSend := false
-			switch keyFilter {
-			case AllKeys:
-				shouldSend = true
-			case DirtyKeys:
-				shouldSend = metadata.IsDirty()
-			case CommittedKeys:
-				shouldSend = !metadata.IsDirty()
-			}
-
-			if shouldSend {
-				keys = append(keys, Key(kv.GetKey()).ClientKey())
-			}
+			internalKey := Key(kv.GetKey())
+			kvPairs = append(kvPairs, KeyValuePair{Key: internalKey.ClientKey(), Value: kv.GetValue(), Version: internalKey.Version(), Committed: internalKey.IsCommitted()})
 		}
 
-		return sendFunc(keys)
+		return sendFunc(ctx, kvPairs)
 	}
+
+	// This is specifically for the case where all keys are being sent.
+	// The client should never have access to metadata keys.
 	stream.ChooseKey = func(item *badger.Item) bool {
-		return Key(item.Key()).IsMetadata()
+		return !Key(item.Key()).IsMetadata()
 	}
 
 	return stream.Orchestrate(context.Background())
@@ -177,7 +180,7 @@ func commit(txn *badger.Txn, key string, version uint64) error {
 			if err != nil {
 				return err
 			}
-			committedKey := NewCommittedKey(key)
+			committedKey := NewCommittedKey(key, version)
 			if err := txn.Set(committedKey, value); err != nil {
 				return err
 			}
@@ -212,7 +215,7 @@ func read(txn *badger.Txn, key string) ([]byte, error) {
 		return nil, ErrDirtyRead
 	}
 
-	committedKey := NewCommittedKey(key)
+	committedKey := NewCommittedKey(key, md.LastCommitted)
 	item, err := txn.Get(committedKey)
 	if err != nil {
 		return nil, err

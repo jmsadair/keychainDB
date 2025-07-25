@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"fmt"
 	"slices"
 	"testing"
@@ -134,7 +135,7 @@ func TestInterleavedUncommittedWriteCommitsReads(t *testing.T) {
 	require.Equal(t, string(value3), string(readValue))
 }
 
-func TestSendKeys(t *testing.T) {
+func TestSendKeyValuePairs(t *testing.T) {
 	store, err := NewPersistantStorage(t.TempDir())
 	require.NoError(t, err)
 	defer store.Close()
@@ -159,26 +160,28 @@ func TestSendKeys(t *testing.T) {
 	}
 
 	var actualKeys []string
-	send := func(keys []string) error {
-		actualKeys = append(actualKeys, keys...)
+	send := func(ctx context.Context, kvPairs []KeyValuePair) error {
+		for _, kvPair := range kvPairs {
+			actualKeys = append(actualKeys, kvPair.Key)
+		}
 		return nil
 	}
 
-	err = store.SendKeys(send, AllKeys)
+	err = store.SendKeys(context.TODO(), send, AllKeys)
 	require.NoError(t, err)
 	slices.Sort(actualKeys)
 	slices.Sort(expectedAllKeys)
 	require.Equal(t, expectedAllKeys, actualKeys)
 
 	actualKeys = []string{}
-	err = store.SendKeys(send, CommittedKeys)
+	err = store.SendKeys(context.TODO(), send, CommittedKeys)
 	require.NoError(t, err)
 	slices.Sort(actualKeys)
 	slices.Sort(expectedCommittedKeys)
 	require.Equal(t, expectedCommittedKeys, actualKeys)
 
 	actualKeys = []string{}
-	err = store.SendKeys(send, DirtyKeys)
+	err = store.SendKeys(context.TODO(), send, DirtyKeys)
 	require.NoError(t, err)
 	slices.Sort(actualKeys)
 	slices.Sort(expectedDirtyKeys)
