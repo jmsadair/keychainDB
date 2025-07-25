@@ -15,16 +15,19 @@ func TestNewKey(t *testing.T) {
 	require.True(t, k.IsMetadata())
 	require.False(t, k.IsCommitted())
 	require.False(t, k.IsDirty())
+	require.Zero(t, k.Version())
 
-	k = NewCommittedKey(key)
+	k = NewCommittedKey(key, version)
 	require.Equal(t, key, k.ClientKey())
 	require.False(t, k.IsMetadata())
 	require.True(t, k.IsCommitted())
 	require.False(t, k.IsDirty())
+	require.Equal(t, version, k.Version())
 
 	k = NewDirtyKey(key, version)
 	require.Equal(t, key, k.ClientKey())
 	require.False(t, k.IsMetadata())
 	require.False(t, k.IsCommitted())
 	require.True(t, k.IsDirty())
+	require.Equal(t, version, k.Version())
 }

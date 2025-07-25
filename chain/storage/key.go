@@ -8,8 +8,8 @@ type keyType uint8
 
 const (
 	metadata keyType = iota
-	dirty
 	committed
+	dirty
 )
 
 const (
@@ -34,8 +34,9 @@ func NewDirtyKey(key string, version uint64) Key {
 }
 
 // NewCommittedKey creates a new key that is intended to identify a an object that has not been committed.
-func NewCommittedKey(key string) Key {
+func NewCommittedKey(key string, version uint64) Key {
 	b := []byte{byte(committed)}
+	b = binary.BigEndian.AppendUint64(b, version)
 	return append(b, []byte(key)...)
 }
 
@@ -54,12 +55,21 @@ func (k Key) IsDirty() bool {
 	return k[keyTypeOffset]^byte(dirty) == 0
 }
 
+// Version returns the version of the key. Note that this only applies to committed and dirty key types.
+// If the key is a metadata key, zero will always be returned.
+func (k Key) Version() uint64 {
+	if k.IsMetadata() {
+		return 0
+	}
+	return binary.BigEndian.Uint64(k[versionOffset:])
+}
+
 // ClientKey returns the client key.
 func (k Key) ClientKey() string {
 	switch keyType(k[keyTypeOffset]) {
-	case committed, metadata:
+	case metadata:
 		return string(k[keyTypeOffset+1:])
-	case dirty:
+	case committed, dirty:
 		return string(k[versionOffset+8:])
 	}
 	panic("unexpected key type")
