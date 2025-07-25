@@ -122,7 +122,7 @@ func (ps *PersistantStorage) CommittedRead(key string) ([]byte, error) {
 	return value, err
 }
 
-// SendKeys will iterate over the key-value pairs in storage that satisfy the provided keyFilterm, group them
+// SendKeys will iterate over the key-value pairs in storage that satisfy the provided keyFilter, group them
 // into batches, and call the provided sendFunc with the batch as the argument. If at any point during the
 // process an error occurs, the process will be terminated and the error will be returned.
 func (ps *PersistantStorage) SendKeys(ctx context.Context, sendFunc func(context.Context, []KeyValuePair) error, keyFilter KeyFilter) error {
