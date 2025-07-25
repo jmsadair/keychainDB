@@ -6,19 +6,25 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestCanonicalKey(t *testing.T) {
+func TestNewKey(t *testing.T) {
 	key := "key"
 	version := uint64(1)
 
-	ck, err := NewMetadataKey(key)
-	require.NoError(t, err)
-	require.Equal(t, key, ck.Key())
-	require.True(t, ck.IsMetadataKey())
-	require.Zero(t, ck.Version())
+	k := NewMetadataKey(key)
+	require.Equal(t, key, k.ClientKey())
+	require.True(t, k.IsMetadata())
+	require.False(t, k.IsCommitted())
+	require.False(t, k.IsDirty())
 
-	ck, err = NewDataKey(key, version)
-	require.NoError(t, err)
-	require.Equal(t, key, ck.Key())
-	require.False(t, ck.IsMetadataKey())
-	require.Equal(t, version, ck.Version())
+	k = NewCommittedKey(key)
+	require.Equal(t, key, k.ClientKey())
+	require.False(t, k.IsMetadata())
+	require.True(t, k.IsCommitted())
+	require.False(t, k.IsDirty())
+
+	k = NewDirtyKey(key, version)
+	require.Equal(t, key, k.ClientKey())
+	require.False(t, k.IsMetadata())
+	require.False(t, k.IsCommitted())
+	require.True(t, k.IsDirty())
 }
