@@ -8,8 +8,8 @@ type keyType uint8
 
 const (
 	metadata keyType = iota
-	dirty
 	committed
+	dirty
 )
 
 const (
