@@ -1,6 +1,7 @@
 package chainnode
 
 import (
+	"context"
 	"errors"
 	"net"
 	"sync/atomic"
@@ -21,12 +22,12 @@ type Storage interface {
 	CommittedWriteNewVersion(key string, value []byte) (uint64, error)
 	CommittedRead(key string) ([]byte, error)
 	CommitVersion(key string, version uint64) error
-	SendKeys(sendFunc func([]string) error, keyFilter storage.KeyFilter) error
+	SendKeyValuePairs(ctx context.Context, sendFunc func(ctx context.Context, kvPairs []storage.KeyValuePair) error, keyFilter storage.KeyFilter) error
 }
 
 type Client interface {
-	Write(address net.Addr, key string, value []byte, version uint64) error
-	Read(address net.Addr, key string) ([]byte, error)
+	Write(ctx context.Context, address net.Addr, key string, value []byte, version uint64) error
+	Read(ctx context.Context, address net.Addr, key string) ([]byte, error)
 }
 
 type ChainNode struct {
@@ -44,7 +45,7 @@ func NewChainNode(address net.Addr, store Storage, client Client) *ChainNode {
 	return &ChainNode{address: address, store: store, client: client}
 }
 
-func (c *ChainNode) WriteWithVersion(key string, value []byte, version uint64) error {
+func (c *ChainNode) WriteWithVersion(ctx context.Context, key string, value []byte, version uint64) error {
 	// Ensure this node is a member of a chain.
 	membership := c.membership.Load()
 	if membership == nil {
@@ -63,13 +64,13 @@ func (c *ChainNode) WriteWithVersion(key string, value []byte, version uint64) e
 	if err := c.store.UncommittedWrite(key, value, version); err != nil {
 		return err
 	}
-	if err := c.client.Write(succ, key, value, version); err != nil {
+	if err := c.client.Write(ctx, succ, key, value, version); err != nil {
 		return err
 	}
 	return c.store.CommitVersion(key, version)
 }
 
-func (c *ChainNode) InitiateReplicatedWrite(key string, value []byte) error {
+func (c *ChainNode) InitiateReplicatedWrite(ctx context.Context, key string, value []byte) error {
 	membership := c.membership.Load()
 	if membership == nil {
 		return ErrNotMemberOfChain
@@ -91,13 +92,13 @@ func (c *ChainNode) InitiateReplicatedWrite(key string, value []byte) error {
 	if err != nil {
 		return err
 	}
-	if err := c.client.Write(succ, key, value, version); err != nil {
+	if err := c.client.Write(ctx, succ, key, value, version); err != nil {
 		return err
 	}
 	return c.store.CommitVersion(key, version)
 }
 
-func (c *ChainNode) Read(key string) ([]byte, error) {
+func (c *ChainNode) Read(ctx context.Context, key string) ([]byte, error) {
 	membership := c.membership.Load()
 	if membership == nil {
 		return nil, ErrNotMemberOfChain
@@ -106,8 +107,12 @@ func (c *ChainNode) Read(key string) ([]byte, error) {
 	value, err := c.store.CommittedRead(key)
 	if err != nil && errors.Is(err, storage.ErrDirtyRead) {
 		tail := membership.Tail()
-		return c.client.Read(tail, key)
+		return c.client.Read(ctx, tail, key)
 	}
 
 	return value, err
+}
+
+func (c *ChainNode) ListKeyValuePairs(ctx context.Context, sendFunc func(ctx context.Context, kvPairs []storage.KeyValuePair) error) error {
+	return c.store.SendKeyValuePairs(ctx, sendFunc, storage.AllKeys)
 }
