@@ -161,6 +161,6 @@ func (c *ChainNode) BackfillDirtyKeyValuePairs(ctx context.Context, sendFunc fun
 	return c.store.SendKeyValuePairs(ctx, sendFunc, storage.DirtyKeys)
 }
 
-func (c *ChainNode) BackfillKeyValuePairs(ctx context.Context, sendFunc func(ctx context.Context, kvPairs []storage.KeyValuePair) error) error {
+func (c *ChainNode) BackfillCommittedKeyValuePairs(ctx context.Context, sendFunc func(ctx context.Context, kvPairs []storage.KeyValuePair) error) error {
 	return c.store.SendKeyValuePairs(ctx, sendFunc, storage.CommittedKeys)
 }

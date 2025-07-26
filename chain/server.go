@@ -54,11 +54,11 @@ func (s *Server) Backfill(request *pb.BackfillRequest, stream pb.ChainService_Ba
 
 	switch request.GetKeyType() {
 	case pb.KeyType_KEYTYPE_ALL:
-		return s.chainNode.ListAllKeyValuePairs(stream.Context(), sendFunc)
+		return s.chainNode.BackfillAllKeyValuePairs(stream.Context(), sendFunc)
 	case pb.KeyType_KEYTYPE_COMMITTED:
-		return s.chainNode.ListCommittedKeyValuePairs(stream.Context(), sendFunc)
+		return s.chainNode.BackfillCommittedKeyValuePairs(stream.Context(), sendFunc)
 	case pb.KeyType_KEYTYPE_DIRTY:
-		return s.chainNode.ListDirtyKeyValuePairs(stream.Context(), sendFunc)
+		return s.chainNode.BackfillDirtyKeyValuePairs(stream.Context(), sendFunc)
 	}
 
 	return nil
