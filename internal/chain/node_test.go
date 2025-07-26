@@ -1,12 +1,11 @@
-package chainnode
+package chain
 
 import (
 	"context"
 	"net"
 	"testing"
 
-	"github.com/jmsadair/zebraos/chain/metadata"
-	"github.com/jmsadair/zebraos/chain/storage"
+	"github.com/jmsadair/zebraos/internal/storage"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
