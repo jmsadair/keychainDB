@@ -4,9 +4,8 @@ import (
 	"context"
 	"net"
 
-	"github.com/jmsadair/zebraos/chain/chainclient"
-	"github.com/jmsadair/zebraos/chain/chainnode"
-	"github.com/jmsadair/zebraos/chain/storage"
+	"github.com/jmsadair/zebraos/internal/chain"
+	"github.com/jmsadair/zebraos/internal/storage"
 	pb "github.com/jmsadair/zebraos/proto/pbchain"
 	"google.golang.org/grpc"
 )
@@ -15,15 +14,15 @@ type Server struct {
 	pb.ChainServiceServer
 
 	dialOpts  []grpc.DialOption
-	chainNode *chainnode.ChainNode
+	chainNode *chain.ChainNode
 }
 
 func NewServer(address net.Addr, dialOpts ...grpc.DialOption) (*Server, error) {
-	chainClient, err := chainclient.NewChainClient(dialOpts...)
+	chainClient, err := chain.NewChainClient(dialOpts...)
 	if err != nil {
 		return nil, err
 	}
-	chainNode := chainnode.NewChainNode(address, nil, chainClient)
+	chainNode := chain.NewChainNode(address, nil, chainClient)
 	return &Server{dialOpts: dialOpts, chainNode: chainNode}, nil
 }
 

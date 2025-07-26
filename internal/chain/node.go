@@ -1,4 +1,4 @@
-package chainnode
+package chain
 
 import (
 	"context"
@@ -7,14 +7,10 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/jmsadair/zebraos/chain/metadata"
-	"github.com/jmsadair/zebraos/chain/storage"
+	"github.com/jmsadair/zebraos/internal/storage"
 )
 
-var (
-	ErrNotMemberOfChain = errors.New("node is not a member of a chain")
-	ErrNotHead          = errors.New("writes must be initiated from the head of the chain")
-)
+var ErrNotHead = errors.New("writes must be initiated from the head of the chain")
 
 type Storage interface {
 	UncommittedWrite(key string, value []byte, version uint64) error
@@ -39,7 +35,7 @@ type ChainNode struct {
 	// A client for communicating with other nodes in the chain.
 	client Client
 	// Metadata for chain membership.
-	membership atomic.Pointer[metadata.ChainMetadata]
+	membership atomic.Pointer[ChainMetadata]
 }
 
 func NewChainNode(address net.Addr, store Storage, client Client) *ChainNode {
