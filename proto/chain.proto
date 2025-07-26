@@ -10,6 +10,9 @@ service ChainService {
 	rpc Write (WriteRequest) returns (WriteResponse) {}
 	// Read handles requests to read a particular version of a key.
 	rpc Read (ReadRequest) returns (ReadResponse) {}
+	// Backfill handles requests to list all key-value pairs that match the specified criterion.
+	// This is useful when a new node is added to chain and needs to be recieve all of the key-value pairs it is missing.
+	rpc Backfill (BackfillRequest) returns (stream KeyValuePair) {}
 }
 
 // ChainMetadata contains metadata regarding chain membership.
@@ -45,10 +48,29 @@ message ReadResponse {
 	bytes value = 1;
 }
 
+// KeyType is the type of key being requested when making a request to another node to
+// list the key-value pairs.
+enum KeyType {
+	// All key-value pairs will be listed.
+	KEYTYPE_ALL = 0;
+	// Only committed key-value pairs will be listed.
+	KEYTYPE_COMMITTED = 1;
+	// Only dirty key-value pairs will be listed.
+	KEYTYPE_DIRTY = 2;
+}
+
+// BackfillRequest is used to initiate a server-to-client stream of key-value pairs.
+message BackfillRequest {
+	// Which type of key should be listed.
+	KeyType keyType = 1;
+}
+
 // KeyValuePair is a key-value pair stored by a node of a chain.
 message KeyValuePair {
 	// The key.
 	string key = 1;
 	// The value associated with the key.
 	bytes value = 2;
+	// The version of the key.
+	uint64 version = 3;
 }
