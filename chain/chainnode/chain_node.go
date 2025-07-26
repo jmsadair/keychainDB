@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net"
 	"sync/atomic"
+	"time"
 
 	"github.com/jmsadair/zebraos/chain/metadata"
 	"github.com/jmsadair/zebraos/chain/storage"
@@ -113,6 +114,53 @@ func (c *ChainNode) Read(ctx context.Context, key string) ([]byte, error) {
 	return value, err
 }
 
-func (c *ChainNode) ListKeyValuePairs(ctx context.Context, sendFunc func(ctx context.Context, kvPairs []storage.KeyValuePair) error) error {
+func (c *ChainNode) FailedWriteRepairRoutine(ctx context.Context, repairFrequency time.Duration) {
+	// Iterate over the batch of dirty key-value pairs and attempt to propagate them to the successor
+	// and then commit them. Since this routine should be run relatively often, it's assumed there is
+	// not a huge nunber of failed writes that need to be repaired and that a simple, unary RPC is
+	// sufficiently performant (versus a streaming RPC).
+	sendFunc := func(ctx context.Context, kvPairs []storage.KeyValuePair) error {
+		m := c.membership.Load()
+		if m == nil {
+			return ErrNotMemberOfChain
+		}
+		succ, err := m.Successor(c.address)
+		if err != nil {
+			return err
+		}
+		if succ == nil {
+			return nil
+		}
+		for _, kvPair := range kvPairs {
+			// Ignore any failures that occur here, as they will be retried on the next repair cycle.
+			// The current repair cycle should not fail if some transient error occurs.
+			err := c.client.Write(ctx, succ, kvPair.Key, kvPair.Value, kvPair.Version)
+			if err != nil {
+				continue
+			}
+			c.store.CommitVersion(kvPair.Key, kvPair.Version)
+		}
+		return nil
+	}
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(repairFrequency):
+			c.store.SendKeyValuePairs(ctx, sendFunc, storage.DirtyKeys)
+		}
+	}
+}
+
+func (c *ChainNode) BackfillAllKeyValuePairs(ctx context.Context, sendFunc func(ctx context.Context, kvPairs []storage.KeyValuePair) error) error {
 	return c.store.SendKeyValuePairs(ctx, sendFunc, storage.AllKeys)
+}
+
+func (c *ChainNode) BackfillDirtyKeyValuePairs(ctx context.Context, sendFunc func(ctx context.Context, kvPairs []storage.KeyValuePair) error) error {
+	return c.store.SendKeyValuePairs(ctx, sendFunc, storage.DirtyKeys)
+}
+
+func (c *ChainNode) BackfillKeyValuePairs(ctx context.Context, sendFunc func(ctx context.Context, kvPairs []storage.KeyValuePair) error) error {
+	return c.store.SendKeyValuePairs(ctx, sendFunc, storage.CommittedKeys)
 }

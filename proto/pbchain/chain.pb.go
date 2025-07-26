@@ -323,8 +323,8 @@ func (x *ReadResponse) GetValue() []byte {
 	return nil
 }
 
-// ListKeyValuePairsRequest is used to initiate a server-to-client stream of key-value pairs.
-type ListKeyValuePairsRequest struct {
+// BackfillRequest is used to initiate a server-to-client stream of key-value pairs.
+type BackfillRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Which type of key should be listed.
 	KeyType       KeyType `protobuf:"varint,1,opt,name=keyType,proto3,enum=chain.KeyType" json:"keyType,omitempty"`
@@ -332,20 +332,20 @@ type ListKeyValuePairsRequest struct {
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *ListKeyValuePairsRequest) Reset() {
-	*x = ListKeyValuePairsRequest{}
+func (x *BackfillRequest) Reset() {
+	*x = BackfillRequest{}
 	mi := &file_chain_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *ListKeyValuePairsRequest) String() string {
+func (x *BackfillRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ListKeyValuePairsRequest) ProtoMessage() {}
+func (*BackfillRequest) ProtoMessage() {}
 
-func (x *ListKeyValuePairsRequest) ProtoReflect() protoreflect.Message {
+func (x *BackfillRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_chain_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -357,12 +357,12 @@ func (x *ListKeyValuePairsRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ListKeyValuePairsRequest.ProtoReflect.Descriptor instead.
-func (*ListKeyValuePairsRequest) Descriptor() ([]byte, []int) {
+// Deprecated: Use BackfillRequest.ProtoReflect.Descriptor instead.
+func (*BackfillRequest) Descriptor() ([]byte, []int) {
 	return file_chain_proto_rawDescGZIP(), []int{5}
 }
 
-func (x *ListKeyValuePairsRequest) GetKeyType() KeyType {
+func (x *BackfillRequest) GetKeyType() KeyType {
 	if x != nil {
 		return x.KeyType
 	}
@@ -449,8 +449,8 @@ const file_chain_proto_rawDesc = "" +
 	"\vReadRequest\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\"$\n" +
 	"\fReadResponse\x12\x14\n" +
-	"\x05value\x18\x01 \x01(\fR\x05value\"D\n" +
-	"\x18ListKeyValuePairsRequest\x12(\n" +
+	"\x05value\x18\x01 \x01(\fR\x05value\";\n" +
+	"\x0fBackfillRequest\x12(\n" +
 	"\akeyType\x18\x01 \x01(\x0e2\x0e.chain.KeyTypeR\akeyType\"P\n" +
 	"\fKeyValuePair\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
@@ -459,11 +459,11 @@ const file_chain_proto_rawDesc = "" +
 	"\aKeyType\x12\x0f\n" +
 	"\vKEYTYPE_ALL\x10\x00\x12\x15\n" +
 	"\x11KEYTYPE_COMMITTED\x10\x01\x12\x11\n" +
-	"\rKEYTYPE_DIRTY\x10\x022\xc6\x01\n" +
+	"\rKEYTYPE_DIRTY\x10\x022\xb4\x01\n" +
 	"\fChainService\x124\n" +
 	"\x05Write\x12\x13.chain.WriteRequest\x1a\x14.chain.WriteResponse\"\x00\x121\n" +
-	"\x04Read\x12\x12.chain.ReadRequest\x1a\x13.chain.ReadResponse\"\x00\x12M\n" +
-	"\x11ListKeyValuePairs\x12\x1f.chain.ListKeyValuePairsRequest\x1a\x13.chain.KeyValuePair\"\x000\x01B+Z)github.com/jmsadair/zebraos/proto/pbchainb\x06proto3"
+	"\x04Read\x12\x12.chain.ReadRequest\x1a\x13.chain.ReadResponse\"\x00\x12;\n" +
+	"\bBackfill\x12\x16.chain.BackfillRequest\x1a\x13.chain.KeyValuePair\"\x000\x01B+Z)github.com/jmsadair/zebraos/proto/pbchainb\x06proto3"
 
 var (
 	file_chain_proto_rawDescOnce sync.Once
@@ -480,23 +480,23 @@ func file_chain_proto_rawDescGZIP() []byte {
 var file_chain_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
 var file_chain_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
 var file_chain_proto_goTypes = []any{
-	(KeyType)(0),                     // 0: chain.KeyType
-	(*ChainMetadata)(nil),            // 1: chain.ChainMetadata
-	(*WriteRequest)(nil),             // 2: chain.WriteRequest
-	(*WriteResponse)(nil),            // 3: chain.WriteResponse
-	(*ReadRequest)(nil),              // 4: chain.ReadRequest
-	(*ReadResponse)(nil),             // 5: chain.ReadResponse
-	(*ListKeyValuePairsRequest)(nil), // 6: chain.ListKeyValuePairsRequest
-	(*KeyValuePair)(nil),             // 7: chain.KeyValuePair
+	(KeyType)(0),            // 0: chain.KeyType
+	(*ChainMetadata)(nil),   // 1: chain.ChainMetadata
+	(*WriteRequest)(nil),    // 2: chain.WriteRequest
+	(*WriteResponse)(nil),   // 3: chain.WriteResponse
+	(*ReadRequest)(nil),     // 4: chain.ReadRequest
+	(*ReadResponse)(nil),    // 5: chain.ReadResponse
+	(*BackfillRequest)(nil), // 6: chain.BackfillRequest
+	(*KeyValuePair)(nil),    // 7: chain.KeyValuePair
 }
 var file_chain_proto_depIdxs = []int32{
-	0, // 0: chain.ListKeyValuePairsRequest.keyType:type_name -> chain.KeyType
+	0, // 0: chain.BackfillRequest.keyType:type_name -> chain.KeyType
 	2, // 1: chain.ChainService.Write:input_type -> chain.WriteRequest
 	4, // 2: chain.ChainService.Read:input_type -> chain.ReadRequest
-	6, // 3: chain.ChainService.ListKeyValuePairs:input_type -> chain.ListKeyValuePairsRequest
+	6, // 3: chain.ChainService.Backfill:input_type -> chain.BackfillRequest
 	3, // 4: chain.ChainService.Write:output_type -> chain.WriteResponse
 	5, // 5: chain.ChainService.Read:output_type -> chain.ReadResponse
-	7, // 6: chain.ChainService.ListKeyValuePairs:output_type -> chain.KeyValuePair
+	7, // 6: chain.ChainService.Backfill:output_type -> chain.KeyValuePair
 	4, // [4:7] is the sub-list for method output_type
 	1, // [1:4] is the sub-list for method input_type
 	1, // [1:1] is the sub-list for extension type_name
