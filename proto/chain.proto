@@ -13,6 +13,8 @@ service ChainService {
 	// Backfill handles requests to list all key-value pairs that match the specified criterion.
 	// This is useful when a new node is added to chain and needs to be recieve all of the key-value pairs it is missing.
 	rpc Backfill (BackfillRequest) returns (stream KeyValuePair) {}
+	// UpdateConfiguration handles requests from the coordinator to update chain membership configuration.
+	rpc UpdateConfiguration (UpdateConfigurationRequest) returns (UpdateConfigurationResponse) {}
 }
 
 // ChainConfiguration contains the configuration of the chain.
@@ -47,6 +49,15 @@ message ReadResponse {
 	// The value of the key that was read.
 	bytes value = 1;
 }
+
+// UpdateConfigurationRequest is a request sent from the coordinator to a node to update
+// its chain membership configuration.
+message UpdateConfigurationRequest {
+	ChainConfiguration configuration = 1;
+}
+
+// UpdateConfigurationResponse is the response to an UpdateConfiguration Request.
+message UpdateConfigurationResponse {}
 
 // KeyType is the type of key being requested when making a request to another node to
 // list the key-value pairs.

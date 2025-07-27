@@ -323,6 +323,89 @@ func (x *ReadResponse) GetValue() []byte {
 	return nil
 }
 
+// UpdateConfigurationRequest is a request sent from the coordinator to a node to update
+// its chain membership configuration.
+type UpdateConfigurationRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Configuration *ChainConfiguration    `protobuf:"bytes,1,opt,name=configuration,proto3" json:"configuration,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UpdateConfigurationRequest) Reset() {
+	*x = UpdateConfigurationRequest{}
+	mi := &file_chain_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateConfigurationRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateConfigurationRequest) ProtoMessage() {}
+
+func (x *UpdateConfigurationRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_chain_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateConfigurationRequest.ProtoReflect.Descriptor instead.
+func (*UpdateConfigurationRequest) Descriptor() ([]byte, []int) {
+	return file_chain_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *UpdateConfigurationRequest) GetConfiguration() *ChainConfiguration {
+	if x != nil {
+		return x.Configuration
+	}
+	return nil
+}
+
+// UpdateConfigurationResponse is the response to an UpdateConfiguration Request.
+type UpdateConfigurationResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UpdateConfigurationResponse) Reset() {
+	*x = UpdateConfigurationResponse{}
+	mi := &file_chain_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateConfigurationResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateConfigurationResponse) ProtoMessage() {}
+
+func (x *UpdateConfigurationResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_chain_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateConfigurationResponse.ProtoReflect.Descriptor instead.
+func (*UpdateConfigurationResponse) Descriptor() ([]byte, []int) {
+	return file_chain_proto_rawDescGZIP(), []int{6}
+}
+
 // BackfillRequest is used to initiate a server-to-client stream of key-value pairs.
 type BackfillRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -334,7 +417,7 @@ type BackfillRequest struct {
 
 func (x *BackfillRequest) Reset() {
 	*x = BackfillRequest{}
-	mi := &file_chain_proto_msgTypes[5]
+	mi := &file_chain_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -346,7 +429,7 @@ func (x *BackfillRequest) String() string {
 func (*BackfillRequest) ProtoMessage() {}
 
 func (x *BackfillRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_chain_proto_msgTypes[5]
+	mi := &file_chain_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -359,7 +442,7 @@ func (x *BackfillRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BackfillRequest.ProtoReflect.Descriptor instead.
 func (*BackfillRequest) Descriptor() ([]byte, []int) {
-	return file_chain_proto_rawDescGZIP(), []int{5}
+	return file_chain_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *BackfillRequest) GetKeyType() KeyType {
@@ -384,7 +467,7 @@ type KeyValuePair struct {
 
 func (x *KeyValuePair) Reset() {
 	*x = KeyValuePair{}
-	mi := &file_chain_proto_msgTypes[6]
+	mi := &file_chain_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -396,7 +479,7 @@ func (x *KeyValuePair) String() string {
 func (*KeyValuePair) ProtoMessage() {}
 
 func (x *KeyValuePair) ProtoReflect() protoreflect.Message {
-	mi := &file_chain_proto_msgTypes[6]
+	mi := &file_chain_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -409,7 +492,7 @@ func (x *KeyValuePair) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use KeyValuePair.ProtoReflect.Descriptor instead.
 func (*KeyValuePair) Descriptor() ([]byte, []int) {
-	return file_chain_proto_rawDescGZIP(), []int{6}
+	return file_chain_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *KeyValuePair) GetKey() string {
@@ -449,7 +532,10 @@ const file_chain_proto_rawDesc = "" +
 	"\vReadRequest\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\"$\n" +
 	"\fReadResponse\x12\x14\n" +
-	"\x05value\x18\x01 \x01(\fR\x05value\";\n" +
+	"\x05value\x18\x01 \x01(\fR\x05value\"]\n" +
+	"\x1aUpdateConfigurationRequest\x12?\n" +
+	"\rconfiguration\x18\x01 \x01(\v2\x19.chain.ChainConfigurationR\rconfiguration\"\x1d\n" +
+	"\x1bUpdateConfigurationResponse\";\n" +
 	"\x0fBackfillRequest\x12(\n" +
 	"\akeyType\x18\x01 \x01(\x0e2\x0e.chain.KeyTypeR\akeyType\"P\n" +
 	"\fKeyValuePair\x12\x10\n" +
@@ -459,11 +545,12 @@ const file_chain_proto_rawDesc = "" +
 	"\aKeyType\x12\x0f\n" +
 	"\vKEYTYPE_ALL\x10\x00\x12\x15\n" +
 	"\x11KEYTYPE_COMMITTED\x10\x01\x12\x11\n" +
-	"\rKEYTYPE_DIRTY\x10\x022\xb4\x01\n" +
+	"\rKEYTYPE_DIRTY\x10\x022\x94\x02\n" +
 	"\fChainService\x124\n" +
 	"\x05Write\x12\x13.chain.WriteRequest\x1a\x14.chain.WriteResponse\"\x00\x121\n" +
 	"\x04Read\x12\x12.chain.ReadRequest\x1a\x13.chain.ReadResponse\"\x00\x12;\n" +
-	"\bBackfill\x12\x16.chain.BackfillRequest\x1a\x13.chain.KeyValuePair\"\x000\x01B+Z)github.com/jmsadair/zebraos/proto/pbchainb\x06proto3"
+	"\bBackfill\x12\x16.chain.BackfillRequest\x1a\x13.chain.KeyValuePair\"\x000\x01\x12^\n" +
+	"\x13UpdateConfiguration\x12!.chain.UpdateConfigurationRequest\x1a\".chain.UpdateConfigurationResponse\"\x00B+Z)github.com/jmsadair/zebraos/proto/pbchainb\x06proto3"
 
 var (
 	file_chain_proto_rawDescOnce sync.Once
@@ -478,30 +565,35 @@ func file_chain_proto_rawDescGZIP() []byte {
 }
 
 var file_chain_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_chain_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
+var file_chain_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
 var file_chain_proto_goTypes = []any{
-	(KeyType)(0),               // 0: chain.KeyType
-	(*ChainConfiguration)(nil), // 1: chain.ChainConfiguration
-	(*WriteRequest)(nil),       // 2: chain.WriteRequest
-	(*WriteResponse)(nil),      // 3: chain.WriteResponse
-	(*ReadRequest)(nil),        // 4: chain.ReadRequest
-	(*ReadResponse)(nil),       // 5: chain.ReadResponse
-	(*BackfillRequest)(nil),    // 6: chain.BackfillRequest
-	(*KeyValuePair)(nil),       // 7: chain.KeyValuePair
+	(KeyType)(0),                        // 0: chain.KeyType
+	(*ChainConfiguration)(nil),          // 1: chain.ChainConfiguration
+	(*WriteRequest)(nil),                // 2: chain.WriteRequest
+	(*WriteResponse)(nil),               // 3: chain.WriteResponse
+	(*ReadRequest)(nil),                 // 4: chain.ReadRequest
+	(*ReadResponse)(nil),                // 5: chain.ReadResponse
+	(*UpdateConfigurationRequest)(nil),  // 6: chain.UpdateConfigurationRequest
+	(*UpdateConfigurationResponse)(nil), // 7: chain.UpdateConfigurationResponse
+	(*BackfillRequest)(nil),             // 8: chain.BackfillRequest
+	(*KeyValuePair)(nil),                // 9: chain.KeyValuePair
 }
 var file_chain_proto_depIdxs = []int32{
-	0, // 0: chain.BackfillRequest.keyType:type_name -> chain.KeyType
-	2, // 1: chain.ChainService.Write:input_type -> chain.WriteRequest
-	4, // 2: chain.ChainService.Read:input_type -> chain.ReadRequest
-	6, // 3: chain.ChainService.Backfill:input_type -> chain.BackfillRequest
-	3, // 4: chain.ChainService.Write:output_type -> chain.WriteResponse
-	5, // 5: chain.ChainService.Read:output_type -> chain.ReadResponse
-	7, // 6: chain.ChainService.Backfill:output_type -> chain.KeyValuePair
-	4, // [4:7] is the sub-list for method output_type
-	1, // [1:4] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	1, // 0: chain.UpdateConfigurationRequest.configuration:type_name -> chain.ChainConfiguration
+	0, // 1: chain.BackfillRequest.keyType:type_name -> chain.KeyType
+	2, // 2: chain.ChainService.Write:input_type -> chain.WriteRequest
+	4, // 3: chain.ChainService.Read:input_type -> chain.ReadRequest
+	8, // 4: chain.ChainService.Backfill:input_type -> chain.BackfillRequest
+	6, // 5: chain.ChainService.UpdateConfiguration:input_type -> chain.UpdateConfigurationRequest
+	3, // 6: chain.ChainService.Write:output_type -> chain.WriteResponse
+	5, // 7: chain.ChainService.Read:output_type -> chain.ReadResponse
+	9, // 8: chain.ChainService.Backfill:output_type -> chain.KeyValuePair
+	7, // 9: chain.ChainService.UpdateConfiguration:output_type -> chain.UpdateConfigurationResponse
+	6, // [6:10] is the sub-list for method output_type
+	2, // [2:6] is the sub-list for method input_type
+	2, // [2:2] is the sub-list for extension type_name
+	2, // [2:2] is the sub-list for extension extendee
+	0, // [0:2] is the sub-list for field type_name
 }
 
 func init() { file_chain_proto_init() }
@@ -515,7 +607,7 @@ func file_chain_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_chain_proto_rawDesc), len(file_chain_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   7,
+			NumMessages:   9,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

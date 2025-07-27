@@ -19,9 +19,10 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	ChainService_Write_FullMethodName    = "/chain.ChainService/Write"
-	ChainService_Read_FullMethodName     = "/chain.ChainService/Read"
-	ChainService_Backfill_FullMethodName = "/chain.ChainService/Backfill"
+	ChainService_Write_FullMethodName               = "/chain.ChainService/Write"
+	ChainService_Read_FullMethodName                = "/chain.ChainService/Read"
+	ChainService_Backfill_FullMethodName            = "/chain.ChainService/Backfill"
+	ChainService_UpdateConfiguration_FullMethodName = "/chain.ChainService/UpdateConfiguration"
 )
 
 // ChainServiceClient is the client API for ChainService service.
@@ -37,6 +38,8 @@ type ChainServiceClient interface {
 	// Backfill handles requests to list all key-value pairs that match the specified criterion.
 	// This is useful when a new node is added to chain and needs to be recieve all of the key-value pairs it is missing.
 	Backfill(ctx context.Context, in *BackfillRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[KeyValuePair], error)
+	// UpdateConfiguration handles requests from the coordinator to update chain membership configuration.
+	UpdateConfiguration(ctx context.Context, in *UpdateConfigurationRequest, opts ...grpc.CallOption) (*UpdateConfigurationResponse, error)
 }
 
 type chainServiceClient struct {
@@ -86,6 +89,16 @@ func (c *chainServiceClient) Backfill(ctx context.Context, in *BackfillRequest, 
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type ChainService_BackfillClient = grpc.ServerStreamingClient[KeyValuePair]
 
+func (c *chainServiceClient) UpdateConfiguration(ctx context.Context, in *UpdateConfigurationRequest, opts ...grpc.CallOption) (*UpdateConfigurationResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UpdateConfigurationResponse)
+	err := c.cc.Invoke(ctx, ChainService_UpdateConfiguration_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ChainServiceServer is the server API for ChainService service.
 // All implementations must embed UnimplementedChainServiceServer
 // for forward compatibility.
@@ -99,6 +112,8 @@ type ChainServiceServer interface {
 	// Backfill handles requests to list all key-value pairs that match the specified criterion.
 	// This is useful when a new node is added to chain and needs to be recieve all of the key-value pairs it is missing.
 	Backfill(*BackfillRequest, grpc.ServerStreamingServer[KeyValuePair]) error
+	// UpdateConfiguration handles requests from the coordinator to update chain membership configuration.
+	UpdateConfiguration(context.Context, *UpdateConfigurationRequest) (*UpdateConfigurationResponse, error)
 	mustEmbedUnimplementedChainServiceServer()
 }
 
@@ -117,6 +132,9 @@ func (UnimplementedChainServiceServer) Read(context.Context, *ReadRequest) (*Rea
 }
 func (UnimplementedChainServiceServer) Backfill(*BackfillRequest, grpc.ServerStreamingServer[KeyValuePair]) error {
 	return status.Errorf(codes.Unimplemented, "method Backfill not implemented")
+}
+func (UnimplementedChainServiceServer) UpdateConfiguration(context.Context, *UpdateConfigurationRequest) (*UpdateConfigurationResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpdateConfiguration not implemented")
 }
 func (UnimplementedChainServiceServer) mustEmbedUnimplementedChainServiceServer() {}
 func (UnimplementedChainServiceServer) testEmbeddedByValue()                      {}
@@ -186,6 +204,24 @@ func _ChainService_Backfill_Handler(srv interface{}, stream grpc.ServerStream) e
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type ChainService_BackfillServer = grpc.ServerStreamingServer[KeyValuePair]
 
+func _ChainService_UpdateConfiguration_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateConfigurationRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChainServiceServer).UpdateConfiguration(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChainService_UpdateConfiguration_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChainServiceServer).UpdateConfiguration(ctx, req.(*UpdateConfigurationRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ChainService_ServiceDesc is the grpc.ServiceDesc for ChainService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -200,6 +236,10 @@ var ChainService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Read",
 			Handler:    _ChainService_Read_Handler,
+		},
+		{
+			MethodName: "UpdateConfiguration",
+			Handler:    _ChainService_UpdateConfiguration_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

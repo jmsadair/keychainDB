@@ -1,4 +1,4 @@
-package node
+package chain
 
 import (
 	"context"
@@ -61,4 +61,8 @@ func (s *Server) Backfill(request *pb.BackfillRequest, stream pb.ChainService_Ba
 	}
 
 	return nil
+}
+
+func (s *Server) UpdateConfiguration(ctx context.Context, request *pb.UpdateConfigurationRequest) (*pb.UpdateConfigurationResponse, error) {
+	return nil, nil
 }
