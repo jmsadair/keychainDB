@@ -34,8 +34,8 @@ type ChainNode struct {
 	store Storage
 	// A client for communicating with other nodes in the chain.
 	client Client
-	// Metadata for chain membership.
-	membership atomic.Pointer[ChainMetadata]
+	// Chain membership information for this node.
+	chainConfig atomic.Pointer[ChainConfiguration]
 }
 
 func NewChainNode(address net.Addr, store Storage, client Client) *ChainNode {
@@ -44,7 +44,7 @@ func NewChainNode(address net.Addr, store Storage, client Client) *ChainNode {
 
 func (c *ChainNode) WriteWithVersion(ctx context.Context, key string, value []byte, version uint64) error {
 	// Ensure this node is a member of a chain.
-	membership := c.membership.Load()
+	membership := c.chainConfig.Load()
 	if membership == nil {
 		return ErrNotMemberOfChain
 	}
@@ -68,7 +68,7 @@ func (c *ChainNode) WriteWithVersion(ctx context.Context, key string, value []by
 }
 
 func (c *ChainNode) InitiateReplicatedWrite(ctx context.Context, key string, value []byte) error {
-	membership := c.membership.Load()
+	membership := c.chainConfig.Load()
 	if membership == nil {
 		return ErrNotMemberOfChain
 	}
@@ -96,7 +96,7 @@ func (c *ChainNode) InitiateReplicatedWrite(ctx context.Context, key string, val
 }
 
 func (c *ChainNode) Read(ctx context.Context, key string) ([]byte, error) {
-	membership := c.membership.Load()
+	membership := c.chainConfig.Load()
 	if membership == nil {
 		return nil, ErrNotMemberOfChain
 	}
@@ -116,7 +116,7 @@ func (c *ChainNode) FailedWriteRepairRoutine(ctx context.Context, repairFrequenc
 	// not a huge nunber of failed writes that need to be repaired and that a simple, unary RPC is
 	// sufficiently performant (versus a streaming RPC).
 	sendFunc := func(ctx context.Context, kvPairs []storage.KeyValuePair) error {
-		m := c.membership.Load()
+		m := c.chainConfig.Load()
 		if m == nil {
 			return ErrNotMemberOfChain
 		}

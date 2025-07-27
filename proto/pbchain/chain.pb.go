@@ -75,8 +75,8 @@ func (KeyType) EnumDescriptor() ([]byte, []int) {
 	return file_chain_proto_rawDescGZIP(), []int{0}
 }
 
-// ChainMetadata contains metadata regarding chain membership.
-type ChainMetadata struct {
+// ChainConfiguration contains the configuration of the chain.
+type ChainConfiguration struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The ID that identifies the chain.
 	ChainId string `protobuf:"bytes,1,opt,name=chain_id,json=chainId,proto3" json:"chain_id,omitempty"`
@@ -86,20 +86,20 @@ type ChainMetadata struct {
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *ChainMetadata) Reset() {
-	*x = ChainMetadata{}
+func (x *ChainConfiguration) Reset() {
+	*x = ChainConfiguration{}
 	mi := &file_chain_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *ChainMetadata) String() string {
+func (x *ChainConfiguration) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ChainMetadata) ProtoMessage() {}
+func (*ChainConfiguration) ProtoMessage() {}
 
-func (x *ChainMetadata) ProtoReflect() protoreflect.Message {
+func (x *ChainConfiguration) ProtoReflect() protoreflect.Message {
 	mi := &file_chain_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -111,19 +111,19 @@ func (x *ChainMetadata) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ChainMetadata.ProtoReflect.Descriptor instead.
-func (*ChainMetadata) Descriptor() ([]byte, []int) {
+// Deprecated: Use ChainConfiguration.ProtoReflect.Descriptor instead.
+func (*ChainConfiguration) Descriptor() ([]byte, []int) {
 	return file_chain_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *ChainMetadata) GetChainId() string {
+func (x *ChainConfiguration) GetChainId() string {
 	if x != nil {
 		return x.ChainId
 	}
 	return ""
 }
 
-func (x *ChainMetadata) GetMembers() []string {
+func (x *ChainConfiguration) GetMembers() []string {
 	if x != nil {
 		return x.Members
 	}
@@ -437,8 +437,8 @@ var File_chain_proto protoreflect.FileDescriptor
 
 const file_chain_proto_rawDesc = "" +
 	"\n" +
-	"\vchain.proto\x12\x05chain\"D\n" +
-	"\rChainMetadata\x12\x19\n" +
+	"\vchain.proto\x12\x05chain\"I\n" +
+	"\x12ChainConfiguration\x12\x19\n" +
 	"\bchain_id\x18\x01 \x01(\tR\achainId\x12\x18\n" +
 	"\amembers\x18\x02 \x03(\tR\amembers\"P\n" +
 	"\fWriteRequest\x12\x10\n" +
@@ -480,14 +480,14 @@ func file_chain_proto_rawDescGZIP() []byte {
 var file_chain_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
 var file_chain_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
 var file_chain_proto_goTypes = []any{
-	(KeyType)(0),            // 0: chain.KeyType
-	(*ChainMetadata)(nil),   // 1: chain.ChainMetadata
-	(*WriteRequest)(nil),    // 2: chain.WriteRequest
-	(*WriteResponse)(nil),   // 3: chain.WriteResponse
-	(*ReadRequest)(nil),     // 4: chain.ReadRequest
-	(*ReadResponse)(nil),    // 5: chain.ReadResponse
-	(*BackfillRequest)(nil), // 6: chain.BackfillRequest
-	(*KeyValuePair)(nil),    // 7: chain.KeyValuePair
+	(KeyType)(0),               // 0: chain.KeyType
+	(*ChainConfiguration)(nil), // 1: chain.ChainConfiguration
+	(*WriteRequest)(nil),       // 2: chain.WriteRequest
+	(*WriteResponse)(nil),      // 3: chain.WriteResponse
+	(*ReadRequest)(nil),        // 4: chain.ReadRequest
+	(*ReadResponse)(nil),       // 5: chain.ReadResponse
+	(*BackfillRequest)(nil),    // 6: chain.BackfillRequest
+	(*KeyValuePair)(nil),       // 7: chain.KeyValuePair
 }
 var file_chain_proto_depIdxs = []int32{
 	0, // 0: chain.BackfillRequest.keyType:type_name -> chain.KeyType

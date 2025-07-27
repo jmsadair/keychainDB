@@ -87,18 +87,18 @@ func TestInitiateReplicatedWrite(t *testing.T) {
 	require.ErrorIs(t, err, ErrNotMemberOfChain)
 
 	chain := ChainID("chain")
-	membership, err := NewChainMetadata(chain, []net.Addr{address1})
+	chainConfig, err := NewChainConfiguration(chain, []net.Addr{address1})
 	require.NoError(t, err)
-	node.membership.Store(membership)
+	node.chainConfig.Store(chainConfig)
 	store.On("CommittedWriteNewVersion", key, value).Return(version, nil)
 	err = node.InitiateReplicatedWrite(context.TODO(), key, value)
 	require.NoError(t, err)
 	store.AssertExpectations(t)
 	store.ExpectedCalls = nil
 
-	membership, err = NewChainMetadata(chain, []net.Addr{address1, address2})
+	chainConfig, err = NewChainConfiguration(chain, []net.Addr{address1, address2})
 	require.NoError(t, err)
-	node.membership.Store(membership)
+	node.chainConfig.Store(chainConfig)
 	store.On("UncommittedWriteNewVersion", key, value).Return(version, nil)
 	store.On("CommitVersion", key, version).Return(nil)
 	client.On("Write", address2, key, value, version).Return(nil)
@@ -109,9 +109,9 @@ func TestInitiateReplicatedWrite(t *testing.T) {
 	client.ExpectedCalls = nil
 	store.ExpectedCalls = nil
 
-	membership, err = NewChainMetadata(chain, []net.Addr{address2, address1})
+	chainConfig, err = NewChainConfiguration(chain, []net.Addr{address2, address1})
 	require.NoError(t, err)
-	node.membership.Store(membership)
+	node.chainConfig.Store(chainConfig)
 	err = node.InitiateReplicatedWrite(context.TODO(), key, value)
 	require.ErrorIs(t, err, ErrNotHead)
 }
@@ -136,18 +136,18 @@ func TestWriteWithVersion(t *testing.T) {
 	require.ErrorIs(t, err, ErrNotMemberOfChain)
 
 	chain := ChainID("chain")
-	membership, err := NewChainMetadata(chain, []net.Addr{address2, address1})
+	chainConfig, err := NewChainConfiguration(chain, []net.Addr{address2, address1})
 	require.NoError(t, err)
-	node.membership.Store(membership)
+	node.chainConfig.Store(chainConfig)
 	store.On("CommittedWrite", key, value, version).Return(nil)
 	err = node.WriteWithVersion(context.TODO(), key, value, version)
 	require.NoError(t, err)
 	store.AssertExpectations(t)
 	store.ExpectedCalls = nil
 
-	membership, err = NewChainMetadata(chain, []net.Addr{address2, address1, address3})
+	chainConfig, err = NewChainConfiguration(chain, []net.Addr{address2, address1, address3})
 	require.NoError(t, err)
-	node.membership.Store(membership)
+	node.chainConfig.Store(chainConfig)
 	store.On("UncommittedWrite", key, value, version).Return(nil)
 	store.On("CommitVersion", key, version).Return(nil)
 	client.On("Write", address3, key, value, version).Return(nil)
@@ -178,9 +178,9 @@ func TestRead(t *testing.T) {
 	require.ErrorIs(t, err, ErrNotMemberOfChain)
 
 	chain := ChainID("chain")
-	membership, err := NewChainMetadata(chain, []net.Addr{address1, address2, address3})
+	chainConfig, err := NewChainConfiguration(chain, []net.Addr{address1, address2, address3})
 	require.NoError(t, err)
-	node.membership.Store(membership)
+	node.chainConfig.Store(chainConfig)
 	store.On("CommittedRead", key).Return(value, nil)
 	readValue, err := node.Read(context.TODO(), key)
 	require.NoError(t, err)

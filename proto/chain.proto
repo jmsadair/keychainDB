@@ -15,8 +15,8 @@ service ChainService {
 	rpc Backfill (BackfillRequest) returns (stream KeyValuePair) {}
 }
 
-// ChainMetadata contains metadata regarding chain membership.
-message ChainMetadata {
+// ChainConfiguration contains the configuration of the chain.
+message ChainConfiguration {
 	// The ID that identifies the chain.
 	string chain_id = 1;
 	// The addresses of the members of the chain.
