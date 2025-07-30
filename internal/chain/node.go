@@ -4,10 +4,15 @@ import (
 	"context"
 	"errors"
 	"net"
+	"sync"
 	"sync/atomic"
-	"time"
 
 	"github.com/jmsadair/zebraos/internal/storage"
+)
+
+const (
+	msgChSize          = 256
+	numOnCommitWorkers = 16
 )
 
 var ErrNotHead = errors.New("writes must be initiated from the head of the chain")
@@ -25,6 +30,12 @@ type Storage interface {
 type Client interface {
 	Write(ctx context.Context, address net.Addr, key string, value []byte, version uint64) error
 	Read(ctx context.Context, address net.Addr, key string) ([]byte, error)
+	Commit(ctx context.Context, address net.Addr, key string, version uint64) error
+}
+
+type OnCommitMessage struct {
+	Key     string
+	Version uint64
 }
 
 type ChainNode struct {
@@ -36,10 +47,12 @@ type ChainNode struct {
 	client Client
 	// Metadata for chain membership.
 	membership atomic.Pointer[ChainMetadata]
+	// Channel used to send messages to background routine when a key is committed.
+	onCommitCh chan OnCommitMessage
 }
 
 func NewChainNode(address net.Addr, store Storage, client Client) *ChainNode {
-	return &ChainNode{address: address, store: store, client: client}
+	return &ChainNode{address: address, store: store, client: client, onCommitCh: make(chan OnCommitMessage, msgChSize)}
 }
 
 func (c *ChainNode) WriteWithVersion(ctx context.Context, key string, value []byte, version uint64) error {
@@ -49,22 +62,26 @@ func (c *ChainNode) WriteWithVersion(ctx context.Context, key string, value []by
 		return ErrNotMemberOfChain
 	}
 
-	// If this node is the tail, the write can be committed immediately.
-	// Otherwise, the write needs to be forwarded to the next node in the chain.
 	succ, err := membership.Successor(c.address)
 	if err != nil {
 		return err
 	}
+
+	// If this node is the tail, the write can be committed immediately.
 	if succ == nil {
-		return c.store.CommittedWrite(key, value, version)
+		err := c.store.CommittedWrite(key, value, version)
+		if err != nil {
+			return err
+		}
+		c.onCommitCh <- OnCommitMessage{Key: key, Version: version}
+		return nil
 	}
+
+	// Otherwise, the write needs to be forwarded to the next node in the chain.
 	if err := c.store.UncommittedWrite(key, value, version); err != nil {
 		return err
 	}
-	if err := c.client.Write(ctx, succ, key, value, version); err != nil {
-		return err
-	}
-	return c.store.CommitVersion(key, version)
+	return c.client.Write(ctx, succ, key, value, version)
 }
 
 func (c *ChainNode) InitiateReplicatedWrite(ctx context.Context, key string, value []byte) error {
@@ -85,14 +102,12 @@ func (c *ChainNode) InitiateReplicatedWrite(ctx context.Context, key string, val
 		_, err := c.store.CommittedWriteNewVersion(key, value)
 		return err
 	}
+
 	version, err := c.store.UncommittedWriteNewVersion(key, value)
 	if err != nil {
 		return err
 	}
-	if err := c.client.Write(ctx, succ, key, value, version); err != nil {
-		return err
-	}
-	return c.store.CommitVersion(key, version)
+	return c.client.Write(ctx, succ, key, value, version)
 }
 
 func (c *ChainNode) Read(ctx context.Context, key string) ([]byte, error) {
@@ -110,43 +125,59 @@ func (c *ChainNode) Read(ctx context.Context, key string) ([]byte, error) {
 	return value, err
 }
 
-func (c *ChainNode) FailedWriteRepairRoutine(ctx context.Context, repairFrequency time.Duration) {
-	// Iterate over the batch of dirty key-value pairs and attempt to propagate them to the successor
-	// and then commit them. Since this routine should be run relatively often, it's assumed there is
-	// not a huge nunber of failed writes that need to be repaired and that a simple, unary RPC is
-	// sufficiently performant (versus a streaming RPC).
-	sendFunc := func(ctx context.Context, kvPairs []storage.KeyValuePair) error {
-		m := c.membership.Load()
-		if m == nil {
-			return ErrNotMemberOfChain
-		}
-		succ, err := m.Successor(c.address)
-		if err != nil {
-			return err
-		}
-		if succ == nil {
-			return nil
-		}
-		for _, kvPair := range kvPairs {
-			// Ignore any failures that occur here, as they will be retried on the next repair cycle.
-			// The current repair cycle should not fail if some transient error occurs.
-			err := c.client.Write(ctx, succ, kvPair.Key, kvPair.Value, kvPair.Version)
-			if err != nil {
-				continue
-			}
-			c.store.CommitVersion(kvPair.Key, kvPair.Version)
-		}
-		return nil
+func (c *ChainNode) Commit(ctx context.Context, key string, version uint64) error {
+	if err := c.store.CommitVersion(key, version); err != nil {
+		return err
 	}
+	c.onCommitCh <- OnCommitMessage{Key: key, Version: version}
+	return nil
+}
+
+func (c *ChainNode) OnCommitRoutine(ctx context.Context) {
+	workerCh := make(chan OnCommitMessage)
+	worker := func() {
+		for msg := range workerCh {
+			c.OnCommit(ctx, msg.Key, msg.Version)
+		}
+	}
+
+	var wg sync.WaitGroup
+	wg.Add(numOnCommitWorkers)
+	for range numOnCommitWorkers {
+		go worker()
+	}
+	defer func() {
+		close(workerCh)
+		wg.Wait()
+	}()
 
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case <-time.After(repairFrequency):
-			c.store.SendKeyValuePairs(ctx, sendFunc, storage.DirtyKeys)
+		case msg := <-c.onCommitCh:
+			workerCh <- msg
 		}
 	}
+}
+
+func (c *ChainNode) OnCommit(ctx context.Context, key string, version uint64) error {
+	err := c.store.CommitVersion(key, version)
+	if err != nil {
+		return err
+	}
+	m := c.membership.Load()
+	if m == nil {
+		return nil
+	}
+	pred, err := m.Predecessor(c.address)
+	if err != nil {
+		return err
+	}
+	if pred == nil {
+		return nil
+	}
+	return c.client.Commit(ctx, pred, key, version)
 }
 
 func (c *ChainNode) BackfillAllKeyValuePairs(ctx context.Context, sendFunc func(ctx context.Context, kvPairs []storage.KeyValuePair) error) error {

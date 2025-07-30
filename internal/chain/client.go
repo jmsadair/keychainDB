@@ -40,6 +40,15 @@ func (cc *ChainClient) Read(ctx context.Context, address net.Addr, key string) (
 	return response.GetValue(), nil
 }
 
+func (cc *ChainClient) Commit(ctx context.Context, address net.Addr, key string, version uint64) error {
+	client, err := cc.getOrCreateClient(address)
+	if err != nil {
+		return err
+	}
+	_, err = client.Commit(ctx, &pb.CommitRequest{Key: key, Version: version})
+	return err
+}
+
 func (cc *ChainClient) getOrCreateClient(address net.Addr) (pb.ChainServiceClient, error) {
 	cc.mu.Lock()
 	defer cc.mu.Unlock()
