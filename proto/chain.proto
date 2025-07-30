@@ -10,6 +10,8 @@ service ChainService {
 	rpc Write (WriteRequest) returns (WriteResponse) {}
 	// Read handles requests to read a particular version of a key.
 	rpc Read (ReadRequest) returns (ReadResponse) {}
+	// Commit handles requests to commit a particular version of a key.
+	rpc Commit(CommitRequest) returns (CommitResponse) {}
 	// Backfill handles requests to list all key-value pairs that match the specified criterion.
 	// This is useful when a new node is added to chain and needs to be recieve all of the key-value pairs it is missing.
 	rpc Backfill (BackfillRequest) returns (stream KeyValuePair) {}
@@ -74,3 +76,14 @@ message KeyValuePair {
 	// The version of the key.
 	uint64 version = 3;
 }
+
+// CommitRequest is a request to commit a version of a key.
+message CommitRequest {
+	// The key being committed.
+	string key = 1;
+	// The version of the key being committed.
+	uint64 version = 2;
+}
+
+// CommitResponse is a response to a CommitRequest.
+message CommitResponse {}

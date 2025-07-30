@@ -21,6 +21,7 @@ const _ = grpc.SupportPackageIsVersion9
 const (
 	ChainService_Write_FullMethodName    = "/chain.ChainService/Write"
 	ChainService_Read_FullMethodName     = "/chain.ChainService/Read"
+	ChainService_Commit_FullMethodName   = "/chain.ChainService/Commit"
 	ChainService_Backfill_FullMethodName = "/chain.ChainService/Backfill"
 )
 
@@ -34,6 +35,8 @@ type ChainServiceClient interface {
 	Write(ctx context.Context, in *WriteRequest, opts ...grpc.CallOption) (*WriteResponse, error)
 	// Read handles requests to read a particular version of a key.
 	Read(ctx context.Context, in *ReadRequest, opts ...grpc.CallOption) (*ReadResponse, error)
+	// Commit handles requests to commit a particular version of a key.
+	Commit(ctx context.Context, in *CommitRequest, opts ...grpc.CallOption) (*CommitResponse, error)
 	// Backfill handles requests to list all key-value pairs that match the specified criterion.
 	// This is useful when a new node is added to chain and needs to be recieve all of the key-value pairs it is missing.
 	Backfill(ctx context.Context, in *BackfillRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[KeyValuePair], error)
@@ -61,6 +64,16 @@ func (c *chainServiceClient) Read(ctx context.Context, in *ReadRequest, opts ...
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ReadResponse)
 	err := c.cc.Invoke(ctx, ChainService_Read_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chainServiceClient) Commit(ctx context.Context, in *CommitRequest, opts ...grpc.CallOption) (*CommitResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CommitResponse)
+	err := c.cc.Invoke(ctx, ChainService_Commit_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -96,6 +109,8 @@ type ChainServiceServer interface {
 	Write(context.Context, *WriteRequest) (*WriteResponse, error)
 	// Read handles requests to read a particular version of a key.
 	Read(context.Context, *ReadRequest) (*ReadResponse, error)
+	// Commit handles requests to commit a particular version of a key.
+	Commit(context.Context, *CommitRequest) (*CommitResponse, error)
 	// Backfill handles requests to list all key-value pairs that match the specified criterion.
 	// This is useful when a new node is added to chain and needs to be recieve all of the key-value pairs it is missing.
 	Backfill(*BackfillRequest, grpc.ServerStreamingServer[KeyValuePair]) error
@@ -114,6 +129,9 @@ func (UnimplementedChainServiceServer) Write(context.Context, *WriteRequest) (*W
 }
 func (UnimplementedChainServiceServer) Read(context.Context, *ReadRequest) (*ReadResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Read not implemented")
+}
+func (UnimplementedChainServiceServer) Commit(context.Context, *CommitRequest) (*CommitResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Commit not implemented")
 }
 func (UnimplementedChainServiceServer) Backfill(*BackfillRequest, grpc.ServerStreamingServer[KeyValuePair]) error {
 	return status.Errorf(codes.Unimplemented, "method Backfill not implemented")
@@ -175,6 +193,24 @@ func _ChainService_Read_Handler(srv interface{}, ctx context.Context, dec func(i
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ChainService_Commit_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CommitRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChainServiceServer).Commit(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChainService_Commit_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChainServiceServer).Commit(ctx, req.(*CommitRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _ChainService_Backfill_Handler(srv interface{}, stream grpc.ServerStream) error {
 	m := new(BackfillRequest)
 	if err := stream.RecvMsg(m); err != nil {
@@ -200,6 +236,10 @@ var ChainService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Read",
 			Handler:    _ChainService_Read_Handler,
+		},
+		{
+			MethodName: "Commit",
+			Handler:    _ChainService_Commit_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{
