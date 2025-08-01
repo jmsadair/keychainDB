@@ -433,6 +433,98 @@ func (x *KeyValuePair) GetVersion() uint64 {
 	return 0
 }
 
+// CommitRequest is a request to commit a version of a key.
+type CommitRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The key being committed.
+	Key string `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	// The version of the key being committed.
+	Version       uint64 `protobuf:"varint,2,opt,name=version,proto3" json:"version,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CommitRequest) Reset() {
+	*x = CommitRequest{}
+	mi := &file_chain_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CommitRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CommitRequest) ProtoMessage() {}
+
+func (x *CommitRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_chain_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CommitRequest.ProtoReflect.Descriptor instead.
+func (*CommitRequest) Descriptor() ([]byte, []int) {
+	return file_chain_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *CommitRequest) GetKey() string {
+	if x != nil {
+		return x.Key
+	}
+	return ""
+}
+
+func (x *CommitRequest) GetVersion() uint64 {
+	if x != nil {
+		return x.Version
+	}
+	return 0
+}
+
+// CommitResponse is a response to a CommitRequest.
+type CommitResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CommitResponse) Reset() {
+	*x = CommitResponse{}
+	mi := &file_chain_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CommitResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CommitResponse) ProtoMessage() {}
+
+func (x *CommitResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_chain_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CommitResponse.ProtoReflect.Descriptor instead.
+func (*CommitResponse) Descriptor() ([]byte, []int) {
+	return file_chain_proto_rawDescGZIP(), []int{8}
+}
+
 var File_chain_proto protoreflect.FileDescriptor
 
 const file_chain_proto_rawDesc = "" +
@@ -455,14 +547,19 @@ const file_chain_proto_rawDesc = "" +
 	"\fKeyValuePair\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\fR\x05value\x12\x18\n" +
-	"\aversion\x18\x03 \x01(\x04R\aversion*D\n" +
+	"\aversion\x18\x03 \x01(\x04R\aversion\";\n" +
+	"\rCommitRequest\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x18\n" +
+	"\aversion\x18\x02 \x01(\x04R\aversion\"\x10\n" +
+	"\x0eCommitResponse*D\n" +
 	"\aKeyType\x12\x0f\n" +
 	"\vKEYTYPE_ALL\x10\x00\x12\x15\n" +
 	"\x11KEYTYPE_COMMITTED\x10\x01\x12\x11\n" +
-	"\rKEYTYPE_DIRTY\x10\x022\xb4\x01\n" +
+	"\rKEYTYPE_DIRTY\x10\x022\xed\x01\n" +
 	"\fChainService\x124\n" +
 	"\x05Write\x12\x13.chain.WriteRequest\x1a\x14.chain.WriteResponse\"\x00\x121\n" +
-	"\x04Read\x12\x12.chain.ReadRequest\x1a\x13.chain.ReadResponse\"\x00\x12;\n" +
+	"\x04Read\x12\x12.chain.ReadRequest\x1a\x13.chain.ReadResponse\"\x00\x127\n" +
+	"\x06Commit\x12\x14.chain.CommitRequest\x1a\x15.chain.CommitResponse\"\x00\x12;\n" +
 	"\bBackfill\x12\x16.chain.BackfillRequest\x1a\x13.chain.KeyValuePair\"\x000\x01B+Z)github.com/jmsadair/zebraos/proto/pbchainb\x06proto3"
 
 var (
@@ -478,7 +575,7 @@ func file_chain_proto_rawDescGZIP() []byte {
 }
 
 var file_chain_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_chain_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
+var file_chain_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
 var file_chain_proto_goTypes = []any{
 	(KeyType)(0),            // 0: chain.KeyType
 	(*ChainMetadata)(nil),   // 1: chain.ChainMetadata
@@ -488,17 +585,21 @@ var file_chain_proto_goTypes = []any{
 	(*ReadResponse)(nil),    // 5: chain.ReadResponse
 	(*BackfillRequest)(nil), // 6: chain.BackfillRequest
 	(*KeyValuePair)(nil),    // 7: chain.KeyValuePair
+	(*CommitRequest)(nil),   // 8: chain.CommitRequest
+	(*CommitResponse)(nil),  // 9: chain.CommitResponse
 }
 var file_chain_proto_depIdxs = []int32{
 	0, // 0: chain.BackfillRequest.keyType:type_name -> chain.KeyType
 	2, // 1: chain.ChainService.Write:input_type -> chain.WriteRequest
 	4, // 2: chain.ChainService.Read:input_type -> chain.ReadRequest
-	6, // 3: chain.ChainService.Backfill:input_type -> chain.BackfillRequest
-	3, // 4: chain.ChainService.Write:output_type -> chain.WriteResponse
-	5, // 5: chain.ChainService.Read:output_type -> chain.ReadResponse
-	7, // 6: chain.ChainService.Backfill:output_type -> chain.KeyValuePair
-	4, // [4:7] is the sub-list for method output_type
-	1, // [1:4] is the sub-list for method input_type
+	8, // 3: chain.ChainService.Commit:input_type -> chain.CommitRequest
+	6, // 4: chain.ChainService.Backfill:input_type -> chain.BackfillRequest
+	3, // 5: chain.ChainService.Write:output_type -> chain.WriteResponse
+	5, // 6: chain.ChainService.Read:output_type -> chain.ReadResponse
+	9, // 7: chain.ChainService.Commit:output_type -> chain.CommitResponse
+	7, // 8: chain.ChainService.Backfill:output_type -> chain.KeyValuePair
+	5, // [5:9] is the sub-list for method output_type
+	1, // [1:5] is the sub-list for method input_type
 	1, // [1:1] is the sub-list for extension type_name
 	1, // [1:1] is the sub-list for extension extendee
 	0, // [0:1] is the sub-list for field type_name
@@ -515,7 +616,7 @@ func file_chain_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_chain_proto_rawDesc), len(file_chain_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   7,
+			NumMessages:   9,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
