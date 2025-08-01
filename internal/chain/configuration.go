@@ -12,7 +12,7 @@ var ErrNotMemberOfChain = errors.New("not a member of the chain")
 
 type ChainID string
 
-type ChainMetadata struct {
+type ChainConfiguration struct {
 	// The ID of the chain that this node belongs to.
 	ID ChainID
 	// All members of the chain ordered from head to tail.
@@ -21,54 +21,54 @@ type ChainMetadata struct {
 	addressToMemberIndex map[string]int
 }
 
-// NewChainMetadata creates a new ChainMetadata instance.
+// NewChainConfiguration creates a new ChainConfiguration instance.
 // The chainID argument is the ID of the chain that the members are associated with.
 // The members argument is a list of all members that belong to the chain, ordered from head to tail.
-func NewChainMetadata(chainID ChainID, members []net.Addr) (*ChainMetadata, error) {
+func NewChainConfiguration(chainID ChainID, members []net.Addr) (*ChainConfiguration, error) {
 	addressToMemberIndex := make(map[string]int, len(members))
 	for i, member := range members {
 		addressToMemberIndex[member.String()] = i
 	}
-	return &ChainMetadata{ID: chainID, members: members, addressToMemberIndex: addressToMemberIndex}, nil
+	return &ChainConfiguration{ID: chainID, members: members, addressToMemberIndex: addressToMemberIndex}, nil
 }
 
-// NewChainMetadataFromProto creates a new ChainMetadata instance from a protobuf message.
-func NewChainMetadataFromProto(chainMetadataProto *pb.ChainMetadata) (*ChainMetadata, error) {
-	members := make([]net.Addr, len(chainMetadataProto.GetMembers()))
-	for i, address := range chainMetadataProto.GetMembers() {
+// NewChainConfigurationFromProto creates a new ChainConfiguration instance from a protobuf message.
+func NewChainConfigurationFromProto(chainConfigurationProto *pb.ChainConfiguration) (*ChainConfiguration, error) {
+	members := make([]net.Addr, len(chainConfigurationProto.GetMembers()))
+	for i, address := range chainConfigurationProto.GetMembers() {
 		member, err := net.ResolveTCPAddr("tcp", address)
 		if err != nil {
 			return nil, err
 		}
 		members[i] = member
 	}
-	return NewChainMetadata(ChainID(chainMetadataProto.GetChainId()), members)
+	return NewChainConfiguration(ChainID(chainConfigurationProto.GetChainId()), members)
 }
 
-// Bytes converts the ChainMetadata instance into bytes.
-func (cm *ChainMetadata) Bytes() ([]byte, error) {
+// Bytes converts the ChainConfiguration instance into bytes.
+func (cm *ChainConfiguration) Bytes() ([]byte, error) {
 	members := make([]string, len(cm.members))
 	for i, member := range cm.members {
 		members[i] = member.String()
 	}
-	chainMetadataProto := &pb.ChainMetadata{ChainId: string(cm.ID), Members: members}
-	return proto.Marshal(chainMetadataProto)
+	chainConfigurationProto := &pb.ChainConfiguration{ChainId: string(cm.ID), Members: members}
+	return proto.Marshal(chainConfigurationProto)
 }
 
 // Head returns the address of the head of the chain.
-func (cm *ChainMetadata) Head() net.Addr {
+func (cm *ChainConfiguration) Head() net.Addr {
 	return cm.members[0]
 }
 
 // Tail returns the address of the tail of the chain.
-func (cm *ChainMetadata) Tail() net.Addr {
+func (cm *ChainConfiguration) Tail() net.Addr {
 	return cm.members[len(cm.members)-1]
 }
 
 // Predecessor returns the predecessor of the provided member.
 // If the member is the head of the chain, nil is returned.
 // If the member does not exist in the chain, an error is returned.
-func (cm *ChainMetadata) Predecessor(member net.Addr) (net.Addr, error) {
+func (cm *ChainConfiguration) Predecessor(member net.Addr) (net.Addr, error) {
 	memberIndex, ok := cm.addressToMemberIndex[member.String()]
 	if !ok {
 		return nil, ErrNotMemberOfChain
@@ -82,7 +82,7 @@ func (cm *ChainMetadata) Predecessor(member net.Addr) (net.Addr, error) {
 // Successor returns the successor of the provided member.
 // If the member is the tail of the chain, nil is returned.
 // If the member does not exist in the chain, an error is returned.
-func (cm *ChainMetadata) Successor(member net.Addr) (net.Addr, error) {
+func (cm *ChainConfiguration) Successor(member net.Addr) (net.Addr, error) {
 	memberIndex, ok := cm.addressToMemberIndex[member.String()]
 	if !ok {
 		return nil, ErrNotMemberOfChain
@@ -94,11 +94,11 @@ func (cm *ChainMetadata) Successor(member net.Addr) (net.Addr, error) {
 }
 
 // IsHead returns a boolean value indicating whether the provided member is the head of the chain.
-func (cm *ChainMetadata) IsHead(member net.Addr) bool {
+func (cm *ChainConfiguration) IsHead(member net.Addr) bool {
 	return cm.members[0].String() == member.String()
 }
 
 // IsTail returns a boolean value indicating whether the provided member is the tail of the chain.
-func (cm *ChainMetadata) IsTail(member net.Addr) bool {
+func (cm *ChainConfiguration) IsTail(member net.Addr) bool {
 	return cm.members[len(cm.members)-1].String() == member.String()
 }
