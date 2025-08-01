@@ -19,10 +19,10 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	ChainService_Write_FullMethodName    = "/chain.ChainService/Write"
-	ChainService_Read_FullMethodName     = "/chain.ChainService/Read"
-	ChainService_Commit_FullMethodName   = "/chain.ChainService/Commit"
-	ChainService_Backfill_FullMethodName = "/chain.ChainService/Backfill"
+	ChainService_Write_FullMethodName     = "/chain.ChainService/Write"
+	ChainService_Read_FullMethodName      = "/chain.ChainService/Read"
+	ChainService_Commit_FullMethodName    = "/chain.ChainService/Commit"
+	ChainService_Propagate_FullMethodName = "/chain.ChainService/Propagate"
 )
 
 // ChainServiceClient is the client API for ChainService service.
@@ -37,9 +37,9 @@ type ChainServiceClient interface {
 	Read(ctx context.Context, in *ReadRequest, opts ...grpc.CallOption) (*ReadResponse, error)
 	// Commit handles requests to commit a particular version of a key.
 	Commit(ctx context.Context, in *CommitRequest, opts ...grpc.CallOption) (*CommitResponse, error)
-	// Backfill handles requests to list all key-value pairs that match the specified criterion.
+	// Propagate handles requests to list all key-value pairs that match the specified criterion.
 	// This is useful when a new node is added to chain and needs to be recieve all of the key-value pairs it is missing.
-	Backfill(ctx context.Context, in *BackfillRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[KeyValuePair], error)
+	Propagate(ctx context.Context, in *PropagateRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[KeyValuePair], error)
 }
 
 type chainServiceClient struct {
@@ -80,13 +80,13 @@ func (c *chainServiceClient) Commit(ctx context.Context, in *CommitRequest, opts
 	return out, nil
 }
 
-func (c *chainServiceClient) Backfill(ctx context.Context, in *BackfillRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[KeyValuePair], error) {
+func (c *chainServiceClient) Propagate(ctx context.Context, in *PropagateRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[KeyValuePair], error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	stream, err := c.cc.NewStream(ctx, &ChainService_ServiceDesc.Streams[0], ChainService_Backfill_FullMethodName, cOpts...)
+	stream, err := c.cc.NewStream(ctx, &ChainService_ServiceDesc.Streams[0], ChainService_Propagate_FullMethodName, cOpts...)
 	if err != nil {
 		return nil, err
 	}
-	x := &grpc.GenericClientStream[BackfillRequest, KeyValuePair]{ClientStream: stream}
+	x := &grpc.GenericClientStream[PropagateRequest, KeyValuePair]{ClientStream: stream}
 	if err := x.ClientStream.SendMsg(in); err != nil {
 		return nil, err
 	}
@@ -97,7 +97,7 @@ func (c *chainServiceClient) Backfill(ctx context.Context, in *BackfillRequest, 
 }
 
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
-type ChainService_BackfillClient = grpc.ServerStreamingClient[KeyValuePair]
+type ChainService_PropagateClient = grpc.ServerStreamingClient[KeyValuePair]
 
 // ChainServiceServer is the server API for ChainService service.
 // All implementations must embed UnimplementedChainServiceServer
@@ -111,9 +111,9 @@ type ChainServiceServer interface {
 	Read(context.Context, *ReadRequest) (*ReadResponse, error)
 	// Commit handles requests to commit a particular version of a key.
 	Commit(context.Context, *CommitRequest) (*CommitResponse, error)
-	// Backfill handles requests to list all key-value pairs that match the specified criterion.
+	// Propagate handles requests to list all key-value pairs that match the specified criterion.
 	// This is useful when a new node is added to chain and needs to be recieve all of the key-value pairs it is missing.
-	Backfill(*BackfillRequest, grpc.ServerStreamingServer[KeyValuePair]) error
+	Propagate(*PropagateRequest, grpc.ServerStreamingServer[KeyValuePair]) error
 	mustEmbedUnimplementedChainServiceServer()
 }
 
@@ -133,8 +133,8 @@ func (UnimplementedChainServiceServer) Read(context.Context, *ReadRequest) (*Rea
 func (UnimplementedChainServiceServer) Commit(context.Context, *CommitRequest) (*CommitResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Commit not implemented")
 }
-func (UnimplementedChainServiceServer) Backfill(*BackfillRequest, grpc.ServerStreamingServer[KeyValuePair]) error {
-	return status.Errorf(codes.Unimplemented, "method Backfill not implemented")
+func (UnimplementedChainServiceServer) Propagate(*PropagateRequest, grpc.ServerStreamingServer[KeyValuePair]) error {
+	return status.Errorf(codes.Unimplemented, "method Propagate not implemented")
 }
 func (UnimplementedChainServiceServer) mustEmbedUnimplementedChainServiceServer() {}
 func (UnimplementedChainServiceServer) testEmbeddedByValue()                      {}
@@ -211,16 +211,16 @@ func _ChainService_Commit_Handler(srv interface{}, ctx context.Context, dec func
 	return interceptor(ctx, in, info, handler)
 }
 
-func _ChainService_Backfill_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(BackfillRequest)
+func _ChainService_Propagate_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(PropagateRequest)
 	if err := stream.RecvMsg(m); err != nil {
 		return err
 	}
-	return srv.(ChainServiceServer).Backfill(m, &grpc.GenericServerStream[BackfillRequest, KeyValuePair]{ServerStream: stream})
+	return srv.(ChainServiceServer).Propagate(m, &grpc.GenericServerStream[PropagateRequest, KeyValuePair]{ServerStream: stream})
 }
 
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
-type ChainService_BackfillServer = grpc.ServerStreamingServer[KeyValuePair]
+type ChainService_PropagateServer = grpc.ServerStreamingServer[KeyValuePair]
 
 // ChainService_ServiceDesc is the grpc.ServiceDesc for ChainService service.
 // It's only intended for direct use with grpc.RegisterService,
@@ -244,8 +244,8 @@ var ChainService_ServiceDesc = grpc.ServiceDesc{
 	},
 	Streams: []grpc.StreamDesc{
 		{
-			StreamName:    "Backfill",
-			Handler:       _ChainService_Backfill_Handler,
+			StreamName:    "Propagate",
+			Handler:       _ChainService_Propagate_Handler,
 			ServerStreams: true,
 		},
 	},

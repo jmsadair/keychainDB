@@ -21,8 +21,7 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// KeyType is the type of key being requested when making a request to another node to
-// list the key-value pairs.
+// KeyType contains all key types that can be propagated.
 type KeyType int32
 
 const (
@@ -323,29 +322,29 @@ func (x *ReadResponse) GetValue() []byte {
 	return nil
 }
 
-// BackfillRequest is used to initiate a server-to-client stream of key-value pairs.
-type BackfillRequest struct {
+// PropagateRequest is used to initiate a server-to-client stream of key-value pairs.
+type PropagateRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Which type of key should be listed.
-	KeyType       KeyType `protobuf:"varint,1,opt,name=keyType,proto3,enum=chain.KeyType" json:"keyType,omitempty"`
+	KeyType       KeyType `protobuf:"varint,1,opt,name=key_type,json=keyType,proto3,enum=chain.KeyType" json:"key_type,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *BackfillRequest) Reset() {
-	*x = BackfillRequest{}
+func (x *PropagateRequest) Reset() {
+	*x = PropagateRequest{}
 	mi := &file_chain_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *BackfillRequest) String() string {
+func (x *PropagateRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*BackfillRequest) ProtoMessage() {}
+func (*PropagateRequest) ProtoMessage() {}
 
-func (x *BackfillRequest) ProtoReflect() protoreflect.Message {
+func (x *PropagateRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_chain_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -357,12 +356,12 @@ func (x *BackfillRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use BackfillRequest.ProtoReflect.Descriptor instead.
-func (*BackfillRequest) Descriptor() ([]byte, []int) {
+// Deprecated: Use PropagateRequest.ProtoReflect.Descriptor instead.
+func (*PropagateRequest) Descriptor() ([]byte, []int) {
 	return file_chain_proto_rawDescGZIP(), []int{5}
 }
 
-func (x *BackfillRequest) GetKeyType() KeyType {
+func (x *PropagateRequest) GetKeyType() KeyType {
 	if x != nil {
 		return x.KeyType
 	}
@@ -377,7 +376,9 @@ type KeyValuePair struct {
 	// The value associated with the key.
 	Value []byte `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
 	// The version of the key.
-	Version       uint64 `protobuf:"varint,3,opt,name=version,proto3" json:"version,omitempty"`
+	Version uint64 `protobuf:"varint,3,opt,name=version,proto3" json:"version,omitempty"`
+	// Whether or not this version of the key has been committed.
+	IsCommited    bool `protobuf:"varint,4,opt,name=isCommited,proto3" json:"isCommited,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -431,6 +432,13 @@ func (x *KeyValuePair) GetVersion() uint64 {
 		return x.Version
 	}
 	return 0
+}
+
+func (x *KeyValuePair) GetIsCommited() bool {
+	if x != nil {
+		return x.IsCommited
+	}
+	return false
 }
 
 // CommitRequest is a request to commit a version of a key.
@@ -541,13 +549,16 @@ const file_chain_proto_rawDesc = "" +
 	"\vReadRequest\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\"$\n" +
 	"\fReadResponse\x12\x14\n" +
-	"\x05value\x18\x01 \x01(\fR\x05value\";\n" +
-	"\x0fBackfillRequest\x12(\n" +
-	"\akeyType\x18\x01 \x01(\x0e2\x0e.chain.KeyTypeR\akeyType\"P\n" +
+	"\x05value\x18\x01 \x01(\fR\x05value\"=\n" +
+	"\x10PropagateRequest\x12)\n" +
+	"\bkey_type\x18\x01 \x01(\x0e2\x0e.chain.KeyTypeR\akeyType\"p\n" +
 	"\fKeyValuePair\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\fR\x05value\x12\x18\n" +
-	"\aversion\x18\x03 \x01(\x04R\aversion\";\n" +
+	"\aversion\x18\x03 \x01(\x04R\aversion\x12\x1e\n" +
+	"\n" +
+	"isCommited\x18\x04 \x01(\bR\n" +
+	"isCommited\";\n" +
 	"\rCommitRequest\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x18\n" +
 	"\aversion\x18\x02 \x01(\x04R\aversion\"\x10\n" +
@@ -555,12 +566,12 @@ const file_chain_proto_rawDesc = "" +
 	"\aKeyType\x12\x0f\n" +
 	"\vKEYTYPE_ALL\x10\x00\x12\x15\n" +
 	"\x11KEYTYPE_COMMITTED\x10\x01\x12\x11\n" +
-	"\rKEYTYPE_DIRTY\x10\x022\xed\x01\n" +
+	"\rKEYTYPE_DIRTY\x10\x022\xef\x01\n" +
 	"\fChainService\x124\n" +
 	"\x05Write\x12\x13.chain.WriteRequest\x1a\x14.chain.WriteResponse\"\x00\x121\n" +
 	"\x04Read\x12\x12.chain.ReadRequest\x1a\x13.chain.ReadResponse\"\x00\x127\n" +
-	"\x06Commit\x12\x14.chain.CommitRequest\x1a\x15.chain.CommitResponse\"\x00\x12;\n" +
-	"\bBackfill\x12\x16.chain.BackfillRequest\x1a\x13.chain.KeyValuePair\"\x000\x01B+Z)github.com/jmsadair/zebraos/proto/pbchainb\x06proto3"
+	"\x06Commit\x12\x14.chain.CommitRequest\x1a\x15.chain.CommitResponse\"\x00\x12=\n" +
+	"\tPropagate\x12\x17.chain.PropagateRequest\x1a\x13.chain.KeyValuePair\"\x000\x01B+Z)github.com/jmsadair/zebraos/proto/pbchainb\x06proto3"
 
 var (
 	file_chain_proto_rawDescOnce sync.Once
@@ -583,21 +594,21 @@ var file_chain_proto_goTypes = []any{
 	(*WriteResponse)(nil),      // 3: chain.WriteResponse
 	(*ReadRequest)(nil),        // 4: chain.ReadRequest
 	(*ReadResponse)(nil),       // 5: chain.ReadResponse
-	(*BackfillRequest)(nil),    // 6: chain.BackfillRequest
+	(*PropagateRequest)(nil),   // 6: chain.PropagateRequest
 	(*KeyValuePair)(nil),       // 7: chain.KeyValuePair
 	(*CommitRequest)(nil),      // 8: chain.CommitRequest
 	(*CommitResponse)(nil),     // 9: chain.CommitResponse
 }
 var file_chain_proto_depIdxs = []int32{
-	0, // 0: chain.BackfillRequest.keyType:type_name -> chain.KeyType
+	0, // 0: chain.PropagateRequest.key_type:type_name -> chain.KeyType
 	2, // 1: chain.ChainService.Write:input_type -> chain.WriteRequest
 	4, // 2: chain.ChainService.Read:input_type -> chain.ReadRequest
 	8, // 3: chain.ChainService.Commit:input_type -> chain.CommitRequest
-	6, // 4: chain.ChainService.Backfill:input_type -> chain.BackfillRequest
+	6, // 4: chain.ChainService.Propagate:input_type -> chain.PropagateRequest
 	3, // 5: chain.ChainService.Write:output_type -> chain.WriteResponse
 	5, // 6: chain.ChainService.Read:output_type -> chain.ReadResponse
 	9, // 7: chain.ChainService.Commit:output_type -> chain.CommitResponse
-	7, // 8: chain.ChainService.Backfill:output_type -> chain.KeyValuePair
+	7, // 8: chain.ChainService.Propagate:output_type -> chain.KeyValuePair
 	5, // [5:9] is the sub-list for method output_type
 	1, // [1:5] is the sub-list for method input_type
 	1, // [1:1] is the sub-list for extension type_name
