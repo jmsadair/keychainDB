@@ -32,6 +32,11 @@ func (mc *mockClient) Commit(ctx context.Context, address net.Addr, key string, 
 	return args.Error(0)
 }
 
+func (mc *mockClient) Propagate(ctx context.Context, address net.Addr, keyFilter storage.KeyFilter) (KeyValueStreamReader, error) {
+	args := mc.MethodCalled("Propagate", address, keyFilter)
+	return args.Get(0).(KeyValueStreamReader), args.Error(1)
+}
+
 type mockStorage struct {
 	mock.Mock
 }
