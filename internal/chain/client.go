@@ -4,6 +4,7 @@ import (
 	"net"
 	"sync"
 
+	"github.com/jmsadair/zebraos/internal/storage"
 	pb "github.com/jmsadair/zebraos/proto/pbchain"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -47,6 +48,26 @@ func (cc *ChainClient) Commit(ctx context.Context, address net.Addr, key string,
 	}
 	_, err = client.Commit(ctx, &pb.CommitRequest{Key: key, Version: version})
 	return err
+}
+
+func (cc *ChainClient) Propagate(ctx context.Context, address net.Addr, keyFilter storage.KeyFilter) (KeyValueStreamReader, error) {
+	client, err := cc.getOrCreateClient(address)
+	if err != nil {
+		return nil, err
+	}
+
+	var keyType pb.KeyType
+	switch keyFilter {
+	case storage.AllKeys:
+		keyType = pb.KeyType_KEYTYPE_ALL
+	case storage.CommittedKeys:
+		keyType = pb.KeyType_KEYTYPE_COMMITTED
+	case storage.DirtyKeys:
+		keyType = pb.KeyType_KEYTYPE_DIRTY
+	}
+
+	stream, err := client.Propagate(ctx, &pb.PropagateRequest{KeyType: keyType})
+	return &KeyValueReciever{Stream: stream}, nil
 }
 
 func (cc *ChainClient) getOrCreateClient(address net.Addr) (pb.ChainServiceClient, error) {

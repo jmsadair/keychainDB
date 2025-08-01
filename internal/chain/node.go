@@ -27,10 +27,19 @@ type Storage interface {
 	SendKeyValuePairs(ctx context.Context, sendFunc func(ctx context.Context, kvPairs []storage.KeyValuePair) error, keyFilter storage.KeyFilter) error
 }
 
+type KeyValueStreamReader interface {
+	Recieve() (*storage.KeyValuePair, error)
+}
+
+type KeyValueStreamSender interface {
+	Send(*storage.KeyValuePair) error
+}
+
 type Client interface {
 	Write(ctx context.Context, address net.Addr, key string, value []byte, version uint64) error
 	Read(ctx context.Context, address net.Addr, key string) ([]byte, error)
 	Commit(ctx context.Context, address net.Addr, key string, version uint64) error
+	Propagate(ctx context.Context, address net.Addr, keyFilter storage.KeyFilter) (KeyValueStreamReader, error)
 }
 
 type OnCommitMessage struct {
@@ -186,14 +195,15 @@ func (c *ChainNode) OnCommit(ctx context.Context, key string, version uint64) er
 	return c.client.Commit(ctx, pred, key, version)
 }
 
-func (c *ChainNode) BackfillAllKeyValuePairs(ctx context.Context, sendFunc func(ctx context.Context, kvPairs []storage.KeyValuePair) error) error {
-	return c.store.SendKeyValuePairs(ctx, sendFunc, storage.AllKeys)
-}
+func (c *ChainNode) Propagate(ctx context.Context, keyFilter storage.KeyFilter, stream KeyValueStreamSender) error {
+	sendFunc := func(ctx context.Context, kvPairs []storage.KeyValuePair) error {
+		for _, kvPair := range kvPairs {
+			if err := stream.Send(&kvPair); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
 
-func (c *ChainNode) BackfillDirtyKeyValuePairs(ctx context.Context, sendFunc func(ctx context.Context, kvPairs []storage.KeyValuePair) error) error {
-	return c.store.SendKeyValuePairs(ctx, sendFunc, storage.DirtyKeys)
-}
-
-func (c *ChainNode) BackfillCommittedKeyValuePairs(ctx context.Context, sendFunc func(ctx context.Context, kvPairs []storage.KeyValuePair) error) error {
-	return c.store.SendKeyValuePairs(ctx, sendFunc, storage.CommittedKeys)
+	return c.store.SendKeyValuePairs(ctx, sendFunc, keyFilter)
 }

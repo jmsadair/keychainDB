@@ -41,24 +41,16 @@ func (s *Server) Read(ctx context.Context, request *pb.ReadRequest) (*pb.ReadRes
 	return &pb.ReadResponse{Value: value}, nil
 }
 
-func (s *Server) Backfill(request *pb.BackfillRequest, stream pb.ChainService_BackfillServer) error {
-	sendFunc := func(ctx context.Context, kvPairs []storage.KeyValuePair) error {
-		for _, kvPair := range kvPairs {
-			if err := stream.Send(&pb.KeyValuePair{Key: kvPair.Key, Value: kvPair.Value, Version: kvPair.Version}); err != nil {
-				return err
-			}
-		}
-		return nil
-	}
-
+func (s *Server) Propagate(request *pb.PropagateRequest, stream pb.ChainService_PropagateServer) error {
+	var keyFilter storage.KeyFilter
 	switch request.GetKeyType() {
 	case pb.KeyType_KEYTYPE_ALL:
-		return s.chainNode.BackfillAllKeyValuePairs(stream.Context(), sendFunc)
+		keyFilter = storage.AllKeys
 	case pb.KeyType_KEYTYPE_COMMITTED:
-		return s.chainNode.BackfillCommittedKeyValuePairs(stream.Context(), sendFunc)
+		keyFilter = storage.CommittedKeys
 	case pb.KeyType_KEYTYPE_DIRTY:
-		return s.chainNode.BackfillDirtyKeyValuePairs(stream.Context(), sendFunc)
+		keyFilter = storage.DirtyKeys
 	}
 
-	return nil
+	return s.chainNode.Propagate(stream.Context(), keyFilter, &chain.KeyValueSender{Stream: stream})
 }
