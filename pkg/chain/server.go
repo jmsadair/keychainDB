@@ -1,4 +1,4 @@
-package node
+package chain
 
 import (
 	"context"

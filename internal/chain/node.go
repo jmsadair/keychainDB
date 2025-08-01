@@ -45,10 +45,10 @@ type ChainNode struct {
 	store Storage
 	// A client for communicating with other nodes in the chain.
 	client Client
-	// Metadata for chain membership.
-	membership atomic.Pointer[ChainMetadata]
 	// Channel used to send messages to background routine when a key is committed.
 	onCommitCh chan OnCommitMessage
+	// Chain membership information for this node.
+	chainConfig atomic.Pointer[ChainConfiguration]
 }
 
 func NewChainNode(address net.Addr, store Storage, client Client) *ChainNode {
@@ -57,7 +57,7 @@ func NewChainNode(address net.Addr, store Storage, client Client) *ChainNode {
 
 func (c *ChainNode) WriteWithVersion(ctx context.Context, key string, value []byte, version uint64) error {
 	// Ensure this node is a member of a chain.
-	membership := c.membership.Load()
+	membership := c.chainConfig.Load()
 	if membership == nil {
 		return ErrNotMemberOfChain
 	}
@@ -85,7 +85,7 @@ func (c *ChainNode) WriteWithVersion(ctx context.Context, key string, value []by
 }
 
 func (c *ChainNode) InitiateReplicatedWrite(ctx context.Context, key string, value []byte) error {
-	membership := c.membership.Load()
+	membership := c.chainConfig.Load()
 	if membership == nil {
 		return ErrNotMemberOfChain
 	}
@@ -110,8 +110,22 @@ func (c *ChainNode) InitiateReplicatedWrite(ctx context.Context, key string, val
 	return c.client.Write(ctx, succ, key, value, version)
 }
 
+func (c *ChainNode) Commit(ctx context.Context, key string, version uint64) error {
+	membership := c.chainConfig.Load()
+	if membership == nil {
+		return ErrNotMemberOfChain
+	}
+
+	if err := c.store.CommitVersion(key, version); err != nil {
+		return err
+	}
+	c.onCommitCh <- OnCommitMessage{Key: key, Version: version}
+
+	return nil
+}
+
 func (c *ChainNode) Read(ctx context.Context, key string) ([]byte, error) {
-	membership := c.membership.Load()
+	membership := c.chainConfig.Load()
 	if membership == nil {
 		return nil, ErrNotMemberOfChain
 	}
@@ -123,20 +137,6 @@ func (c *ChainNode) Read(ctx context.Context, key string) ([]byte, error) {
 	}
 
 	return value, err
-}
-
-func (c *ChainNode) Commit(ctx context.Context, key string, version uint64) error {
-	membership := c.membership.Load()
-	if membership == nil {
-		return ErrNotMemberOfChain
-	}
-
-	if err := c.store.CommitVersion(key, version); err != nil {
-		return err
-	}
-	c.onCommitCh <- OnCommitMessage{Key: key, Version: version}
-
-	return nil
 }
 
 func (c *ChainNode) OnCommitRoutine(ctx context.Context) {
@@ -172,7 +172,7 @@ func (c *ChainNode) OnCommit(ctx context.Context, key string, version uint64) er
 	if err != nil {
 		return err
 	}
-	m := c.membership.Load()
+	m := c.chainConfig.Load()
 	if m == nil {
 		return nil
 	}
