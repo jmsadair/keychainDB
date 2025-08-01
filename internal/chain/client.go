@@ -67,6 +67,9 @@ func (cc *ChainClient) Propagate(ctx context.Context, address net.Addr, keyFilte
 	}
 
 	stream, err := client.Propagate(ctx, &pb.PropagateRequest{KeyType: keyType})
+	if err != nil {
+		return nil, err
+	}
 	return &KeyValueReciever{Stream: stream}, nil
 }
 
