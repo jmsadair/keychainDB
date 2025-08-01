@@ -126,10 +126,16 @@ func (c *ChainNode) Read(ctx context.Context, key string) ([]byte, error) {
 }
 
 func (c *ChainNode) Commit(ctx context.Context, key string, version uint64) error {
+	membership := c.membership.Load()
+	if membership == nil {
+		return ErrNotMemberOfChain
+	}
+
 	if err := c.store.CommitVersion(key, version); err != nil {
 		return err
 	}
 	c.onCommitCh <- OnCommitMessage{Key: key, Version: version}
+
 	return nil
 }
 
