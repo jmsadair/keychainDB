@@ -21,25 +21,19 @@ func TestPredecessorSuccessor(t *testing.T) {
 	chainConfig, err := NewChainConfiguration(chainID, []net.Addr{head, middle, tail})
 	require.NoError(t, err)
 
-	pred, err := chainConfig.Predecessor(head)
-	require.NoError(t, err)
+	pred := chainConfig.Predecessor(head)
 	require.Nil(t, pred)
-	succ, err := chainConfig.Successor(head)
-	require.NoError(t, err)
+	succ := chainConfig.Successor(head)
 	require.Equal(t, middle.String(), succ.String())
 
-	pred, err = chainConfig.Predecessor(middle)
-	require.NoError(t, err)
+	pred = chainConfig.Predecessor(middle)
 	require.Equal(t, head.String(), pred.String())
-	succ, err = chainConfig.Successor(middle)
-	require.NoError(t, err)
+	succ = chainConfig.Successor(middle)
 	require.Equal(t, tail.String(), succ.String())
 
-	pred, err = chainConfig.Predecessor(tail)
-	require.NoError(t, err)
+	pred = chainConfig.Predecessor(tail)
 	require.Equal(t, middle.String(), pred.String())
-	succ, err = chainConfig.Successor(tail)
-	require.NoError(t, err)
+	succ = chainConfig.Successor(tail)
 	require.Nil(t, succ)
 }
 

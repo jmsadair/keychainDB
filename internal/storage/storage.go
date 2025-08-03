@@ -122,10 +122,10 @@ func (ps *PersistantStorage) CommittedRead(key string) ([]byte, error) {
 	return value, err
 }
 
-// SendKeys will iterate over the key-value pairs in storage that satisfy the provided keyFilter, group them
+// SendKeyValuePairs will iterate over the key-value pairs in storage that satisfy the provided keyFilter, group them
 // into batches, and call the provided sendFunc with the batch as the argument. If at any point during the
 // process an error occurs, the process will be terminated and the error will be returned.
-func (ps *PersistantStorage) SendKeys(ctx context.Context, sendFunc func(context.Context, []KeyValuePair) error, keyFilter KeyFilter) error {
+func (ps *PersistantStorage) SendKeyValuePairs(ctx context.Context, sendFunc func(context.Context, []KeyValuePair) error, keyFilter KeyFilter) error {
 	stream := ps.db.NewStream()
 
 	switch keyFilter {
@@ -155,7 +155,40 @@ func (ps *PersistantStorage) SendKeys(ctx context.Context, sendFunc func(context
 		return !Key(item.Key()).IsMetadata()
 	}
 
-	return stream.Orchestrate(context.Background())
+	return stream.Orchestrate(ctx)
+}
+
+// CommitAll will commit all dirty keys from the current snapshot of the storage immediately.
+// For each key that is committed, the provided onCommit callback will be invoked. If committing
+// any of the keys fails, the process will be terminated and the error will be returned. This is
+// not transactional. It is possible that some keys will have been committed while others will not
+// have if an error occurs.
+func (ps *PersistantStorage) CommitAll(ctx context.Context, onCommit func(ctx context.Context, key string, version uint64) error) error {
+	stream := ps.db.NewStream()
+	stream.Prefix = []byte{byte(dirty)}
+	stream.Send = func(buf *z.Buffer) error {
+		kvList, err := badger.BufferToKVList(buf)
+		if err != nil {
+			return err
+		}
+		for _, kv := range kvList.GetKv() {
+			internalKey := Key(kv.GetKey())
+			key := internalKey.ClientKey()
+			version := internalKey.Version()
+			if err := ps.CommitVersion(key, version); err != nil {
+				return err
+			}
+			if err := onCommit(ctx, key, version); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	stream.ChooseKey = func(item *badger.Item) bool {
+		return !Key(item.Key()).IsMetadata()
+	}
+
+	return stream.Orchestrate(ctx)
 }
 
 func commit(txn *badger.Txn, key string, version uint64) error {
@@ -236,6 +269,9 @@ func write(txn *badger.Txn, key string, value []byte, version uint64, shouldComm
 
 	if newVersion {
 		version = md.NextVersion()
+	}
+	if md.LastCommitted >= version {
+		return 0, nil
 	}
 	if err := md.AddVersion(version); err != nil {
 		return 0, err

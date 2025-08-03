@@ -2,6 +2,8 @@ package storage
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -12,8 +14,8 @@ func TestCommitThenRead(t *testing.T) {
 	require.NoError(t, err)
 	defer store.Close()
 
-	key := "key"
-	value := []byte("value")
+	key := "key-1"
+	value := []byte("value-1")
 	version, err := store.CommittedWriteNewVersion(key, value)
 	require.NoError(t, err)
 	require.Equal(t, uint64(1), version)
@@ -28,8 +30,8 @@ func TestSingleUncommittedWriteThenRead(t *testing.T) {
 	require.NoError(t, err)
 	defer store.Close()
 
-	key := "key"
-	value := []byte("value")
+	key := "key-1"
+	value := []byte("value-1")
 	version, err := store.UncommittedWriteNewVersion(key, value)
 	require.NoError(t, err)
 	require.Equal(t, uint64(1), version)
@@ -43,12 +45,12 @@ func TestMultipleUncommittedWriteThenRead(t *testing.T) {
 	require.NoError(t, err)
 	defer store.Close()
 
-	key := "key"
-	value1 := []byte("value1")
+	key := "key-1"
+	value1 := []byte("value-1")
 	version, err := store.UncommittedWriteNewVersion(key, value1)
 	require.NoError(t, err)
 	require.Equal(t, uint64(1), version)
-	value2 := []byte("value2")
+	value2 := []byte("value-2")
 	version, err = store.UncommittedWriteNewVersion(key, value2)
 	require.NoError(t, err)
 	require.Equal(t, uint64(2), version)
@@ -62,8 +64,8 @@ func TestUncommittedWriteCommitThenRead(t *testing.T) {
 	require.NoError(t, err)
 	defer store.Close()
 
-	key := "key"
-	value := []byte("value")
+	key := "key-1"
+	value := []byte("value-1")
 	version, err := store.UncommittedWriteNewVersion(key, value)
 	require.NoError(t, err)
 	require.Equal(t, uint64(1), version)
@@ -80,12 +82,12 @@ func TestMultipleUncommittedWriteCommitThenRead(t *testing.T) {
 	require.NoError(t, err)
 	defer store.Close()
 
-	key := "key"
-	value1 := []byte("value1")
+	key := "key-1"
+	value1 := []byte("value-1")
 	version, err := store.UncommittedWriteNewVersion(key, value1)
 	require.NoError(t, err)
 	require.Equal(t, uint64(1), version)
-	value2 := []byte("value2")
+	value2 := []byte("value-2")
 	version, err = store.UncommittedWriteNewVersion(key, value2)
 	require.NoError(t, err)
 	require.Equal(t, uint64(2), version)
@@ -102,13 +104,13 @@ func TestInterleavedUncommittedWriteCommitsReads(t *testing.T) {
 	require.NoError(t, err)
 	defer store.Close()
 
-	key := "key"
-	value1 := []byte("value1")
+	key := "key-1"
+	value1 := []byte("value-1")
 	version1, err := store.UncommittedWriteNewVersion(key, value1)
 	require.NoError(t, err)
 	require.Equal(t, uint64(1), version1)
 
-	value2 := []byte("value2")
+	value2 := []byte("value-2")
 	version2, err := store.UncommittedWriteNewVersion(key, value2)
 	require.NoError(t, err)
 	require.Equal(t, uint64(2), version2)
@@ -118,7 +120,7 @@ func TestInterleavedUncommittedWriteCommitsReads(t *testing.T) {
 	_, err = store.CommittedRead(key)
 	require.ErrorIs(t, err, ErrDirtyRead)
 
-	value3 := []byte("value3")
+	value3 := []byte("value-3")
 	version3, err := store.UncommittedWriteNewVersion(key, value3)
 	require.NoError(t, err)
 	require.Equal(t, uint64(3), version3)
@@ -138,14 +140,14 @@ func TestSendKeyValuePairsCommitted(t *testing.T) {
 	require.NoError(t, err)
 	defer store.Close()
 
-	key1 := "key1"
-	value1 := []byte("value1")
-	key2 := "key2"
-	value2 := []byte("value2")
-	key3 := "key3"
-	value3 := []byte("value3")
-	key4 := "key4"
-	value4 := []byte("value4")
+	key1 := "key-1"
+	value1 := []byte("value-1")
+	key2 := "key-2"
+	value2 := []byte("value-2")
+	key3 := "key-3"
+	value3 := []byte("value-3")
+	key4 := "key-4"
+	value4 := []byte("value-4")
 
 	version1, err := store.CommittedWriteNewVersion(key1, value1)
 	require.NoError(t, err)
@@ -157,7 +159,7 @@ func TestSendKeyValuePairsCommitted(t *testing.T) {
 	// Ensure the committed key filter does not include dirty keys.
 	_, err = store.UncommittedWriteNewVersion(key4, value4)
 	require.NoError(t, err)
-	value5 := []byte("value5")
+	value5 := []byte("value-5")
 	_, err = store.UncommittedWriteNewVersion(key3, value5)
 	require.NoError(t, err)
 
@@ -167,7 +169,7 @@ func TestSendKeyValuePairsCommitted(t *testing.T) {
 		return nil
 	}
 
-	require.NoError(t, store.SendKeys(context.TODO(), sendFunc, CommittedKeys))
+	require.NoError(t, store.SendKeyValuePairs(context.TODO(), sendFunc, CommittedKeys))
 	require.Len(t, sentKvPairs, 3)
 	keys := []string{key1, key2, key3}
 	values := [][]byte{value1, value2, value3}
@@ -186,10 +188,10 @@ func TestSendKeyValuePairsDirty(t *testing.T) {
 	require.NoError(t, err)
 	defer store.Close()
 
-	key1 := "key1"
-	value1 := []byte("value1")
-	value2 := []byte("value2")
-	value3 := []byte("value3")
+	key1 := "key-1"
+	value1 := []byte("value-1")
+	value2 := []byte("value-2")
+	value3 := []byte("value-3")
 	version1, err := store.UncommittedWriteNewVersion(key1, value1)
 	require.NoError(t, err)
 	version2, err := store.UncommittedWriteNewVersion(key1, value2)
@@ -198,8 +200,8 @@ func TestSendKeyValuePairsDirty(t *testing.T) {
 	require.NoError(t, err)
 
 	// Ensure the dirty key filter does not include committed keys.
-	key2 := "key2"
-	value4 := []byte("value4")
+	key2 := "key-2"
+	value4 := []byte("value-4")
 	_, err = store.CommittedWriteNewVersion(key2, value4)
 	require.NoError(t, err)
 
@@ -209,7 +211,7 @@ func TestSendKeyValuePairsDirty(t *testing.T) {
 		return nil
 	}
 
-	require.NoError(t, store.SendKeys(context.TODO(), sendFunc, DirtyKeys))
+	require.NoError(t, store.SendKeyValuePairs(context.TODO(), sendFunc, DirtyKeys))
 	require.Len(t, sentKvPairs, 3)
 	values := [][]byte{value1, value2, value3}
 	versions := []uint64{version1, version2, version3}
@@ -227,14 +229,14 @@ func TestSendKeyValuePairsAll(t *testing.T) {
 	require.NoError(t, err)
 	defer store.Close()
 
-	key1 := "key1"
-	value1 := []byte("value1")
-	key2 := "key2"
-	value2 := []byte("value2")
-	key3 := "key3"
-	value3 := []byte("value3")
-	key4 := "key4"
-	value4 := []byte("value4")
+	key1 := "key-1"
+	value1 := []byte("value-1")
+	key2 := "key-2"
+	value2 := []byte("value-2")
+	key3 := "key-3"
+	value3 := []byte("value-3")
+	key4 := "key-4"
+	value4 := []byte("value-4")
 
 	version1, err := store.CommittedWriteNewVersion(key1, value1)
 	require.NoError(t, err)
@@ -251,7 +253,7 @@ func TestSendKeyValuePairsAll(t *testing.T) {
 		return nil
 	}
 
-	require.NoError(t, store.SendKeys(context.TODO(), sendFunc, AllKeys))
+	require.NoError(t, store.SendKeyValuePairs(context.TODO(), sendFunc, AllKeys))
 	require.Len(t, sentKvPairs, 4)
 	keys := []string{key1, key2, key3, key4}
 	values := [][]byte{value1, value2, value3, value4}
@@ -263,5 +265,50 @@ func TestSendKeyValuePairsAll(t *testing.T) {
 		require.Equal(t, values[i], kvPair.Value)
 		require.Equal(t, versions[i], kvPair.Version)
 		require.Equal(t, committed[i], kvPair.Committed)
+	}
+}
+
+func TestCommitAll(t *testing.T) {
+	store, err := NewPersistantStorage(t.TempDir())
+	require.NoError(t, err)
+	defer store.Close()
+
+	// Add multiple key-value pairs to storage, but do not commit any of them.
+	numKvPairs := 100
+	numVersions := 3
+	expectedKvPairs := make(map[string][]byte, numKvPairs)
+	for i := range numKvPairs {
+		key := fmt.Sprintf("key-%d", i)
+		var value []byte
+		for j := 1; j <= numVersions; j++ {
+			value = fmt.Appendf(nil, "value-%d-%d", i, j)
+			store.UncommittedWrite(key, value, uint64(j))
+		}
+		expectedKvPairs[key] = value
+	}
+
+	// Commit all keys.
+	onCommit := func(ctx context.Context, key string, version uint64) error {
+		return nil
+	}
+	require.NoError(t, store.CommitAll(context.TODO(), onCommit))
+
+	// Ensure that the only the latest version of the committed keys exists.
+	actualKvPairs := make(map[string][]byte, numKvPairs)
+	recordCommittedKeys := func(ctx context.Context, kvPairs []KeyValuePair) error {
+		for _, kvPair := range kvPairs {
+			if !kvPair.Committed {
+				return errors.New("all keys should have been committed")
+			}
+			actualKvPairs[kvPair.Key] = kvPair.Value
+		}
+		return nil
+	}
+	require.NoError(t, store.SendKeyValuePairs(context.TODO(), recordCommittedKeys, AllKeys))
+	require.Len(t, actualKvPairs, len(expectedKvPairs))
+	for expectedKey, expectedValue := range expectedKvPairs {
+		actualValue, ok := actualKvPairs[expectedKey]
+		require.True(t, ok)
+		require.Equal(t, expectedValue, actualValue)
 	}
 }
