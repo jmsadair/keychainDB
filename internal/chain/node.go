@@ -236,6 +236,14 @@ func (c *ChainNode) OnCommit(ctx context.Context, key string, version uint64) er
 }
 
 func (c *ChainNode) Propagate(ctx context.Context, keyFilter storage.KeyFilter, stream KeyValueStreamSender) error {
+	state := c.state.Load()
+	if !state.config.IsMember(c.address) {
+		return ErrNotMemberOfChain
+	}
+	if state.status == Syncing {
+		return ErrSyncing
+	}
+
 	sendFunc := func(ctx context.Context, kvPairs []storage.KeyValuePair) error {
 		for _, kvPair := range kvPairs {
 			if err := stream.Send(&kvPair); err != nil {
@@ -253,10 +261,14 @@ func (c *ChainNode) RequestPropagation(ctx context.Context, address net.Addr, ke
 	if err != nil {
 		return err
 	}
+
 	for {
 		kvPair, err := stream.Recieve()
 		if err == io.EOF {
 			break
+		}
+		if err != nil {
+			return err
 		}
 
 		shouldCommit := kvPair.Committed || isTail
@@ -368,57 +380,65 @@ func (c *ChainNode) OnConfigChangeRoutine(ctx context.Context) {
 
 func (c *ChainNode) OnNewSuccessor(ctx context.Context, config *ChainConfiguration, isSyncing bool) {
 	for {
-		keyFilter := storage.CommittedKeys
-		if isSyncing {
-			keyFilter = storage.AllKeys
-		}
-		if succ := config.Successor(c.address); succ != nil {
-			if err := c.RequestPropagation(ctx, succ, keyFilter, config.IsTail(c.address)); err != nil {
-				continue
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			keyFilter := storage.CommittedKeys
+			if isSyncing {
+				keyFilter = storage.AllKeys
 			}
-		} else {
-			onCommit := func(ctx context.Context, key string, version uint64) error {
-				select {
-				case <-ctx.Done():
-					return nil
-				case c.onCommitCh <- onCommitMessage{Key: key, Version: version}:
+			if succ := config.Successor(c.address); succ != nil {
+				if err := c.RequestPropagation(ctx, succ, keyFilter, config.IsTail(c.address)); err != nil {
+					continue
 				}
-				return nil
+			} else {
+				onCommit := func(ctx context.Context, key string, version uint64) error {
+					select {
+					case <-ctx.Done():
+						return nil
+					case c.onCommitCh <- onCommitMessage{key: key, version: version}:
+					}
+					return nil
+				}
+				if err := c.store.CommitAll(ctx, onCommit); err != nil {
+					continue
+				}
 			}
-			if err := c.store.CommitAll(ctx, onCommit); err != nil {
-				continue
+			if isSyncing {
+				select {
+				case c.syncCompleteCh <- struct{}{}:
+				case <-ctx.Done():
+				}
 			}
 		}
 		break
-	}
-
-	if isSyncing {
-		select {
-		case c.syncCompleteCh <- struct{}{}:
-		case <-ctx.Done():
-		}
 	}
 }
 
 func (c *ChainNode) OnNewPredecessor(ctx context.Context, config *ChainConfiguration, isSyncing bool) {
 	for {
-		keyFilter := storage.DirtyKeys
-		if isSyncing {
-			keyFilter = storage.AllKeys
-		}
-		if pred := config.Predecessor(c.address); pred != nil {
-			err := c.RequestPropagation(ctx, pred, keyFilter, config.IsTail(c.address))
-			if err != nil {
-				continue
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			keyFilter := storage.DirtyKeys
+			if isSyncing {
+				keyFilter = storage.AllKeys
+			}
+			if pred := config.Predecessor(c.address); pred != nil {
+				err := c.RequestPropagation(ctx, pred, keyFilter, config.IsTail(c.address))
+				if err != nil {
+					continue
+				}
+			}
+			if isSyncing {
+				select {
+				case c.syncCompleteCh <- struct{}{}:
+				case <-ctx.Done():
+				}
 			}
 		}
 		break
-	}
-
-	if isSyncing {
-		select {
-		case c.syncCompleteCh <- struct{}{}:
-		case <-ctx.Done():
-		}
 	}
 }

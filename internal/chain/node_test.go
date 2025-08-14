@@ -240,8 +240,8 @@ func TestCommit(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, node.onCommitCh, 1)
 	commitMsg := <-node.onCommitCh
-	require.Equal(t, key, commitMsg.Key)
-	require.Equal(t, version, commitMsg.Version)
+	require.Equal(t, key, commitMsg.key)
+	require.Equal(t, version, commitMsg.version)
 }
 
 func TestRequestPropagation(t *testing.T) {
