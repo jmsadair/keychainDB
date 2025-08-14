@@ -8,7 +8,10 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-var ErrNotMemberOfChain = errors.New("not a member of the chain")
+var (
+	ErrNotMemberOfChain = errors.New("not a member of the chain")
+	EmptyChain          = &ChainConfiguration{}
+)
 
 type ChainID string
 
@@ -56,49 +59,67 @@ func (cm *ChainConfiguration) Bytes() ([]byte, error) {
 }
 
 // Head returns the address of the head of the chain.
+// If the chain has no members, nil is returned.
 func (cm *ChainConfiguration) Head() net.Addr {
+	if len(cm.members) == 0 {
+		return nil
+	}
 	return cm.members[0]
 }
 
 // Tail returns the address of the tail of the chain.
+// If the chain has no members, nil is returned.
 func (cm *ChainConfiguration) Tail() net.Addr {
+	if len(cm.members) == 0 {
+		return nil
+	}
 	return cm.members[len(cm.members)-1]
 }
 
-// Predecessor returns the predecessor of the provided member.
-// If the member is the head of the chain, nil is returned.
-// If the member does not exist in the chain, an error is returned.
-func (cm *ChainConfiguration) Predecessor(member net.Addr) (net.Addr, error) {
+// Predecessor returns the predecessor of the provided address.
+// If the address is the head of the chain or is not actually a member of the chain, nil is returned.
+func (cm *ChainConfiguration) Predecessor(member net.Addr) net.Addr {
 	memberIndex, ok := cm.addressToMemberIndex[member.String()]
 	if !ok {
-		return nil, ErrNotMemberOfChain
+		return nil
 	}
 	if memberIndex-1 < 0 {
-		return nil, nil
+		return nil
 	}
-	return cm.members[memberIndex-1], nil
+	return cm.members[memberIndex-1]
 }
 
-// Successor returns the successor of the provided member.
-// If the member is the tail of the chain, nil is returned.
-// If the member does not exist in the chain, an error is returned.
-func (cm *ChainConfiguration) Successor(member net.Addr) (net.Addr, error) {
+// Successor returns the successor of the provided address.
+// If the address is the tail of the chain or is not actually a member of the chain, nil is returned.
+func (cm *ChainConfiguration) Successor(member net.Addr) net.Addr {
 	memberIndex, ok := cm.addressToMemberIndex[member.String()]
 	if !ok {
-		return nil, ErrNotMemberOfChain
+		return nil
 	}
 	if memberIndex+1 >= len(cm.members) {
-		return nil, nil
+		return nil
 	}
-	return cm.members[memberIndex+1], nil
+	return cm.members[memberIndex+1]
 }
 
-// IsHead returns a boolean value indicating whether the provided member is the head of the chain.
-func (cm *ChainConfiguration) IsHead(member net.Addr) bool {
-	return cm.members[0].String() == member.String()
+// IsHead returns a boolean value indicating whether the provided address is the head of the chain.
+func (cm *ChainConfiguration) IsHead(address net.Addr) bool {
+	if len(cm.members) == 0 {
+		return false
+	}
+	return cm.members[0].String() == address.String()
 }
 
-// IsTail returns a boolean value indicating whether the provided member is the tail of the chain.
-func (cm *ChainConfiguration) IsTail(member net.Addr) bool {
-	return cm.members[len(cm.members)-1].String() == member.String()
+// IsTail returns a boolean value indicating whether the provided address is the tail of the chain.
+func (cm *ChainConfiguration) IsTail(address net.Addr) bool {
+	if len(cm.members) == 0 {
+		return false
+	}
+	return cm.members[len(cm.members)-1].String() == address.String()
+}
+
+// IsMember returns a boolean value indicating whether the provided address is a member of the chain.
+func (cm *ChainConfiguration) IsMember(address net.Addr) bool {
+	_, ok := cm.addressToMemberIndex[address.String()]
+	return ok
 }

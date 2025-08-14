@@ -19,10 +19,11 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	ChainService_Write_FullMethodName     = "/chain.ChainService/Write"
-	ChainService_Read_FullMethodName      = "/chain.ChainService/Read"
-	ChainService_Commit_FullMethodName    = "/chain.ChainService/Commit"
-	ChainService_Propagate_FullMethodName = "/chain.ChainService/Propagate"
+	ChainService_Write_FullMethodName               = "/chain.ChainService/Write"
+	ChainService_Read_FullMethodName                = "/chain.ChainService/Read"
+	ChainService_Commit_FullMethodName              = "/chain.ChainService/Commit"
+	ChainService_Propagate_FullMethodName           = "/chain.ChainService/Propagate"
+	ChainService_UpdateConfiguration_FullMethodName = "/chain.ChainService/UpdateConfiguration"
 )
 
 // ChainServiceClient is the client API for ChainService service.
@@ -40,6 +41,8 @@ type ChainServiceClient interface {
 	// Propagate handles requests to list all key-value pairs that match the specified criterion.
 	// This is useful when a new node is added to chain and needs to be recieve all of the key-value pairs it is missing.
 	Propagate(ctx context.Context, in *PropagateRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[KeyValuePair], error)
+	// UpdateConfiguration handles requests to update the chain membership configuration.
+	UpdateConfiguration(ctx context.Context, in *UpdateConfigurationRequest, opts ...grpc.CallOption) (*UpdateConfigurationResponse, error)
 }
 
 type chainServiceClient struct {
@@ -99,6 +102,16 @@ func (c *chainServiceClient) Propagate(ctx context.Context, in *PropagateRequest
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type ChainService_PropagateClient = grpc.ServerStreamingClient[KeyValuePair]
 
+func (c *chainServiceClient) UpdateConfiguration(ctx context.Context, in *UpdateConfigurationRequest, opts ...grpc.CallOption) (*UpdateConfigurationResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UpdateConfigurationResponse)
+	err := c.cc.Invoke(ctx, ChainService_UpdateConfiguration_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ChainServiceServer is the server API for ChainService service.
 // All implementations must embed UnimplementedChainServiceServer
 // for forward compatibility.
@@ -114,6 +127,8 @@ type ChainServiceServer interface {
 	// Propagate handles requests to list all key-value pairs that match the specified criterion.
 	// This is useful when a new node is added to chain and needs to be recieve all of the key-value pairs it is missing.
 	Propagate(*PropagateRequest, grpc.ServerStreamingServer[KeyValuePair]) error
+	// UpdateConfiguration handles requests to update the chain membership configuration.
+	UpdateConfiguration(context.Context, *UpdateConfigurationRequest) (*UpdateConfigurationResponse, error)
 	mustEmbedUnimplementedChainServiceServer()
 }
 
@@ -135,6 +150,9 @@ func (UnimplementedChainServiceServer) Commit(context.Context, *CommitRequest) (
 }
 func (UnimplementedChainServiceServer) Propagate(*PropagateRequest, grpc.ServerStreamingServer[KeyValuePair]) error {
 	return status.Errorf(codes.Unimplemented, "method Propagate not implemented")
+}
+func (UnimplementedChainServiceServer) UpdateConfiguration(context.Context, *UpdateConfigurationRequest) (*UpdateConfigurationResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpdateConfiguration not implemented")
 }
 func (UnimplementedChainServiceServer) mustEmbedUnimplementedChainServiceServer() {}
 func (UnimplementedChainServiceServer) testEmbeddedByValue()                      {}
@@ -222,6 +240,24 @@ func _ChainService_Propagate_Handler(srv interface{}, stream grpc.ServerStream) 
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type ChainService_PropagateServer = grpc.ServerStreamingServer[KeyValuePair]
 
+func _ChainService_UpdateConfiguration_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateConfigurationRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChainServiceServer).UpdateConfiguration(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChainService_UpdateConfiguration_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChainServiceServer).UpdateConfiguration(ctx, req.(*UpdateConfigurationRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ChainService_ServiceDesc is the grpc.ServiceDesc for ChainService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -240,6 +276,10 @@ var ChainService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Commit",
 			Handler:    _ChainService_Commit_Handler,
+		},
+		{
+			MethodName: "UpdateConfiguration",
+			Handler:    _ChainService_UpdateConfiguration_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

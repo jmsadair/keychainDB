@@ -15,6 +15,8 @@ service ChainService {
 	// Propagate handles requests to list all key-value pairs that match the specified criterion.
 	// This is useful when a new node is added to chain and needs to be recieve all of the key-value pairs it is missing.
 	rpc Propagate (PropagateRequest) returns (stream KeyValuePair) {}
+	// UpdateConfiguration handles requests to update the chain membership configuration.
+	rpc UpdateConfiguration (UpdateConfigurationRequest) returns (UpdateConfigurationResponse) {}
 }
 
 // ChainConfiguration contains the configuration of the chain.
@@ -24,6 +26,14 @@ message ChainConfiguration {
 	// The addresses of the members of the chain.
 	repeated string members = 2;
 }
+
+// UpdateConfigurationRequest is a request for a node to update its chain membership configuration.
+message UpdateConfigurationRequest {
+	// The new configuration for the chain.
+	ChainConfiguration configuration = 1;
+}
+
+message UpdateConfigurationResponse {}
 
 // WriteRequest is a request sent from one node of a chain to another to write a new version of a key.
 message WriteRequest {
