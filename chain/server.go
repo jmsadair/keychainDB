@@ -4,21 +4,22 @@ import (
 	"context"
 	"net"
 
-	"github.com/jmsadair/zebraos/internal/chain"
-	"github.com/jmsadair/zebraos/internal/storage"
 	pb "github.com/jmsadair/zebraos/proto/pbchain"
+	"github.com/jmsadair/zebraos/storage"
 	"google.golang.org/grpc"
 )
 
+// Server is a server implementation for a chain node.
 type Server struct {
 	pb.ChainServiceServer
 
-	dialOpts  []grpc.DialOption
-	chainNode *chain.ChainNode
+	dialOpts []grpc.DialOption
+	node     *chainNode
 }
 
+// NewServer creates a new Server instance.
 func NewServer(address net.Addr, dbPath string, dialOpts ...grpc.DialOption) (*Server, error) {
-	chainClient, err := chain.NewChainClient(dialOpts...)
+	chainClient, err := NewChainClient(dialOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -26,43 +27,48 @@ func NewServer(address net.Addr, dbPath string, dialOpts ...grpc.DialOption) (*S
 	if err != nil {
 		return nil, err
 	}
-	chainNode := chain.NewChainNode(address, store, chainClient)
-	server := &Server{dialOpts: dialOpts, chainNode: chainNode}
+	node := newChainNode(address, store, chainClient)
+	server := &Server{dialOpts: dialOpts, node: node}
 	return server, nil
 }
 
+// Run will start and run the server. Run should only be called once and is blocking.
 func (s *Server) Run(ctx context.Context) {
-	go s.chainNode.OnCommitRoutine(ctx)
-	go s.chainNode.OnConfigChangeRoutine(ctx)
+	go s.node.onCommitRoutine(ctx)
+	go s.node.onConfigChangeRoutine(ctx)
 }
 
+// Write handles incoming requests from other nodes in the chain to write a particular version of a key-value pair to storage.
 func (s *Server) Write(ctx context.Context, request *pb.WriteRequest) (*pb.WriteResponse, error) {
-	if err := s.chainNode.WriteWithVersion(ctx, request.GetKey(), request.GetValue(), request.GetVersion()); err != nil {
+	if err := s.node.writeWithVersion(ctx, request.GetKey(), request.GetValue(), request.GetVersion()); err != nil {
 		return nil, err
 	}
 	return &pb.WriteResponse{}, nil
 }
 
+// Read handles incoming requests from other nodes in the chain read the committed version of a key-value pair.
 func (s *Server) Read(ctx context.Context, request *pb.ReadRequest) (*pb.ReadResponse, error) {
-	value, err := s.chainNode.Read(ctx, request.GetKey())
+	value, err := s.node.read(ctx, request.GetKey())
 	if err != nil {
 		return nil, err
 	}
 	return &pb.ReadResponse{Value: value}, nil
 }
 
+// UpdateConfiguration handles requests from the coordinator to update the membership configuration.
 func (s *Server) UpdateConfiguration(ctx context.Context, request *pb.UpdateConfigurationRequest) (*pb.UpdateConfigurationResponse, error) {
 	pbConfig := request.GetConfiguration()
-	config, err := chain.NewChainConfigurationFromProto(pbConfig)
+	config, err := NewChainConfigurationFromProto(pbConfig)
 	if err != nil {
 		return nil, err
 	}
-	if err := s.chainNode.UpdateConfiguration(ctx, config); err != nil {
+	if err := s.node.updateConfiguration(ctx, config); err != nil {
 		return nil, err
 	}
 	return &pb.UpdateConfigurationResponse{}, nil
 }
 
+// Propagate handles requests from other nodes in the chain to initate a server-side stream of key-value pairs.
 func (s *Server) Propagate(request *pb.PropagateRequest, stream pb.ChainService_PropagateServer) error {
 	var keyFilter storage.KeyFilter
 	switch request.GetKeyType() {
@@ -74,5 +80,5 @@ func (s *Server) Propagate(request *pb.PropagateRequest, stream pb.ChainService_
 		keyFilter = storage.DirtyKeys
 	}
 
-	return s.chainNode.Propagate(stream.Context(), keyFilter, &chain.KeyValueSender{Stream: stream})
+	return s.node.propagate(stream.Context(), keyFilter, &keyValueSendStream{stream: stream})
 }

@@ -9,12 +9,16 @@ import (
 )
 
 var (
+	// Indicates that a node is not a member of any chain.
 	ErrNotMemberOfChain = errors.New("not a member of the chain")
-	EmptyChain          = &ChainConfiguration{}
+	// An empty configuration. All chain nodes start with this configuration.
+	EmptyChain = &ChainConfiguration{}
 )
 
+// ChainID is an identifier for a particular chain.
 type ChainID string
 
+// ChainConfiguration is a membership configuration for a particular chain.
 type ChainConfiguration struct {
 	// The ID of the chain that this node belongs to.
 	ID ChainID

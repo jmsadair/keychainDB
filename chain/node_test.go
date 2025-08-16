@@ -6,7 +6,7 @@ import (
 	"net"
 	"testing"
 
-	"github.com/jmsadair/zebraos/internal/storage"
+	"github.com/jmsadair/zebraos/storage"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
@@ -45,9 +45,9 @@ func (mc *mockClient) Commit(ctx context.Context, address net.Addr, key string, 
 	return args.Error(0)
 }
 
-func (mc *mockClient) Propagate(ctx context.Context, address net.Addr, keyFilter storage.KeyFilter) (KeyValueStreamReader, error) {
+func (mc *mockClient) Propagate(ctx context.Context, address net.Addr, keyFilter storage.KeyFilter) (KeyValueRecieveStream, error) {
 	args := mc.MethodCalled("Propagate", address, keyFilter)
-	return args.Get(0).(KeyValueStreamReader), args.Error(1)
+	return args.Get(0).(KeyValueRecieveStream), args.Error(1)
 }
 
 type mockStorage struct {
@@ -105,13 +105,13 @@ func TestInitiateReplicatedWrite(t *testing.T) {
 
 	client := new(mockClient)
 	store := new(mockStorage)
-	node := NewChainNode(address1, store, client)
+	node := newChainNode(address1, store, client)
 
 	key := "key"
 	value := []byte("value")
 	version := uint64(1)
 
-	err = node.InitiateReplicatedWrite(context.TODO(), key, value)
+	err = node.initiateReplicatedWrite(context.TODO(), key, value)
 	require.ErrorIs(t, err, ErrNotMemberOfChain)
 
 	chain := ChainID("chain")
@@ -119,7 +119,7 @@ func TestInitiateReplicatedWrite(t *testing.T) {
 	require.NoError(t, err)
 	node.state.Load().config = config
 	store.On("CommittedWriteNewVersion", key, value).Return(version, nil).Once()
-	err = node.InitiateReplicatedWrite(context.TODO(), key, value)
+	err = node.initiateReplicatedWrite(context.TODO(), key, value)
 	require.NoError(t, err)
 	store.AssertExpectations(t)
 
@@ -128,7 +128,7 @@ func TestInitiateReplicatedWrite(t *testing.T) {
 	node.state.Load().config = config
 	store.On("UncommittedWriteNewVersion", key, value).Return(version, nil).Once()
 	client.On("Write", address2, key, value, version).Return(nil).Once()
-	err = node.InitiateReplicatedWrite(context.TODO(), key, value)
+	err = node.initiateReplicatedWrite(context.TODO(), key, value)
 	require.NoError(t, err)
 	store.AssertExpectations(t)
 	client.AssertExpectations(t)
@@ -136,7 +136,7 @@ func TestInitiateReplicatedWrite(t *testing.T) {
 	config, err = NewChainConfiguration(chain, []net.Addr{address2, address1})
 	require.NoError(t, err)
 	node.state.Load().config = config
-	err = node.InitiateReplicatedWrite(context.TODO(), key, value)
+	err = node.initiateReplicatedWrite(context.TODO(), key, value)
 	require.ErrorIs(t, err, ErrNotHead)
 }
 
@@ -150,13 +150,13 @@ func TestWriteWithVersion(t *testing.T) {
 
 	store := new(mockStorage)
 	client := new(mockClient)
-	node := NewChainNode(address1, store, client)
+	node := newChainNode(address1, store, client)
 
 	key := "key"
 	value := []byte("value")
 	version := uint64(1)
 
-	err = node.WriteWithVersion(context.TODO(), key, value, version)
+	err = node.writeWithVersion(context.TODO(), key, value, version)
 	require.ErrorIs(t, err, ErrNotMemberOfChain)
 
 	chain := ChainID("chain")
@@ -164,7 +164,7 @@ func TestWriteWithVersion(t *testing.T) {
 	require.NoError(t, err)
 	node.state.Load().config = config
 	store.On("CommittedWrite", key, value, version).Return(nil).Once()
-	err = node.WriteWithVersion(context.TODO(), key, value, version)
+	err = node.writeWithVersion(context.TODO(), key, value, version)
 	require.NoError(t, err)
 	store.AssertExpectations(t)
 
@@ -173,7 +173,7 @@ func TestWriteWithVersion(t *testing.T) {
 	node.state.Load().config = config
 	store.On("UncommittedWrite", key, value, version).Return(nil).Once()
 	client.On("Write", address3, key, value, version).Return(nil).Once()
-	err = node.WriteWithVersion(context.TODO(), key, value, version)
+	err = node.writeWithVersion(context.TODO(), key, value, version)
 	require.NoError(t, err)
 	store.AssertExpectations(t)
 	client.AssertExpectations(t)
@@ -189,12 +189,12 @@ func TestRead(t *testing.T) {
 
 	store := new(mockStorage)
 	client := new(mockClient)
-	node := NewChainNode(address1, store, client)
+	node := newChainNode(address1, store, client)
 
 	key := "key"
 	value := []byte("value")
 
-	_, err = node.Read(context.TODO(), key)
+	_, err = node.read(context.TODO(), key)
 	require.ErrorIs(t, err, ErrNotMemberOfChain)
 
 	chain := ChainID("chain")
@@ -202,14 +202,14 @@ func TestRead(t *testing.T) {
 	require.NoError(t, err)
 	node.state.Load().config = config
 	store.On("CommittedRead", key).Return(value, nil).Once()
-	readValue, err := node.Read(context.TODO(), key)
+	readValue, err := node.read(context.TODO(), key)
 	require.NoError(t, err)
 	require.Equal(t, value, readValue)
 	store.AssertExpectations(t)
 
 	store.On("CommittedRead", key).Return(nil, storage.ErrDirtyRead).Once()
 	client.On("Read", address3, key).Return(value, nil).Once()
-	readValue, err = node.Read(context.TODO(), key)
+	readValue, err = node.read(context.TODO(), key)
 	require.NoError(t, err)
 	require.Equal(t, value, readValue)
 	store.AssertExpectations(t)
@@ -222,12 +222,12 @@ func TestCommit(t *testing.T) {
 
 	store := new(mockStorage)
 	client := new(mockClient)
-	node := NewChainNode(address1, store, client)
+	node := newChainNode(address1, store, client)
 
 	key := "key"
 	version := uint64(1)
 
-	err = node.Commit(context.TODO(), key, version)
+	err = node.commit(context.TODO(), key, version)
 	require.ErrorIs(t, err, ErrNotMemberOfChain)
 
 	chain := ChainID("chain")
@@ -235,7 +235,7 @@ func TestCommit(t *testing.T) {
 	require.NoError(t, err)
 	node.state.Load().config = config
 	store.On("CommitVersion", key, version).Return(nil).Once()
-	err = node.Commit(context.TODO(), key, version)
+	err = node.commit(context.TODO(), key, version)
 	store.AssertExpectations(t)
 	require.NoError(t, err)
 	require.Len(t, node.onCommitCh, 1)
@@ -252,7 +252,7 @@ func TestRequestPropagation(t *testing.T) {
 
 	store := new(mockStorage)
 	client := new(mockClient)
-	node := NewChainNode(address1, store, client)
+	node := newChainNode(address1, store, client)
 
 	stream := new(mockKeyValueStreamReader)
 	kv1 := storage.KeyValuePair{Key: "key-1", Value: []byte("value-1"), Committed: false}
@@ -264,7 +264,7 @@ func TestRequestPropagation(t *testing.T) {
 	client.On("Propagate", address2, storage.AllKeys).Return(stream, nil).Once()
 	store.On("UncommittedWrite", kv1.Key, kv1.Value, kv1.Version).Return(nil).Once()
 	store.On("CommittedWrite", kv2.Key, kv2.Value, kv2.Version).Return(nil).Once()
-	require.NoError(t, node.RequestPropagation(context.TODO(), address2, storage.AllKeys, false))
+	require.NoError(t, node.requestPropagation(context.TODO(), address2, storage.AllKeys, false))
 	stream.AssertExpectations(t)
 	client.AssertExpectations(t)
 	store.AssertExpectations(t)
@@ -275,7 +275,7 @@ func TestRequestPropagation(t *testing.T) {
 	stream.On("Recieve").Return(nil, io.EOF).Once()
 	store.On("CommittedWrite", kv1.Key, kv1.Value, kv1.Version).Return(nil).Once()
 	store.On("CommittedWrite", kv2.Key, kv2.Value, kv2.Version).Return(nil).Once()
-	require.NoError(t, node.RequestPropagation(context.TODO(), address2, storage.AllKeys, true))
+	require.NoError(t, node.requestPropagation(context.TODO(), address2, storage.AllKeys, true))
 	stream.AssertExpectations(t)
 	client.AssertExpectations(t)
 	store.AssertExpectations(t)
@@ -291,7 +291,7 @@ func TestOnNewPredecessor(t *testing.T) {
 
 	store := new(mockStorage)
 	client := new(mockClient)
-	node := NewChainNode(address1, store, client)
+	node := newChainNode(address1, store, client)
 
 	stream := new(mockKeyValueStreamReader)
 	kv1 := storage.KeyValuePair{Key: "key-1", Value: []byte("value-1"), Committed: false}
@@ -310,7 +310,7 @@ func TestOnNewPredecessor(t *testing.T) {
 	client.On("Propagate", address2, storage.AllKeys).Return(stream, nil).Once()
 	store.On("CommittedWrite", kv1.Key, kv1.Value, kv1.Version).Return(nil).Once()
 	store.On("CommittedWrite", kv2.Key, kv2.Value, kv2.Version).Return(nil).Once()
-	node.OnNewPredecessor(context.TODO(), config, true)
+	node.onNewPredecessor(context.TODO(), config, true)
 	require.Len(t, node.syncCompleteCh, 1)
 	node.syncCompleteCh = make(chan any)
 	stream.AssertExpectations(t)
@@ -329,7 +329,7 @@ func TestOnNewPredecessor(t *testing.T) {
 	client.On("Propagate", address3, storage.DirtyKeys).Return(stream, nil).Once()
 	store.On("CommittedWrite", kv1.Key, kv1.Value, kv1.Version).Return(nil).Once()
 	store.On("CommittedWrite", kv2.Key, kv2.Value, kv2.Version).Return(nil).Once()
-	node.OnNewPredecessor(context.TODO(), config, false)
+	node.onNewPredecessor(context.TODO(), config, false)
 	stream.AssertExpectations(t)
 	client.AssertExpectations(t)
 	store.AssertExpectations(t)
@@ -345,7 +345,7 @@ func TestOnNewSuccessor(t *testing.T) {
 
 	store := new(mockStorage)
 	client := new(mockClient)
-	node := NewChainNode(address1, store, client)
+	node := newChainNode(address1, store, client)
 
 	stream := new(mockKeyValueStreamReader)
 	kv1 := storage.KeyValuePair{Key: "key-1", Value: []byte("value-1"), Committed: false}
@@ -364,7 +364,7 @@ func TestOnNewSuccessor(t *testing.T) {
 	client.On("Propagate", address2, storage.AllKeys).Return(stream, nil).Once()
 	store.On("UncommittedWrite", kv1.Key, kv1.Value, kv1.Version).Return(nil).Once()
 	store.On("CommittedWrite", kv2.Key, kv2.Value, kv2.Version).Return(nil).Once()
-	node.OnNewSuccessor(context.TODO(), config, true)
+	node.onNewSuccessor(context.TODO(), config, true)
 	require.Len(t, node.syncCompleteCh, 1)
 	node.syncCompleteCh = make(chan any)
 	stream.AssertExpectations(t)
@@ -380,7 +380,7 @@ func TestOnNewSuccessor(t *testing.T) {
 	stream.On("Recieve").Return(nil, io.EOF).Once()
 	client.On("Propagate", address3, storage.CommittedKeys).Return(stream, nil).Once()
 	store.On("CommittedWrite", kv2.Key, kv2.Value, kv2.Version).Return(nil).Once()
-	node.OnNewSuccessor(context.TODO(), config, false)
+	node.onNewSuccessor(context.TODO(), config, false)
 	stream.AssertExpectations(t)
 	client.AssertExpectations(t)
 	store.AssertExpectations(t)
@@ -390,7 +390,7 @@ func TestOnNewSuccessor(t *testing.T) {
 	config, err = NewChainConfiguration(chain, []net.Addr{address1})
 	require.NoError(t, err)
 	store.On("CommitAll").Return(nil).Once()
-	node.OnNewSuccessor(context.TODO(), config, false)
+	node.onNewSuccessor(context.TODO(), config, false)
 	stream.AssertExpectations(t)
 	client.AssertExpectations(t)
 	store.AssertExpectations(t)

@@ -8,7 +8,14 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/jmsadair/zebraos/internal/storage"
+	"github.com/jmsadair/zebraos/storage"
+)
+
+var (
+	// Indicates that a node is not a head of a chain.
+	ErrNotHead = errors.New("writes must be initiated from the head of the chain")
+	// Indicates a node is in the syncing state.
+	ErrSyncing = errors.New("syncing and cannot server reads as this time")
 )
 
 const (
@@ -16,12 +23,7 @@ const (
 	numOnCommitWorkers    = 16
 )
 
-var (
-	ErrNotHead = errors.New("writes must be initiated from the head of the chain")
-	ErrSyncing = errors.New("syncing and cannot server reads as this time")
-)
-
-type Storage interface {
+type persistantStrorage interface {
 	UncommittedWrite(key string, value []byte, version uint64) error
 	UncommittedWriteNewVersion(key string, value []byte) (uint64, error)
 	CommittedWrite(key string, value []byte, version uint64) error
@@ -32,19 +34,11 @@ type Storage interface {
 	CommitAll(ctx context.Context, onCommit func(ctx context.Context, key string, version uint64) error) error
 }
 
-type KeyValueStreamReader interface {
-	Recieve() (*storage.KeyValuePair, error)
-}
-
-type KeyValueStreamSender interface {
-	Send(*storage.KeyValuePair) error
-}
-
-type Client interface {
+type chainClient interface {
 	Write(ctx context.Context, address net.Addr, key string, value []byte, version uint64) error
 	Read(ctx context.Context, address net.Addr, key string) ([]byte, error)
 	Commit(ctx context.Context, address net.Addr, key string, version uint64) error
-	Propagate(ctx context.Context, address net.Addr, keyFilter storage.KeyFilter) (KeyValueStreamReader, error)
+	Propagate(ctx context.Context, address net.Addr, keyFilter storage.KeyFilter) (KeyValueRecieveStream, error)
 }
 
 type onConfigChangeMessage struct {
@@ -81,26 +75,19 @@ func (ct *cancellableTask) run(ctx context.Context, fn func(ctx context.Context)
 	}()
 }
 
-type ChainNode struct {
-	// The address of this node.
-	address net.Addr
-	// The local storage for this node.
-	store Storage
-	// A client for communicating with other nodes in the chain.
-	client Client
-	// Channel used to send messages to background routine when a key is committed.
-	onCommitCh chan onCommitMessage
-	// Channel used to send messages to background routine when a configuration change has occurred.
+type chainNode struct {
+	address          net.Addr
+	store            persistantStrorage
+	client           chainClient
+	onCommitCh       chan onCommitMessage
 	onConfigChangeCh chan onConfigChangeMessage
-	// Channel used to signal that syncing is complete and the node can become active.
-	syncCompleteCh chan any
-	// Metadata regarding the membership configuration and status of this node.
-	state atomic.Pointer[State]
+	syncCompleteCh   chan any
+	state            atomic.Pointer[State]
 }
 
-func NewChainNode(address net.Addr, store Storage, client Client) *ChainNode {
+func newChainNode(address net.Addr, store persistantStrorage, client chainClient) *chainNode {
 	state := &State{config: EmptyChain, status: Inactive}
-	node := &ChainNode{
+	node := &chainNode{
 		address:          address,
 		store:            store,
 		client:           client,
@@ -112,7 +99,7 @@ func NewChainNode(address net.Addr, store Storage, client Client) *ChainNode {
 	return node
 }
 
-func (c *ChainNode) WriteWithVersion(ctx context.Context, key string, value []byte, version uint64) error {
+func (c *chainNode) writeWithVersion(ctx context.Context, key string, value []byte, version uint64) error {
 	state := c.state.Load()
 	if !state.config.IsMember(c.address) {
 		return ErrNotMemberOfChain
@@ -134,7 +121,7 @@ func (c *ChainNode) WriteWithVersion(ctx context.Context, key string, value []by
 	return c.client.Write(ctx, succ, key, value, version)
 }
 
-func (c *ChainNode) InitiateReplicatedWrite(ctx context.Context, key string, value []byte) error {
+func (c *chainNode) initiateReplicatedWrite(ctx context.Context, key string, value []byte) error {
 	state := c.state.Load()
 	if !state.config.IsMember(c.address) {
 		return ErrNotMemberOfChain
@@ -156,7 +143,7 @@ func (c *ChainNode) InitiateReplicatedWrite(ctx context.Context, key string, val
 	return c.client.Write(ctx, succ, key, value, version)
 }
 
-func (c *ChainNode) Commit(ctx context.Context, key string, version uint64) error {
+func (c *chainNode) commit(ctx context.Context, key string, version uint64) error {
 	state := c.state.Load()
 	if !state.config.IsMember(c.address) {
 		return ErrNotMemberOfChain
@@ -170,7 +157,7 @@ func (c *ChainNode) Commit(ctx context.Context, key string, version uint64) erro
 	return nil
 }
 
-func (c *ChainNode) Read(ctx context.Context, key string) ([]byte, error) {
+func (c *chainNode) read(ctx context.Context, key string) ([]byte, error) {
 	state := c.state.Load()
 	if !state.config.IsMember(c.address) {
 		return nil, ErrNotMemberOfChain
@@ -189,11 +176,11 @@ func (c *ChainNode) Read(ctx context.Context, key string) ([]byte, error) {
 	return value, err
 }
 
-func (c *ChainNode) OnCommitRoutine(ctx context.Context) {
+func (c *chainNode) onCommitRoutine(ctx context.Context) {
 	workerCh := make(chan onCommitMessage)
 	worker := func() {
 		for msg := range workerCh {
-			c.OnCommit(ctx, msg.key, msg.version)
+			c.onCommit(ctx, msg.key, msg.version)
 		}
 	}
 
@@ -217,7 +204,7 @@ func (c *ChainNode) OnCommitRoutine(ctx context.Context) {
 	}
 }
 
-func (c *ChainNode) OnCommit(ctx context.Context, key string, version uint64) error {
+func (c *chainNode) onCommit(ctx context.Context, key string, version uint64) error {
 	state := c.state.Load()
 	if !state.config.IsMember(c.address) {
 		return ErrNotMemberOfChain
@@ -235,7 +222,7 @@ func (c *ChainNode) OnCommit(ctx context.Context, key string, version uint64) er
 	return c.client.Commit(ctx, pred, key, version)
 }
 
-func (c *ChainNode) Propagate(ctx context.Context, keyFilter storage.KeyFilter, stream KeyValueStreamSender) error {
+func (c *chainNode) propagate(ctx context.Context, keyFilter storage.KeyFilter, stream KeyValueSendStream) error {
 	state := c.state.Load()
 	if !state.config.IsMember(c.address) {
 		return ErrNotMemberOfChain
@@ -256,7 +243,7 @@ func (c *ChainNode) Propagate(ctx context.Context, keyFilter storage.KeyFilter, 
 	return c.store.SendKeyValuePairs(ctx, sendFunc, keyFilter)
 }
 
-func (c *ChainNode) RequestPropagation(ctx context.Context, address net.Addr, keyFilter storage.KeyFilter, isTail bool) error {
+func (c *chainNode) requestPropagation(ctx context.Context, address net.Addr, keyFilter storage.KeyFilter, isTail bool) error {
 	stream, err := c.client.Propagate(ctx, address, keyFilter)
 	if err != nil {
 		return err
@@ -294,7 +281,7 @@ func (c *ChainNode) RequestPropagation(ctx context.Context, address net.Addr, ke
 	return nil
 }
 
-func (c *ChainNode) UpdateConfiguration(ctx context.Context, config *ChainConfiguration) error {
+func (c *chainNode) updateConfiguration(ctx context.Context, config *ChainConfiguration) error {
 	msg := onConfigChangeMessage{config: config, doneCh: make(chan bool)}
 
 	select {
@@ -311,15 +298,15 @@ func (c *ChainNode) UpdateConfiguration(ctx context.Context, config *ChainConfig
 	}
 }
 
-func (c *ChainNode) OnConfigChangeRoutine(ctx context.Context) {
+func (c *chainNode) onConfigChangeRoutine(ctx context.Context) {
 	var onNewPredTask, onNewSuccTask cancellableTask
 
 	runNewPredecessorTask := func(config *ChainConfiguration, isSyncing bool) {
-		onNewPredTask.run(ctx, func(ctx context.Context) { c.OnNewPredecessor(ctx, config, isSyncing) })
+		onNewPredTask.run(ctx, func(ctx context.Context) { c.onNewPredecessor(ctx, config, isSyncing) })
 	}
 	runNewSuccessorTask := func(config *ChainConfiguration, isSyncing bool) {
 		onNewSuccTask.run(ctx, func(ctx context.Context) {
-			c.OnNewSuccessor(ctx, config, isSyncing)
+			c.onNewSuccessor(ctx, config, isSyncing)
 		})
 	}
 	defer func() {
@@ -378,7 +365,7 @@ func (c *ChainNode) OnConfigChangeRoutine(ctx context.Context) {
 	}
 }
 
-func (c *ChainNode) OnNewSuccessor(ctx context.Context, config *ChainConfiguration, isSyncing bool) {
+func (c *chainNode) onNewSuccessor(ctx context.Context, config *ChainConfiguration, isSyncing bool) {
 	for {
 		select {
 		case <-ctx.Done():
@@ -389,7 +376,7 @@ func (c *ChainNode) OnNewSuccessor(ctx context.Context, config *ChainConfigurati
 				keyFilter = storage.AllKeys
 			}
 			if succ := config.Successor(c.address); succ != nil {
-				if err := c.RequestPropagation(ctx, succ, keyFilter, config.IsTail(c.address)); err != nil {
+				if err := c.requestPropagation(ctx, succ, keyFilter, config.IsTail(c.address)); err != nil {
 					continue
 				}
 			} else {
@@ -416,7 +403,7 @@ func (c *ChainNode) OnNewSuccessor(ctx context.Context, config *ChainConfigurati
 	}
 }
 
-func (c *ChainNode) OnNewPredecessor(ctx context.Context, config *ChainConfiguration, isSyncing bool) {
+func (c *chainNode) onNewPredecessor(ctx context.Context, config *ChainConfiguration, isSyncing bool) {
 	for {
 		select {
 		case <-ctx.Done():
@@ -427,7 +414,7 @@ func (c *ChainNode) OnNewPredecessor(ctx context.Context, config *ChainConfigura
 				keyFilter = storage.AllKeys
 			}
 			if pred := config.Predecessor(c.address); pred != nil {
-				err := c.RequestPropagation(ctx, pred, keyFilter, config.IsTail(c.address))
+				err := c.requestPropagation(ctx, pred, keyFilter, config.IsTail(c.address))
 				if err != nil {
 					continue
 				}
