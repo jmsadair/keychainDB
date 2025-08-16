@@ -1,42 +1,47 @@
-package chain
+package transport
 
 import (
+	"context"
 	"net"
 	"sync"
 
 	pb "github.com/jmsadair/zebraos/proto/pbchain"
 	"github.com/jmsadair/zebraos/storage"
-	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
 
 // KeyValueReceiveStream is a stream for receiving key-value pairs.
 type KeyValueReceiveStream interface {
-	// Receive will read the next key-value pair from the stream.
-	// If is the end of the stream, an io.EOF error will be returned.
 	Receive() (*storage.KeyValuePair, error)
 }
 
 // KeyValueSendStream is a stream for sending key-value pairs.
 type KeyValueSendStream interface {
-	// Send will send the key-value pair over the stream.
 	Send(*storage.KeyValuePair) error
 }
 
-// chainClient is a client for nodes within a chain to communicate with one another.
+// ChainClient defines the interface for chain node communication.
+type ChainClient interface {
+	Write(ctx context.Context, address net.Addr, key string, value []byte, version uint64) error
+	Read(ctx context.Context, address net.Addr, key string) ([]byte, error)
+	Commit(ctx context.Context, address net.Addr, key string, version uint64) error
+	Propagate(ctx context.Context, address net.Addr, keyFilter storage.KeyFilter) (KeyValueReceiveStream, error)
+}
+
+// chainClient is a gRPC-based implementation of the Client interface.
 type chainClient struct {
 	mu       sync.Mutex
 	clients  map[string]pb.ChainServiceClient
 	dialOpts []grpc.DialOption
 }
 
-// newChainClient creates a new chainClient instance with the provided dial options.
-func newChainClient(dialOpts ...grpc.DialOption) (*chainClient, error) {
-	return &chainClient{dialOpts: dialOpts}, nil
+// NewChainClient creates a new gRPC-based chain client with the provided dial options.
+func NewChainClient(dialOpts ...grpc.DialOption) (ChainClient, error) {
+	return &chainClient{
+		clients:  make(map[string]pb.ChainServiceClient),
+		dialOpts: dialOpts,
+	}, nil
 }
-
-// Ensure chainClient implements Client interface
-var _ Client = (*chainClient)(nil)
 
 // Write writes a versioned key-value to another node in the chain.
 func (cc *chainClient) Write(ctx context.Context, address net.Addr, key string, value []byte, version uint64) error {
@@ -54,7 +59,7 @@ func (cc *chainClient) Read(ctx context.Context, address net.Addr, key string) (
 	if err != nil {
 		return nil, err
 	}
-	response, err := client.Read(context.Background(), &pb.ReadRequest{Key: key})
+	response, err := client.Read(ctx, &pb.ReadRequest{Key: key})
 	if err != nil {
 		return nil, err
 	}

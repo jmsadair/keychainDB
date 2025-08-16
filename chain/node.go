@@ -9,6 +9,7 @@ import (
 	"sync/atomic"
 
 	"github.com/jmsadair/zebraos/storage"
+	"github.com/jmsadair/zebraos/transport"
 )
 
 var (
@@ -23,23 +24,7 @@ const (
 	numOnCommitWorkers    = 16
 )
 
-type persistentStorage interface {
-	UncommittedWrite(key string, value []byte, version uint64) error
-	UncommittedWriteNewVersion(key string, value []byte) (uint64, error)
-	CommittedWrite(key string, value []byte, version uint64) error
-	CommittedWriteNewVersion(key string, value []byte) (uint64, error)
-	CommittedRead(key string) ([]byte, error)
-	CommitVersion(key string, version uint64) error
-	SendKeyValuePairs(ctx context.Context, sendFunc func(ctx context.Context, kvPairs []storage.KeyValuePair) error, keyFilter storage.KeyFilter) error
-	CommitAll(ctx context.Context, onCommit func(ctx context.Context, key string, version uint64) error) error
-}
 
-type Client interface {
-	Write(ctx context.Context, address net.Addr, key string, value []byte, version uint64) error
-	Read(ctx context.Context, address net.Addr, key string) ([]byte, error)
-	Commit(ctx context.Context, address net.Addr, key string, version uint64) error
-	Propagate(ctx context.Context, address net.Addr, keyFilter storage.KeyFilter) (KeyValueReceiveStream, error)
-}
 
 type onConfigChangeMessage struct {
 	config *ChainConfiguration
@@ -77,15 +62,15 @@ func (ct *cancellableTask) run(ctx context.Context, fn func(ctx context.Context)
 
 type ChainNode struct {
 	address          net.Addr
-	store            persistentStorage
-	client           Client
+	store            storage.Storage
+	client           transport.ChainClient
 	onCommitCh       chan onCommitMessage
 	onConfigChangeCh chan onConfigChangeMessage
 	syncCompleteCh   chan any
 	state            atomic.Pointer[State]
 }
 
-func NewChainNode(address net.Addr, store persistentStorage, client Client) *ChainNode {
+func NewChainNode(address net.Addr, store storage.Storage, client transport.ChainClient) *ChainNode {
 	state := &State{config: EmptyChain, status: Inactive}
 	node := &ChainNode{
 		address:          address,
@@ -222,7 +207,7 @@ func (c *ChainNode) onCommit(ctx context.Context, key string, version uint64) er
 	return c.client.Commit(ctx, pred, key, version)
 }
 
-func (c *ChainNode) propagate(ctx context.Context, keyFilter storage.KeyFilter, stream KeyValueSendStream) error {
+func (c *ChainNode) propagate(ctx context.Context, keyFilter storage.KeyFilter, stream transport.KeyValueSendStream) error {
 	state := c.state.Load()
 	if !state.config.IsMember(c.address) {
 		return ErrNotMemberOfChain

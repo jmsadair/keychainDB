@@ -34,6 +34,18 @@ type KeyValuePair struct {
 	Committed bool
 }
 
+// Storage defines the interface for persistent storage operations.
+type Storage interface {
+	UncommittedWrite(key string, value []byte, version uint64) error
+	UncommittedWriteNewVersion(key string, value []byte) (uint64, error)
+	CommittedWrite(key string, value []byte, version uint64) error
+	CommittedWriteNewVersion(key string, value []byte) (uint64, error)
+	CommittedRead(key string) ([]byte, error)
+	CommitVersion(key string, version uint64) error
+	SendKeyValuePairs(ctx context.Context, sendFunc func(ctx context.Context, kvPairs []KeyValuePair) error, keyFilter KeyFilter) error
+	CommitAll(ctx context.Context, onCommit func(ctx context.Context, key string, version uint64) error) error
+}
+
 // PersistentStorage is a disk-backed key-value storage system that is
 // capable of performing transactional reads and writes.
 type PersistentStorage struct {

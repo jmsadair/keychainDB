@@ -6,6 +6,7 @@ import (
 
 	pb "github.com/jmsadair/zebraos/proto/pbchain"
 	"github.com/jmsadair/zebraos/storage"
+	"github.com/jmsadair/zebraos/transport"
 	"google.golang.org/grpc"
 )
 
@@ -13,23 +14,13 @@ import (
 type Server struct {
 	pb.ChainServiceServer
 
-	dialOpts []grpc.DialOption
-	node     *ChainNode
+	node *ChainNode
 }
 
 // NewServer creates a new Server instance.
-func NewServer(address net.Addr, dbPath string, dialOpts ...grpc.DialOption) (*Server, error) {
-	client, err := newChainClient(dialOpts...)
-	if err != nil {
-		return nil, err
-	}
-	store, err := storage.NewPersistentStorage(dbPath)
-	if err != nil {
-		return nil, err
-	}
+func NewServer(address net.Addr, store storage.Storage, client transport.ChainClient) *Server {
 	node := NewChainNode(address, store, client)
-	server := &Server{dialOpts: dialOpts, node: node}
-	return server, nil
+	return &Server{node: node}
 }
 
 // Run will start and run the server. Run should only be called once and is blocking.
@@ -81,4 +72,13 @@ func (s *Server) Propagate(request *pb.PropagateRequest, stream pb.ChainService_
 	}
 
 	return s.node.propagate(stream.Context(), keyFilter, &keyValueSendStream{stream: stream})
+}
+
+type keyValueSendStream struct {
+	stream pb.ChainService_PropagateServer
+}
+
+func (kvs *keyValueSendStream) Send(kv *storage.KeyValuePair) error {
+	msg := &pb.KeyValuePair{Key: kv.Key, Value: kv.Value, Version: kv.Version, IsCommitted: kv.Committed}
+	return kvs.stream.Send(msg)
 }
