@@ -15,8 +15,8 @@ type mockKeyValueStreamReader struct {
 	mock.Mock
 }
 
-func (mkvsr *mockKeyValueStreamReader) Recieve() (*storage.KeyValuePair, error) {
-	args := mkvsr.MethodCalled("Recieve")
+func (mkvsr *mockKeyValueStreamReader) Receive() (*storage.KeyValuePair, error) {
+	args := mkvsr.MethodCalled("Receive")
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
@@ -45,9 +45,9 @@ func (mc *mockClient) Commit(ctx context.Context, address net.Addr, key string, 
 	return args.Error(0)
 }
 
-func (mc *mockClient) Propagate(ctx context.Context, address net.Addr, keyFilter storage.KeyFilter) (KeyValueRecieveStream, error) {
+func (mc *mockClient) Propagate(ctx context.Context, address net.Addr, keyFilter storage.KeyFilter) (KeyValueReceiveStream, error) {
 	args := mc.MethodCalled("Propagate", address, keyFilter)
-	return args.Get(0).(KeyValueRecieveStream), args.Error(1)
+	return args.Get(0).(KeyValueReceiveStream), args.Error(1)
 }
 
 type mockStorage struct {
@@ -105,7 +105,7 @@ func TestInitiateReplicatedWrite(t *testing.T) {
 
 	client := new(mockClient)
 	store := new(mockStorage)
-	node := newChainNode(address1, store, client)
+	node := NewChainNode(address1, store, client)
 
 	key := "key"
 	value := []byte("value")
@@ -150,7 +150,7 @@ func TestWriteWithVersion(t *testing.T) {
 
 	store := new(mockStorage)
 	client := new(mockClient)
-	node := newChainNode(address1, store, client)
+	node := NewChainNode(address1, store, client)
 
 	key := "key"
 	value := []byte("value")
@@ -189,7 +189,7 @@ func TestRead(t *testing.T) {
 
 	store := new(mockStorage)
 	client := new(mockClient)
-	node := newChainNode(address1, store, client)
+	node := NewChainNode(address1, store, client)
 
 	key := "key"
 	value := []byte("value")
@@ -222,7 +222,7 @@ func TestCommit(t *testing.T) {
 
 	store := new(mockStorage)
 	client := new(mockClient)
-	node := newChainNode(address1, store, client)
+	node := NewChainNode(address1, store, client)
 
 	key := "key"
 	version := uint64(1)
@@ -252,15 +252,15 @@ func TestRequestPropagation(t *testing.T) {
 
 	store := new(mockStorage)
 	client := new(mockClient)
-	node := newChainNode(address1, store, client)
+	node := NewChainNode(address1, store, client)
 
 	stream := new(mockKeyValueStreamReader)
 	kv1 := storage.KeyValuePair{Key: "key-1", Value: []byte("value-1"), Committed: false}
 	kv2 := storage.KeyValuePair{Key: "key-2", Value: []byte("value-2"), Committed: true}
 
-	stream.On("Recieve").Return(&kv1, nil).Once()
-	stream.On("Recieve").Return(&kv2, nil).Once()
-	stream.On("Recieve").Return(nil, io.EOF).Once()
+	stream.On("Receive").Return(&kv1, nil).Once()
+	stream.On("Receive").Return(&kv2, nil).Once()
+	stream.On("Receive").Return(nil, io.EOF).Once()
 	client.On("Propagate", address2, storage.AllKeys).Return(stream, nil).Once()
 	store.On("UncommittedWrite", kv1.Key, kv1.Value, kv1.Version).Return(nil).Once()
 	store.On("CommittedWrite", kv2.Key, kv2.Value, kv2.Version).Return(nil).Once()
@@ -270,9 +270,9 @@ func TestRequestPropagation(t *testing.T) {
 	store.AssertExpectations(t)
 
 	client.On("Propagate", address2, storage.AllKeys).Return(stream, nil).Once()
-	stream.On("Recieve").Return(&kv1, nil).Once()
-	stream.On("Recieve").Return(&kv2, nil).Once()
-	stream.On("Recieve").Return(nil, io.EOF).Once()
+	stream.On("Receive").Return(&kv1, nil).Once()
+	stream.On("Receive").Return(&kv2, nil).Once()
+	stream.On("Receive").Return(nil, io.EOF).Once()
 	store.On("CommittedWrite", kv1.Key, kv1.Value, kv1.Version).Return(nil).Once()
 	store.On("CommittedWrite", kv2.Key, kv2.Value, kv2.Version).Return(nil).Once()
 	require.NoError(t, node.requestPropagation(context.TODO(), address2, storage.AllKeys, true))
@@ -291,7 +291,7 @@ func TestOnNewPredecessor(t *testing.T) {
 
 	store := new(mockStorage)
 	client := new(mockClient)
-	node := newChainNode(address1, store, client)
+	node := NewChainNode(address1, store, client)
 
 	stream := new(mockKeyValueStreamReader)
 	kv1 := storage.KeyValuePair{Key: "key-1", Value: []byte("value-1"), Committed: false}
@@ -304,9 +304,9 @@ func TestOnNewPredecessor(t *testing.T) {
 	chain := ChainID("chain")
 	config, err := NewChainConfiguration(chain, []net.Addr{address2, address1})
 	require.NoError(t, err)
-	stream.On("Recieve").Return(&kv1, nil).Once()
-	stream.On("Recieve").Return(&kv2, nil).Once()
-	stream.On("Recieve").Return(nil, io.EOF).Once()
+	stream.On("Receive").Return(&kv1, nil).Once()
+	stream.On("Receive").Return(&kv2, nil).Once()
+	stream.On("Receive").Return(nil, io.EOF).Once()
 	client.On("Propagate", address2, storage.AllKeys).Return(stream, nil).Once()
 	store.On("CommittedWrite", kv1.Key, kv1.Value, kv1.Version).Return(nil).Once()
 	store.On("CommittedWrite", kv2.Key, kv2.Value, kv2.Version).Return(nil).Once()
@@ -323,9 +323,9 @@ func TestOnNewPredecessor(t *testing.T) {
 	// any key-value pairs it recieves immediately.
 	config, err = NewChainConfiguration(chain, []net.Addr{address3, address1})
 	require.NoError(t, err)
-	stream.On("Recieve").Return(&kv1, nil).Once()
-	stream.On("Recieve").Return(&kv2, nil).Once()
-	stream.On("Recieve").Return(nil, io.EOF).Once()
+	stream.On("Receive").Return(&kv1, nil).Once()
+	stream.On("Receive").Return(&kv2, nil).Once()
+	stream.On("Receive").Return(nil, io.EOF).Once()
 	client.On("Propagate", address3, storage.DirtyKeys).Return(stream, nil).Once()
 	store.On("CommittedWrite", kv1.Key, kv1.Value, kv1.Version).Return(nil).Once()
 	store.On("CommittedWrite", kv2.Key, kv2.Value, kv2.Version).Return(nil).Once()
@@ -345,7 +345,7 @@ func TestOnNewSuccessor(t *testing.T) {
 
 	store := new(mockStorage)
 	client := new(mockClient)
-	node := newChainNode(address1, store, client)
+	node := NewChainNode(address1, store, client)
 
 	stream := new(mockKeyValueStreamReader)
 	kv1 := storage.KeyValuePair{Key: "key-1", Value: []byte("value-1"), Committed: false}
@@ -358,9 +358,9 @@ func TestOnNewSuccessor(t *testing.T) {
 	chain := ChainID("chain")
 	config, err := NewChainConfiguration(chain, []net.Addr{address1, address2})
 	require.NoError(t, err)
-	stream.On("Recieve").Return(&kv1, nil).Once()
-	stream.On("Recieve").Return(&kv2, nil).Once()
-	stream.On("Recieve").Return(nil, io.EOF).Once()
+	stream.On("Receive").Return(&kv1, nil).Once()
+	stream.On("Receive").Return(&kv2, nil).Once()
+	stream.On("Receive").Return(nil, io.EOF).Once()
 	client.On("Propagate", address2, storage.AllKeys).Return(stream, nil).Once()
 	store.On("UncommittedWrite", kv1.Key, kv1.Value, kv1.Version).Return(nil).Once()
 	store.On("CommittedWrite", kv2.Key, kv2.Value, kv2.Version).Return(nil).Once()
@@ -376,8 +376,8 @@ func TestOnNewSuccessor(t *testing.T) {
 	// successor failed without sending an acknowledgement of the commit.
 	config, err = NewChainConfiguration(chain, []net.Addr{address1, address3})
 	require.NoError(t, err)
-	stream.On("Recieve").Return(&kv2, nil).Once()
-	stream.On("Recieve").Return(nil, io.EOF).Once()
+	stream.On("Receive").Return(&kv2, nil).Once()
+	stream.On("Receive").Return(nil, io.EOF).Once()
 	client.On("Propagate", address3, storage.CommittedKeys).Return(stream, nil).Once()
 	store.On("CommittedWrite", kv2.Key, kv2.Value, kv2.Version).Return(nil).Once()
 	node.onNewSuccessor(context.TODO(), config, false)

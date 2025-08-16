@@ -10,33 +10,36 @@ import (
 	"google.golang.org/grpc"
 )
 
-// KeyValueRecieveStream is a stream for recieving key-value pairs.
-type KeyValueRecieveStream interface {
-	// Recieve will read the next key-value pair from the stream.
+// KeyValueReceiveStream is a stream for receiving key-value pairs.
+type KeyValueReceiveStream interface {
+	// Receive will read the next key-value pair from the stream.
 	// If is the end of the stream, an io.EOF error will be returned.
-	Recieve() (*storage.KeyValuePair, error)
+	Receive() (*storage.KeyValuePair, error)
 }
 
-// KeyValueRecieveStream is a stream for sending key-value pairs.
+// KeyValueSendStream is a stream for sending key-value pairs.
 type KeyValueSendStream interface {
 	// Send will send the key-value pair over the stream.
 	Send(*storage.KeyValuePair) error
 }
 
-// ChainClient is a client for nodes within a chain to communicate with one another.
-type ChainClient struct {
+// chainClient is a client for nodes within a chain to communicate with one another.
+type chainClient struct {
 	mu       sync.Mutex
 	clients  map[string]pb.ChainServiceClient
 	dialOpts []grpc.DialOption
 }
 
-// NewChainClient creates a new ChainClient instance with the provided dial options.
-func NewChainClient(dialOpts ...grpc.DialOption) (*ChainClient, error) {
-	return &ChainClient{dialOpts: dialOpts}, nil
+// newChainClient creates a new chainClient instance with the provided dial options.
+func newChainClient(dialOpts ...grpc.DialOption) (*chainClient, error) {
+	return &chainClient{dialOpts: dialOpts}, nil
 }
 
+// Ensure chainClient implements Client interface
+var _ Client = (*chainClient)(nil)
+
 // Write writes a versioned key-value to another node in the chain.
-func (cc *ChainClient) Write(ctx context.Context, address net.Addr, key string, value []byte, version uint64) error {
+func (cc *chainClient) Write(ctx context.Context, address net.Addr, key string, value []byte, version uint64) error {
 	client, err := cc.getOrCreateClient(address)
 	if err != nil {
 		return err
@@ -46,7 +49,7 @@ func (cc *ChainClient) Write(ctx context.Context, address net.Addr, key string, 
 }
 
 // Read reads a key-value pair from a node in the chain.
-func (cc *ChainClient) Read(ctx context.Context, address net.Addr, key string) ([]byte, error) {
+func (cc *chainClient) Read(ctx context.Context, address net.Addr, key string) ([]byte, error) {
 	client, err := cc.getOrCreateClient(address)
 	if err != nil {
 		return nil, err
@@ -59,7 +62,7 @@ func (cc *ChainClient) Read(ctx context.Context, address net.Addr, key string) (
 }
 
 // Commit commits a particular version of a key to storage.
-func (cc *ChainClient) Commit(ctx context.Context, address net.Addr, key string, version uint64) error {
+func (cc *chainClient) Commit(ctx context.Context, address net.Addr, key string, version uint64) error {
 	client, err := cc.getOrCreateClient(address)
 	if err != nil {
 		return err
@@ -69,7 +72,7 @@ func (cc *ChainClient) Commit(ctx context.Context, address net.Addr, key string,
 }
 
 // Propagate initiates a key-value stream where the keys will be filtered according to provided filter.
-func (cc *ChainClient) Propagate(ctx context.Context, address net.Addr, keyFilter storage.KeyFilter) (KeyValueRecieveStream, error) {
+func (cc *chainClient) Propagate(ctx context.Context, address net.Addr, keyFilter storage.KeyFilter) (KeyValueReceiveStream, error) {
 	client, err := cc.getOrCreateClient(address)
 	if err != nil {
 		return nil, err
@@ -89,10 +92,10 @@ func (cc *ChainClient) Propagate(ctx context.Context, address net.Addr, keyFilte
 	if err != nil {
 		return nil, err
 	}
-	return &keyValueRecieveStream{stream: stream}, nil
+	return &keyValueReceiveStream{stream: stream}, nil
 }
 
-func (cc *ChainClient) getOrCreateClient(address net.Addr) (pb.ChainServiceClient, error) {
+func (cc *chainClient) getOrCreateClient(address net.Addr) (pb.ChainServiceClient, error) {
 	cc.mu.Lock()
 	defer cc.mu.Unlock()
 
@@ -107,4 +110,27 @@ func (cc *ChainClient) getOrCreateClient(address net.Addr) (pb.ChainServiceClien
 	}
 
 	return client, nil
+}
+
+// Stream implementations
+
+type keyValueReceiveStream struct {
+	stream grpc.ClientStream
+}
+
+func (kvr *keyValueReceiveStream) Receive() (*storage.KeyValuePair, error) {
+	var msg *pb.KeyValuePair
+	if err := kvr.stream.RecvMsg(msg); err != nil {
+		return nil, err
+	}
+	return &storage.KeyValuePair{Key: msg.GetKey(), Value: msg.GetValue(), Version: msg.GetVersion(), Committed: msg.GetIsCommitted()}, nil
+}
+
+type keyValueSendStream struct {
+	stream grpc.ServerStream
+}
+
+func (kvs *keyValueSendStream) Send(kv *storage.KeyValuePair) error {
+	msg := &pb.KeyValuePair{Key: kv.Key, Value: kv.Value, Version: kv.Version, IsCommitted: kv.Committed}
+	return kvs.stream.SendMsg(msg)
 }

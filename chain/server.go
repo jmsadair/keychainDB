@@ -14,20 +14,20 @@ type Server struct {
 	pb.ChainServiceServer
 
 	dialOpts []grpc.DialOption
-	node     *chainNode
+	node     *ChainNode
 }
 
 // NewServer creates a new Server instance.
 func NewServer(address net.Addr, dbPath string, dialOpts ...grpc.DialOption) (*Server, error) {
-	chainClient, err := NewChainClient(dialOpts...)
+	client, err := newChainClient(dialOpts...)
 	if err != nil {
 		return nil, err
 	}
-	store, err := storage.NewPersistantStorage(dbPath)
+	store, err := storage.NewPersistentStorage(dbPath)
 	if err != nil {
 		return nil, err
 	}
-	node := newChainNode(address, store, chainClient)
+	node := NewChainNode(address, store, client)
 	server := &Server{dialOpts: dialOpts, node: node}
 	return server, nil
 }

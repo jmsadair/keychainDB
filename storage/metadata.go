@@ -50,8 +50,8 @@ func NewObjectMetadataFromBytes(b []byte) (*ObjectMetadata, error) {
 
 // Bytes converts the ObjectMetadata instance into bytes.
 func (om *ObjectMetadata) Bytes() ([]byte, error) {
-	keyMetdataProto := pb.ObjectMetadata{Key: om.Key, LastCommitted: om.LastCommitted, Versions: om.Versions}
-	return proto.Marshal(&keyMetdataProto)
+	keyMetadataProto := pb.ObjectMetadata{Key: om.Key, LastCommitted: om.LastCommitted, Versions: om.Versions}
+	return proto.Marshal(&keyMetadataProto)
 }
 
 // NewestVersion returns the newest version of the object that currently exists.
