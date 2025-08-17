@@ -111,32 +111,32 @@ func TestInitiateReplicatedWrite(t *testing.T) {
 	value := []byte("value")
 	version := uint64(1)
 
-	err = node.initiateReplicatedWrite(context.TODO(), key, value)
+	err = node.InitiateReplicatedWrite(context.TODO(), key, value)
 	require.ErrorIs(t, err, ErrNotMemberOfChain)
 
 	chain := ChainID("chain")
 	config, err := NewChainConfiguration(chain, []net.Addr{address1})
 	require.NoError(t, err)
-	node.state.Load().config = config
+	node.state.Load().Config = config
 	store.On("CommittedWriteNewVersion", key, value).Return(version, nil).Once()
-	err = node.initiateReplicatedWrite(context.TODO(), key, value)
+	err = node.InitiateReplicatedWrite(context.TODO(), key, value)
 	require.NoError(t, err)
 	store.AssertExpectations(t)
 
 	config, err = NewChainConfiguration(chain, []net.Addr{address1, address2})
 	require.NoError(t, err)
-	node.state.Load().config = config
+	node.state.Load().Config = config
 	store.On("UncommittedWriteNewVersion", key, value).Return(version, nil).Once()
 	client.On("Write", address2, key, value, version).Return(nil).Once()
-	err = node.initiateReplicatedWrite(context.TODO(), key, value)
+	err = node.InitiateReplicatedWrite(context.TODO(), key, value)
 	require.NoError(t, err)
 	store.AssertExpectations(t)
 	client.AssertExpectations(t)
 
 	config, err = NewChainConfiguration(chain, []net.Addr{address2, address1})
 	require.NoError(t, err)
-	node.state.Load().config = config
-	err = node.initiateReplicatedWrite(context.TODO(), key, value)
+	node.state.Load().Config = config
+	err = node.InitiateReplicatedWrite(context.TODO(), key, value)
 	require.ErrorIs(t, err, ErrNotHead)
 }
 
@@ -156,24 +156,24 @@ func TestWriteWithVersion(t *testing.T) {
 	value := []byte("value")
 	version := uint64(1)
 
-	err = node.writeWithVersion(context.TODO(), key, value, version)
+	err = node.WriteWithVersion(context.TODO(), key, value, version)
 	require.ErrorIs(t, err, ErrNotMemberOfChain)
 
 	chain := ChainID("chain")
 	config, err := NewChainConfiguration(chain, []net.Addr{address2, address1})
 	require.NoError(t, err)
-	node.state.Load().config = config
+	node.state.Load().Config = config
 	store.On("CommittedWrite", key, value, version).Return(nil).Once()
-	err = node.writeWithVersion(context.TODO(), key, value, version)
+	err = node.WriteWithVersion(context.TODO(), key, value, version)
 	require.NoError(t, err)
 	store.AssertExpectations(t)
 
 	config, err = NewChainConfiguration(chain, []net.Addr{address2, address1, address3})
 	require.NoError(t, err)
-	node.state.Load().config = config
+	node.state.Load().Config = config
 	store.On("UncommittedWrite", key, value, version).Return(nil).Once()
 	client.On("Write", address3, key, value, version).Return(nil).Once()
-	err = node.writeWithVersion(context.TODO(), key, value, version)
+	err = node.WriteWithVersion(context.TODO(), key, value, version)
 	require.NoError(t, err)
 	store.AssertExpectations(t)
 	client.AssertExpectations(t)
@@ -194,22 +194,22 @@ func TestRead(t *testing.T) {
 	key := "key"
 	value := []byte("value")
 
-	_, err = node.read(context.TODO(), key)
+	_, err = node.Read(context.TODO(), key)
 	require.ErrorIs(t, err, ErrNotMemberOfChain)
 
 	chain := ChainID("chain")
 	config, err := NewChainConfiguration(chain, []net.Addr{address1, address2, address3})
 	require.NoError(t, err)
-	node.state.Load().config = config
+	node.state.Load().Config = config
 	store.On("CommittedRead", key).Return(value, nil).Once()
-	readValue, err := node.read(context.TODO(), key)
+	readValue, err := node.Read(context.TODO(), key)
 	require.NoError(t, err)
 	require.Equal(t, value, readValue)
 	store.AssertExpectations(t)
 
 	store.On("CommittedRead", key).Return(nil, storage.ErrDirtyRead).Once()
 	client.On("Read", address3, key).Return(value, nil).Once()
-	readValue, err = node.read(context.TODO(), key)
+	readValue, err = node.Read(context.TODO(), key)
 	require.NoError(t, err)
 	require.Equal(t, value, readValue)
 	store.AssertExpectations(t)
@@ -227,15 +227,15 @@ func TestCommit(t *testing.T) {
 	key := "key"
 	version := uint64(1)
 
-	err = node.commit(context.TODO(), key, version)
+	err = node.Commit(context.TODO(), key, version)
 	require.ErrorIs(t, err, ErrNotMemberOfChain)
 
 	chain := ChainID("chain")
 	config, err := NewChainConfiguration(chain, []net.Addr{address1})
 	require.NoError(t, err)
-	node.state.Load().config = config
+	node.state.Load().Config = config
 	store.On("CommitVersion", key, version).Return(nil).Once()
-	err = node.commit(context.TODO(), key, version)
+	err = node.Commit(context.TODO(), key, version)
 	store.AssertExpectations(t)
 	require.NoError(t, err)
 	require.Len(t, node.onCommitCh, 1)

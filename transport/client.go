@@ -59,7 +59,7 @@ func (cc *ChainClient) Commit(ctx context.Context, address net.Addr, key string,
 }
 
 // Propagate initiates a key-value stream where the keys will be filtered according to provided filter.
-func (cc *ChainClient) Propagate(ctx context.Context, address net.Addr, keyFilter storage.KeyFilter) (KeyValueReceiveStream, error) {
+func (cc *ChainClient) Propagate(ctx context.Context, address net.Addr, keyFilter storage.KeyFilter) (*KeyValueReceiveStream, error) {
 	client, err := cc.getOrCreateClient(address)
 	if err != nil {
 		return nil, err
@@ -79,7 +79,7 @@ func (cc *ChainClient) Propagate(ctx context.Context, address net.Addr, keyFilte
 	if err != nil {
 		return nil, err
 	}
-	return &keyValueReceiveStream{stream: stream}, nil
+	return &KeyValueReceiveStream{Stream: stream}, nil
 }
 
 func (cc *ChainClient) getOrCreateClient(address net.Addr) (pb.ChainServiceClient, error) {

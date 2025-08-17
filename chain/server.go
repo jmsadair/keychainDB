@@ -50,24 +50,23 @@ type ChainClient interface {
 // Server is a server implementation for a chain node.
 type Server struct {
 	pb.ChainServiceServer
-	node *chainNode
+	node *ChainNode
 }
 
 // NewServer creates a new Server instance.
 func NewServer(address net.Addr, store Storage, client ChainClient) *Server {
-	node := newChainNode(address, store, client)
+	node := NewChainNode(address, store, client)
 	return &Server{node: node}
 }
 
 // Run will start and run the server. Run should only be called once and is blocking.
 func (s *Server) Run(ctx context.Context) {
-	go s.node.onCommitRoutine(ctx)
-	go s.node.onConfigChangeRoutine(ctx)
+	s.node.Run(ctx)
 }
 
 // Write handles incoming requests from other nodes in the chain to write a particular version of a key-value pair to storage.
 func (s *Server) Write(ctx context.Context, request *pb.WriteRequest) (*pb.WriteResponse, error) {
-	if err := s.node.writeWithVersion(ctx, request.GetKey(), request.GetValue(), request.GetVersion()); err != nil {
+	if err := s.node.WriteWithVersion(ctx, request.GetKey(), request.GetValue(), request.GetVersion()); err != nil {
 		return nil, err
 	}
 	return &pb.WriteResponse{}, nil
@@ -75,7 +74,7 @@ func (s *Server) Write(ctx context.Context, request *pb.WriteRequest) (*pb.Write
 
 // Read handles incoming requests from other nodes in the chain to read the committed version of a key-value pair.
 func (s *Server) Read(ctx context.Context, request *pb.ReadRequest) (*pb.ReadResponse, error) {
-	value, err := s.node.read(ctx, request.GetKey())
+	value, err := s.node.Read(ctx, request.GetKey())
 	if err != nil {
 		return nil, err
 	}
@@ -89,7 +88,7 @@ func (s *Server) UpdateConfiguration(ctx context.Context, request *pb.UpdateConf
 	if err != nil {
 		return nil, err
 	}
-	if err := s.node.updateConfiguration(ctx, config); err != nil {
+	if err := s.node.UpdateConfiguration(ctx, config); err != nil {
 		return nil, err
 	}
 	return &pb.UpdateConfigurationResponse{}, nil
@@ -107,5 +106,5 @@ func (s *Server) Propagate(request *pb.PropagateRequest, stream pb.ChainService_
 		keyFilter = storage.DirtyKeys
 	}
 
-	return s.node.propagate(stream.Context(), keyFilter, &transport.KeyValueSendStream{Stream: stream})
+	return s.node.Propagate(stream.Context(), keyFilter, &transport.KeyValueSendStream{Stream: stream})
 }
