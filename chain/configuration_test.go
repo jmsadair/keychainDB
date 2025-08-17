@@ -4,7 +4,7 @@ import (
 	"net"
 	"testing"
 
-	pb "github.com/jmsadair/zebraos/proto/pbchain"
+	pb "github.com/jmsadair/keychain/proto/pbchain"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
 )

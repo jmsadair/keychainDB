@@ -4,9 +4,9 @@ import (
 	"context"
 	"net"
 
-	pb "github.com/jmsadair/zebraos/proto/pbchain"
-	"github.com/jmsadair/zebraos/storage"
-	"github.com/jmsadair/zebraos/transport"
+	pb "github.com/jmsadair/keychain/proto/pbchain"
+	"github.com/jmsadair/keychain/storage"
+	"github.com/jmsadair/keychain/transport"
 )
 
 // Storage defines the interface for persistent storage operations on a chain node.

@@ -5,8 +5,8 @@ import (
 	"net"
 	"sync"
 
-	pb "github.com/jmsadair/zebraos/proto/pbchain"
-	"github.com/jmsadair/zebraos/storage"
+	pb "github.com/jmsadair/keychain/proto/pbchain"
+	"github.com/jmsadair/keychain/storage"
 	"google.golang.org/grpc"
 )
 

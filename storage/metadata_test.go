@@ -3,7 +3,7 @@ package storage
 import (
 	"testing"
 
-	pb "github.com/jmsadair/zebraos/proto/pbstorage"
+	pb "github.com/jmsadair/keychain/proto/pbstorage"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
 )
