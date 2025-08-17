@@ -7,18 +7,59 @@ import (
 	pb "github.com/jmsadair/zebraos/proto/pbchain"
 	"github.com/jmsadair/zebraos/storage"
 	"github.com/jmsadair/zebraos/transport"
-	"google.golang.org/grpc"
 )
+
+// Storage defines the interface for persistent storage operations on a chain node.
+type Storage interface {
+	// UncommittedWrite writes a versioned key-value pair to storage without committing it.
+	UncommittedWrite(key string, value []byte, version uint64) error
+	// UncommittedWriteNewVersion generates a new version number and writes the
+	// key-value pair to storage without committing it.
+	UncommittedWriteNewVersion(key string, value []byte) (uint64, error)
+	// CommittedWrite writes a versioned key-value pair to storage and immediately commits it.
+	// If a later version has already been committed, this operation is a no-op.
+	CommittedWrite(key string, value []byte, version uint64) error
+	// CommittedWriteNewVersion generates a new version number, writes the
+	// key-value pair to storage, and immediately commits it.
+	CommittedWriteNewVersion(key string, value []byte) (uint64, error)
+	// CommittedRead reads the committed version of a key-value pair.
+	CommittedRead(key string) ([]byte, error)
+	// CommitVersion commits the provided version of the key. If a later version already
+	// exists, this operation is a no-op.
+	CommitVersion(key string, version uint64) error
+	// SendKeyValuePairs iterates over storage, filters key-value pairs according to the key filter,
+	// and invokes the callback for each.
+	SendKeyValuePairs(ctx context.Context, sendFunc func(ctx context.Context, kvPairs []storage.KeyValuePair) error, keyFilter storage.KeyFilter) error
+	// CommitAll commits all dirty keys in storage and invokes the provided callback for each.
+	CommitAll(ctx context.Context, onCommit func(ctx context.Context, key string, version uint64) error) error
+}
+
+// KeyValueReceiveStream is a stream for receiving key-value pairs.
+type KeyValueReceiveStream interface {
+	Receive() (*storage.KeyValuePair, error)
+}
+
+// KeyValueSendStream is a stream for sending key-value pairs.
+type KeyValueSendStream interface {
+	Send(*storage.KeyValuePair) error
+}
+
+// ChainClient defines the interface for chain node communication.
+type ChainClient interface {
+	Write(ctx context.Context, address net.Addr, key string, value []byte, version uint64) error
+	Read(ctx context.Context, address net.Addr, key string) ([]byte, error)
+	Commit(ctx context.Context, address net.Addr, key string, version uint64) error
+	Propagate(ctx context.Context, address net.Addr, keyFilter storage.KeyFilter) (KeyValueReceiveStream, error)
+}
 
 // Server is a server implementation for a chain node.
 type Server struct {
 	pb.ChainServiceServer
-
 	node *ChainNode
 }
 
 // NewServer creates a new Server instance.
-func NewServer(address net.Addr, store storage.Storage, client transport.ChainClient) *Server {
+func NewServer(address net.Addr, store Storage, client ChainClient) *Server {
 	node := NewChainNode(address, store, client)
 	return &Server{node: node}
 }
@@ -37,7 +78,7 @@ func (s *Server) Write(ctx context.Context, request *pb.WriteRequest) (*pb.Write
 	return &pb.WriteResponse{}, nil
 }
 
-// Read handles incoming requests from other nodes in the chain read the committed version of a key-value pair.
+// Read handles incoming requests from other nodes in the chain to read the committed version of a key-value pair.
 func (s *Server) Read(ctx context.Context, request *pb.ReadRequest) (*pb.ReadResponse, error) {
 	value, err := s.node.read(ctx, request.GetKey())
 	if err != nil {
@@ -59,7 +100,7 @@ func (s *Server) UpdateConfiguration(ctx context.Context, request *pb.UpdateConf
 	return &pb.UpdateConfigurationResponse{}, nil
 }
 
-// Propagate handles requests from other nodes in the chain to initate a server-side stream of key-value pairs.
+// Propagate handles requests from other nodes in the chain to initiate a server-side stream of key-value pairs.
 func (s *Server) Propagate(request *pb.PropagateRequest, stream pb.ChainService_PropagateServer) error {
 	var keyFilter storage.KeyFilter
 	switch request.GetKeyType() {
@@ -71,14 +112,5 @@ func (s *Server) Propagate(request *pb.PropagateRequest, stream pb.ChainService_
 		keyFilter = storage.DirtyKeys
 	}
 
-	return s.node.propagate(stream.Context(), keyFilter, &keyValueSendStream{stream: stream})
-}
-
-type keyValueSendStream struct {
-	stream pb.ChainService_PropagateServer
-}
-
-func (kvs *keyValueSendStream) Send(kv *storage.KeyValuePair) error {
-	msg := &pb.KeyValuePair{Key: kv.Key, Value: kv.Value, Version: kv.Version, IsCommitted: kv.Committed}
-	return kvs.stream.Send(msg)
+	return s.node.propagate(stream.Context(), keyFilter, &transport.KeyValueSendStream{Stream: stream})
 }

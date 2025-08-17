@@ -19,31 +19,20 @@ const (
 	AllKeys KeyFilter = iota
 	// DirtyKeys will select only dirty keys.
 	DirtyKeys
-	// CommittedKeys will select only uncommitted keys.
+	// CommittedKeys will select only committed keys.
 	CommittedKeys
 )
 
+// KeyValuePair represents a versioned key-value pair in storage.
 type KeyValuePair struct {
-	// A client provided key.
+	// Key is the client-provided key.
 	Key string
-	// The value associated with the key.
+	// Value is the data associated with the key.
 	Value []byte
-	// The version of the key.
+	// Version is the version number of this key-value pair.
 	Version uint64
-	// Indicates whether this version of the key has been committed.
+	// Committed indicates whether this version has been committed.
 	Committed bool
-}
-
-// Storage defines the interface for persistent storage operations.
-type Storage interface {
-	UncommittedWrite(key string, value []byte, version uint64) error
-	UncommittedWriteNewVersion(key string, value []byte) (uint64, error)
-	CommittedWrite(key string, value []byte, version uint64) error
-	CommittedWriteNewVersion(key string, value []byte) (uint64, error)
-	CommittedRead(key string) ([]byte, error)
-	CommitVersion(key string, version uint64) error
-	SendKeyValuePairs(ctx context.Context, sendFunc func(ctx context.Context, kvPairs []KeyValuePair) error, keyFilter KeyFilter) error
-	CommitAll(ctx context.Context, onCommit func(ctx context.Context, key string, version uint64) error) error
 }
 
 // PersistentStorage is a disk-backed key-value storage system that is

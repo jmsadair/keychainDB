@@ -24,8 +24,6 @@ const (
 	numOnCommitWorkers    = 16
 )
 
-
-
 type onConfigChangeMessage struct {
 	config *ChainConfiguration
 	doneCh chan bool
@@ -60,17 +58,19 @@ func (ct *cancellableTask) run(ctx context.Context, fn func(ctx context.Context)
 	}()
 }
 
+// ChainNode represents a single node in a distributed chain.
 type ChainNode struct {
 	address          net.Addr
-	store            storage.Storage
-	client           transport.ChainClient
+	store            Storage
+	client           ChainClient
 	onCommitCh       chan onCommitMessage
 	onConfigChangeCh chan onConfigChangeMessage
 	syncCompleteCh   chan any
 	state            atomic.Pointer[State]
 }
 
-func NewChainNode(address net.Addr, store storage.Storage, client transport.ChainClient) *ChainNode {
+// NewChainNode creates a new ChainNode instance.
+func NewChainNode(address net.Addr, store Storage, client ChainClient) *ChainNode {
 	state := &State{config: EmptyChain, status: Inactive}
 	node := &ChainNode{
 		address:          address,
@@ -207,7 +207,7 @@ func (c *ChainNode) onCommit(ctx context.Context, key string, version uint64) er
 	return c.client.Commit(ctx, pred, key, version)
 }
 
-func (c *ChainNode) propagate(ctx context.Context, keyFilter storage.KeyFilter, stream transport.KeyValueSendStream) error {
+func (c *ChainNode) propagate(ctx context.Context, keyFilter storage.KeyFilter, stream KeyValueSendStream) error {
 	state := c.state.Load()
 	if !state.config.IsMember(c.address) {
 		return ErrNotMemberOfChain
