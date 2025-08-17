@@ -39,11 +39,6 @@ type KeyValueReceiveStream interface {
 	Receive() (*storage.KeyValuePair, error)
 }
 
-// KeyValueSendStream is a stream for sending key-value pairs.
-type KeyValueSendStream interface {
-	Send(*storage.KeyValuePair) error
-}
-
 // ChainClient defines the interface for chain node communication.
 type ChainClient interface {
 	Write(ctx context.Context, address net.Addr, key string, value []byte, version uint64) error
@@ -55,12 +50,12 @@ type ChainClient interface {
 // Server is a server implementation for a chain node.
 type Server struct {
 	pb.ChainServiceServer
-	node *ChainNode
+	node *chainNode
 }
 
 // NewServer creates a new Server instance.
 func NewServer(address net.Addr, store Storage, client ChainClient) *Server {
-	node := NewChainNode(address, store, client)
+	node := newChainNode(address, store, client)
 	return &Server{node: node}
 }
 
