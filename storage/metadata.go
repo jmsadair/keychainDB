@@ -4,7 +4,7 @@ import (
 	"errors"
 	"slices"
 
-	pb "github.com/jmsadair/zebraos/proto/pbstorage"
+	pb "github.com/jmsadair/keychain/proto/pbstorage"
 	"google.golang.org/protobuf/proto"
 )
 

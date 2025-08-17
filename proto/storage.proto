@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package storage;
 
-option go_package = "github.com/jmsadair/zebraos/proto/pbstorage";
+option go_package = "github.com/jmsadair/keychain/proto/pbstorage";
 
 // ObjectMetadata includes metadata about a particular object.
 message ObjectMetadata {

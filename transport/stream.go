@@ -1,10 +1,10 @@
 package transport
 
 import (
-	"github.com/jmsadair/zebraos/storage"
+	"github.com/jmsadair/keychain/storage"
 	"google.golang.org/grpc"
 
-	pb "github.com/jmsadair/zebraos/proto/pbchain"
+	pb "github.com/jmsadair/keychain/proto/pbchain"
 )
 
 // KeyValueReceiveStream wraps a gRPC client stream for receiving key-value pairs.

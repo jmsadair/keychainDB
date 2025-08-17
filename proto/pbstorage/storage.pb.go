@@ -93,7 +93,7 @@ const file_storage_proto_rawDesc = "" +
 	"\x0eObjectMetadata\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12%\n" +
 	"\x0elast_committed\x18\x02 \x01(\x04R\rlastCommitted\x12\x1a\n" +
-	"\bversions\x18\x03 \x03(\x04R\bversionsB-Z+github.com/jmsadair/zebraos/proto/pbstorageb\x06proto3"
+	"\bversions\x18\x03 \x03(\x04R\bversionsB.Z,github.com/jmsadair/keychain/proto/pbstorageb\x06proto3"
 
 var (
 	file_storage_proto_rawDescOnce sync.Once

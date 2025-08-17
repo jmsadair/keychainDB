@@ -8,7 +8,7 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/jmsadair/zebraos/storage"
+	"github.com/jmsadair/keychain/storage"
 )
 
 var (

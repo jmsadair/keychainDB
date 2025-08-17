@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package chain;
 
-option go_package = "github.com/jmsadair/zebraos/proto/pbchain";
+option go_package = "github.com/jmsadair/keychain/proto/pbchain";
 
 // ChainService is used by nodes within a chain to communicate with one another.
 service ChainService {
