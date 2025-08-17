@@ -13,7 +13,7 @@ service ChainService {
 	// Commit handles requests to commit a particular version of a key.
 	rpc Commit(CommitRequest) returns (CommitResponse) {}
 	// Propagate handles requests to list all key-value pairs that match the specified criterion.
-	// This is useful when a new node is added to chain and needs to be recieve all of the key-value pairs it is missing.
+	// This is useful when a new node is added to chain and needs to receive all of the key-value pairs it is missing.
 	rpc Propagate (PropagateRequest) returns (stream KeyValuePair) {}
 	// UpdateConfiguration handles requests to update the chain membership configuration.
 	rpc UpdateConfiguration (UpdateConfigurationRequest) returns (UpdateConfigurationResponse) {}
@@ -85,7 +85,7 @@ message KeyValuePair {
 	// The version of the key.
 	uint64 version = 3;
 	// Whether or not this version of the key has been committed.
-	bool isCommited = 4;
+	bool isCommitted = 4;
 }
 
 // CommitRequest is a request to commit a version of a key.

@@ -26,31 +26,31 @@ func NewMetadataKey(key string) Key {
 	return append(b, []byte(key)...)
 }
 
-// NewDirtyKey creates a new key that is intended to identify a an object that has not been committed.
+// NewDirtyKey creates a new key that is intended to identify a dirty object.
 func NewDirtyKey(key string, version uint64) Key {
 	b := []byte{byte(dirty)}
 	b = binary.BigEndian.AppendUint64(b, version)
 	return append(b, []byte(key)...)
 }
 
-// NewCommittedKey creates a new key that is intended to identify a an object that has not been committed.
+// NewCommittedKey creates a new key that is intended to identify a committed object.
 func NewCommittedKey(key string, version uint64) Key {
 	b := []byte{byte(committed)}
 	b = binary.BigEndian.AppendUint64(b, version)
 	return append(b, []byte(key)...)
 }
 
-// IsMetadata returns true is this key identifies object metadata and false otherwise.
+// IsMetadata returns true if this key identifies object metadata.
 func (k Key) IsMetadata() bool {
 	return k[keyTypeOffset]^byte(metadata) == 0
 }
 
-// IsCommitted returns true is this key identifies a version of an object that has been committed and false otherwise.
+// IsCommitted returns true if this key identifies a committed object version.
 func (k Key) IsCommitted() bool {
 	return k[keyTypeOffset]^byte(committed) == 0
 }
 
-// IsDirty returns true is this key identifies a version of an object that has not been committed and false otherwise.
+// IsDirty returns true if this key identifies a dirty object version.
 func (k Key) IsDirty() bool {
 	return k[keyTypeOffset]^byte(dirty) == 0
 }

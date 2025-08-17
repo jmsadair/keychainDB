@@ -1,25 +1,31 @@
-package chain
+package transport
 
 import (
+	"context"
 	"net"
 	"sync"
 
-	"github.com/jmsadair/zebraos/internal/storage"
 	pb "github.com/jmsadair/zebraos/proto/pbchain"
-	"golang.org/x/net/context"
+	"github.com/jmsadair/zebraos/storage"
 	"google.golang.org/grpc"
 )
 
+// ChainClient is a gRPC-based implementation of the Client interface.
 type ChainClient struct {
 	mu       sync.Mutex
 	clients  map[string]pb.ChainServiceClient
 	dialOpts []grpc.DialOption
 }
 
+// NewChainClient creates a new gRPC-based chain client with the provided dial options.
 func NewChainClient(dialOpts ...grpc.DialOption) (*ChainClient, error) {
-	return &ChainClient{dialOpts: dialOpts}, nil
+	return &ChainClient{
+		clients:  make(map[string]pb.ChainServiceClient),
+		dialOpts: dialOpts,
+	}, nil
 }
 
+// Write writes a versioned key-value to another node in the chain.
 func (cc *ChainClient) Write(ctx context.Context, address net.Addr, key string, value []byte, version uint64) error {
 	client, err := cc.getOrCreateClient(address)
 	if err != nil {
@@ -29,18 +35,20 @@ func (cc *ChainClient) Write(ctx context.Context, address net.Addr, key string, 
 	return err
 }
 
+// Read reads a key-value pair from a node in the chain.
 func (cc *ChainClient) Read(ctx context.Context, address net.Addr, key string) ([]byte, error) {
 	client, err := cc.getOrCreateClient(address)
 	if err != nil {
 		return nil, err
 	}
-	response, err := client.Read(context.Background(), &pb.ReadRequest{Key: key})
+	response, err := client.Read(ctx, &pb.ReadRequest{Key: key})
 	if err != nil {
 		return nil, err
 	}
 	return response.GetValue(), nil
 }
 
+// Commit commits a particular version of a key to storage.
 func (cc *ChainClient) Commit(ctx context.Context, address net.Addr, key string, version uint64) error {
 	client, err := cc.getOrCreateClient(address)
 	if err != nil {
@@ -50,7 +58,8 @@ func (cc *ChainClient) Commit(ctx context.Context, address net.Addr, key string,
 	return err
 }
 
-func (cc *ChainClient) Propagate(ctx context.Context, address net.Addr, keyFilter storage.KeyFilter) (KeyValueStreamReader, error) {
+// Propagate initiates a key-value stream where the keys will be filtered according to provided filter.
+func (cc *ChainClient) Propagate(ctx context.Context, address net.Addr, keyFilter storage.KeyFilter) (*KeyValueReceiveStream, error) {
 	client, err := cc.getOrCreateClient(address)
 	if err != nil {
 		return nil, err
@@ -70,7 +79,7 @@ func (cc *ChainClient) Propagate(ctx context.Context, address net.Addr, keyFilte
 	if err != nil {
 		return nil, err
 	}
-	return &KeyValueReciever{Stream: stream}, nil
+	return &KeyValueReceiveStream{Stream: stream}, nil
 }
 
 func (cc *ChainClient) getOrCreateClient(address net.Addr) (pb.ChainServiceClient, error) {

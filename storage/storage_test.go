@@ -10,7 +10,7 @@ import (
 )
 
 func TestCommitThenRead(t *testing.T) {
-	store, err := NewPersistantStorage(t.TempDir())
+	store, err := NewPersistentStorage(t.TempDir())
 	require.NoError(t, err)
 	defer store.Close()
 
@@ -26,7 +26,7 @@ func TestCommitThenRead(t *testing.T) {
 }
 
 func TestSingleUncommittedWriteThenRead(t *testing.T) {
-	store, err := NewPersistantStorage(t.TempDir())
+	store, err := NewPersistentStorage(t.TempDir())
 	require.NoError(t, err)
 	defer store.Close()
 
@@ -41,7 +41,7 @@ func TestSingleUncommittedWriteThenRead(t *testing.T) {
 }
 
 func TestMultipleUncommittedWriteThenRead(t *testing.T) {
-	store, err := NewPersistantStorage(t.TempDir())
+	store, err := NewPersistentStorage(t.TempDir())
 	require.NoError(t, err)
 	defer store.Close()
 
@@ -60,7 +60,7 @@ func TestMultipleUncommittedWriteThenRead(t *testing.T) {
 }
 
 func TestUncommittedWriteCommitThenRead(t *testing.T) {
-	store, err := NewPersistantStorage(t.TempDir())
+	store, err := NewPersistentStorage(t.TempDir())
 	require.NoError(t, err)
 	defer store.Close()
 
@@ -78,7 +78,7 @@ func TestUncommittedWriteCommitThenRead(t *testing.T) {
 }
 
 func TestMultipleUncommittedWriteCommitThenRead(t *testing.T) {
-	store, err := NewPersistantStorage(t.TempDir())
+	store, err := NewPersistentStorage(t.TempDir())
 	require.NoError(t, err)
 	defer store.Close()
 
@@ -100,7 +100,7 @@ func TestMultipleUncommittedWriteCommitThenRead(t *testing.T) {
 }
 
 func TestInterleavedUncommittedWriteCommitsReads(t *testing.T) {
-	store, err := NewPersistantStorage(t.TempDir())
+	store, err := NewPersistentStorage(t.TempDir())
 	require.NoError(t, err)
 	defer store.Close()
 
@@ -136,7 +136,7 @@ func TestInterleavedUncommittedWriteCommitsReads(t *testing.T) {
 }
 
 func TestSendKeyValuePairsCommitted(t *testing.T) {
-	store, err := NewPersistantStorage(t.TempDir())
+	store, err := NewPersistentStorage(t.TempDir())
 	require.NoError(t, err)
 	defer store.Close()
 
@@ -184,7 +184,7 @@ func TestSendKeyValuePairsCommitted(t *testing.T) {
 }
 
 func TestSendKeyValuePairsDirty(t *testing.T) {
-	store, err := NewPersistantStorage(t.TempDir())
+	store, err := NewPersistentStorage(t.TempDir())
 	require.NoError(t, err)
 	defer store.Close()
 
@@ -225,7 +225,7 @@ func TestSendKeyValuePairsDirty(t *testing.T) {
 }
 
 func TestSendKeyValuePairsAll(t *testing.T) {
-	store, err := NewPersistantStorage(t.TempDir())
+	store, err := NewPersistentStorage(t.TempDir())
 	require.NoError(t, err)
 	defer store.Close()
 
@@ -269,7 +269,7 @@ func TestSendKeyValuePairsAll(t *testing.T) {
 }
 
 func TestCommitAll(t *testing.T) {
-	store, err := NewPersistantStorage(t.TempDir())
+	store, err := NewPersistentStorage(t.TempDir())
 	require.NoError(t, err)
 	defer store.Close()
 

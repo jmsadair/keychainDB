@@ -460,7 +460,7 @@ type KeyValuePair struct {
 	// The version of the key.
 	Version uint64 `protobuf:"varint,3,opt,name=version,proto3" json:"version,omitempty"`
 	// Whether or not this version of the key has been committed.
-	IsCommited    bool `protobuf:"varint,4,opt,name=isCommited,proto3" json:"isCommited,omitempty"`
+	IsCommitted   bool `protobuf:"varint,4,opt,name=isCommitted,proto3" json:"isCommitted,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -516,9 +516,9 @@ func (x *KeyValuePair) GetVersion() uint64 {
 	return 0
 }
 
-func (x *KeyValuePair) GetIsCommited() bool {
+func (x *KeyValuePair) GetIsCommitted() bool {
 	if x != nil {
-		return x.IsCommited
+		return x.IsCommitted
 	}
 	return false
 }
@@ -636,14 +636,12 @@ const file_chain_proto_rawDesc = "" +
 	"\fReadResponse\x12\x14\n" +
 	"\x05value\x18\x01 \x01(\fR\x05value\"=\n" +
 	"\x10PropagateRequest\x12)\n" +
-	"\bkey_type\x18\x01 \x01(\x0e2\x0e.chain.KeyTypeR\akeyType\"p\n" +
+	"\bkey_type\x18\x01 \x01(\x0e2\x0e.chain.KeyTypeR\akeyType\"r\n" +
 	"\fKeyValuePair\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\fR\x05value\x12\x18\n" +
-	"\aversion\x18\x03 \x01(\x04R\aversion\x12\x1e\n" +
-	"\n" +
-	"isCommited\x18\x04 \x01(\bR\n" +
-	"isCommited\";\n" +
+	"\aversion\x18\x03 \x01(\x04R\aversion\x12 \n" +
+	"\visCommitted\x18\x04 \x01(\bR\visCommitted\";\n" +
 	"\rCommitRequest\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x18\n" +
 	"\aversion\x18\x02 \x01(\x04R\aversion\"\x10\n" +

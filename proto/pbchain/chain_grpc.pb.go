@@ -39,7 +39,7 @@ type ChainServiceClient interface {
 	// Commit handles requests to commit a particular version of a key.
 	Commit(ctx context.Context, in *CommitRequest, opts ...grpc.CallOption) (*CommitResponse, error)
 	// Propagate handles requests to list all key-value pairs that match the specified criterion.
-	// This is useful when a new node is added to chain and needs to be recieve all of the key-value pairs it is missing.
+	// This is useful when a new node is added to chain and needs to receive all of the key-value pairs it is missing.
 	Propagate(ctx context.Context, in *PropagateRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[KeyValuePair], error)
 	// UpdateConfiguration handles requests to update the chain membership configuration.
 	UpdateConfiguration(ctx context.Context, in *UpdateConfigurationRequest, opts ...grpc.CallOption) (*UpdateConfigurationResponse, error)
@@ -125,7 +125,7 @@ type ChainServiceServer interface {
 	// Commit handles requests to commit a particular version of a key.
 	Commit(context.Context, *CommitRequest) (*CommitResponse, error)
 	// Propagate handles requests to list all key-value pairs that match the specified criterion.
-	// This is useful when a new node is added to chain and needs to be recieve all of the key-value pairs it is missing.
+	// This is useful when a new node is added to chain and needs to receive all of the key-value pairs it is missing.
 	Propagate(*PropagateRequest, grpc.ServerStreamingServer[KeyValuePair]) error
 	// UpdateConfiguration handles requests to update the chain membership configuration.
 	UpdateConfiguration(context.Context, *UpdateConfigurationRequest) (*UpdateConfigurationResponse, error)

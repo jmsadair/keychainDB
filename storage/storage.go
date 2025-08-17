@@ -19,45 +19,46 @@ const (
 	AllKeys KeyFilter = iota
 	// DirtyKeys will select only dirty keys.
 	DirtyKeys
-	// CommittedKeys will select only uncommitted keys.
+	// CommittedKeys will select only committed keys.
 	CommittedKeys
 )
 
+// KeyValuePair represents a versioned key-value pair in storage.
 type KeyValuePair struct {
-	// A client provided key.
+	// Key is the client-provided key.
 	Key string
-	// The value associated with the key.
+	// Value is the data associated with the key.
 	Value []byte
-	// The version of the key.
+	// Version is the version number of this key-value pair.
 	Version uint64
-	// Indicates whether this version of the key has been committed.
+	// Committed indicates whether this version has been committed.
 	Committed bool
 }
 
-// PersistantStorage is a disk-backed key-value storage system that is
+// PersistentStorage is a disk-backed key-value storage system that is
 // capable of performing transactional reads and writes.
-type PersistantStorage struct {
+type PersistentStorage struct {
 	db *badger.DB
 }
 
-// NewPersistantStorage opens the storage located at the provided path.
+// NewPersistentStorage opens the storage located at the provided path.
 // If the storage does not exist, one will be created.
-func NewPersistantStorage(dbpath string) (*PersistantStorage, error) {
+func NewPersistentStorage(dbpath string) (*PersistentStorage, error) {
 	db, err := badger.Open(badger.DefaultOptions(dbpath))
 	if err != nil {
 		return nil, err
 	}
-	return &PersistantStorage{db: db}, nil
+	return &PersistentStorage{db: db}, nil
 }
 
 // Close will close the storage.
 // It is critical that this is called after the storage is done being used to ensure all updates are written to disk.
-func (ps *PersistantStorage) Close() {
+func (ps *PersistentStorage) Close() {
 	ps.db.Close()
 }
 
 // UncommittedWriteNewVersion will transactionally generate a new version of the key and write the key-value pair to storage.
-func (ps *PersistantStorage) UncommittedWriteNewVersion(key string, value []byte) (uint64, error) {
+func (ps *PersistentStorage) UncommittedWriteNewVersion(key string, value []byte) (uint64, error) {
 	var err error
 	var version uint64
 
@@ -70,7 +71,7 @@ func (ps *PersistantStorage) UncommittedWriteNewVersion(key string, value []byte
 }
 
 // UncommittedWrite will transactionally write the provided version of key to storage but will not commit it.
-func (ps *PersistantStorage) UncommittedWrite(key string, value []byte, version uint64) error {
+func (ps *PersistentStorage) UncommittedWrite(key string, value []byte, version uint64) error {
 	return ps.db.Update(func(txn *badger.Txn) error {
 		_, err := write(txn, key, value, version, false, false)
 		return err
@@ -78,7 +79,7 @@ func (ps *PersistantStorage) UncommittedWrite(key string, value []byte, version 
 }
 
 // CommittedWrite will transactionally write the provided version of key to storage and will immediately commit it.
-func (ps *PersistantStorage) CommittedWrite(key string, value []byte, version uint64) error {
+func (ps *PersistentStorage) CommittedWrite(key string, value []byte, version uint64) error {
 	return ps.db.Update(func(txn *badger.Txn) error {
 		_, err := write(txn, key, value, version, true, false)
 		return err
@@ -87,7 +88,7 @@ func (ps *PersistantStorage) CommittedWrite(key string, value []byte, version ui
 
 // CommittedWriteNewVersion will transactionally generate a new version of the key, write the key-value pair to storage,
 // and immediately commit the new version.
-func (ps *PersistantStorage) CommittedWriteNewVersion(key string, value []byte) (uint64, error) {
+func (ps *PersistentStorage) CommittedWriteNewVersion(key string, value []byte) (uint64, error) {
 	var err error
 	var version uint64
 
@@ -102,7 +103,7 @@ func (ps *PersistantStorage) CommittedWriteNewVersion(key string, value []byte) 
 // CommitVersion will transactionally commit the provided version of the key.
 // All versions of the key earlier than the committed version will be deleted.
 // Commiting a version earlier than the currently committed version is a no-op.
-func (ps *PersistantStorage) CommitVersion(key string, version uint64) error {
+func (ps *PersistentStorage) CommitVersion(key string, version uint64) error {
 	return ps.db.Update(func(txn *badger.Txn) error {
 		return commit(txn, key, version)
 	})
@@ -110,7 +111,7 @@ func (ps *PersistantStorage) CommitVersion(key string, version uint64) error {
 
 // CommittedRead will transactionally read the value of the key.
 // If there are uncommitted writes, an error will be returned.
-func (ps *PersistantStorage) CommittedRead(key string) ([]byte, error) {
+func (ps *PersistentStorage) CommittedRead(key string) ([]byte, error) {
 	var err error
 	var value []byte
 
@@ -125,7 +126,7 @@ func (ps *PersistantStorage) CommittedRead(key string) ([]byte, error) {
 // SendKeyValuePairs will iterate over the key-value pairs in storage that satisfy the provided keyFilter, group them
 // into batches, and call the provided sendFunc with the batch as the argument. If at any point during the
 // process an error occurs, the process will be terminated and the error will be returned.
-func (ps *PersistantStorage) SendKeyValuePairs(ctx context.Context, sendFunc func(context.Context, []KeyValuePair) error, keyFilter KeyFilter) error {
+func (ps *PersistentStorage) SendKeyValuePairs(ctx context.Context, sendFunc func(context.Context, []KeyValuePair) error, keyFilter KeyFilter) error {
 	stream := ps.db.NewStream()
 
 	switch keyFilter {
@@ -163,7 +164,7 @@ func (ps *PersistantStorage) SendKeyValuePairs(ctx context.Context, sendFunc fun
 // any of the keys fails, the process will be terminated and the error will be returned. This is
 // not transactional. It is possible that some keys will have been committed while others will not
 // have if an error occurs.
-func (ps *PersistantStorage) CommitAll(ctx context.Context, onCommit func(ctx context.Context, key string, version uint64) error) error {
+func (ps *PersistentStorage) CommitAll(ctx context.Context, onCommit func(ctx context.Context, key string, version uint64) error) error {
 	stream := ps.db.NewStream()
 	stream.Prefix = []byte{byte(dirty)}
 	stream.Send = func(buf *z.Buffer) error {
