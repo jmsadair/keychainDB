@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package coordinator;
+
+option go_package = "github.com/jmsadair/keychain/proto/pbcoordinator";
+
+enum MembershipChangeOpType {
+	ADD = 0;
+	REMOVE = 1;
+} 
+
+message MembershipChangeOperation {
+	string member = 1;
+	MembershipChangeOpType op = 2;
+}

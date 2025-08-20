@@ -52,6 +52,15 @@ func NewChainConfigurationFromProto(chainConfigurationProto *pb.ChainConfigurati
 	return NewChainConfiguration(ChainID(chainConfigurationProto.GetChainId()), members)
 }
 
+// NewChainConfigurationFromBytes creates a new ChainConfiguration instance from bytes.
+func NewChainConfigurationFromBytes(b []byte) (*ChainConfiguration, error) {
+	chainConfigurationProto := &pb.ChainConfiguration{}
+	if err := proto.Unmarshal(b, chainConfigurationProto); err != nil {
+		return nil, err
+	}
+	return NewChainConfigurationFromProto(chainConfigurationProto)
+}
+
 // Bytes converts the ChainConfiguration instance into bytes.
 func (cm *ChainConfiguration) Bytes() ([]byte, error) {
 	members := make([]string, len(cm.members))
@@ -60,6 +69,57 @@ func (cm *ChainConfiguration) Bytes() ([]byte, error) {
 	}
 	chainConfigurationProto := &pb.ChainConfiguration{ChainId: string(cm.ID), Members: members}
 	return proto.Marshal(chainConfigurationProto)
+}
+
+// Equal returns a boolean value indicating whether this configuration is equal to the provided one.
+// Two configurations are considered equal if and only if they have the same members in the same order.
+func (cm *ChainConfiguration) Equal(config *ChainConfiguration) bool {
+	if len(cm.members) != len(config.members) {
+		return false
+	}
+	for i := range len(cm.members) {
+		if cm.members[i].String() != config.members[i].String() {
+			return false
+		}
+	}
+	return true
+}
+
+// Copy creates a copy of the ChainConfiguration instance.
+func (cm *ChainConfiguration) Copy() *ChainConfiguration {
+	members := make([]net.Addr, len(cm.members))
+	addrToMemberIndex := make(map[string]int, len(cm.addressToMemberIndex))
+	for i, member := range cm.members {
+		members[i] = member
+		addrToMemberIndex[member.String()] = i
+	}
+	return &ChainConfiguration{ID: cm.ID, members: members, addressToMemberIndex: addrToMemberIndex}
+}
+
+// AddMember creates a new configuration with the member added at the tail if it is not already present.
+func (cm *ChainConfiguration) AddMember(member net.Addr) *ChainConfiguration {
+	newConfig := cm.Copy()
+	if newConfig.IsMember(member) {
+		return newConfig
+	}
+	newConfig.members = append(newConfig.members, member)
+	newConfig.addressToMemberIndex[member.String()] = len(newConfig.members) - 1
+	return newConfig
+}
+
+// RemoveMember creates a new configuration with the member removed.
+func (cm *ChainConfiguration) RemoveMember(member net.Addr) *ChainConfiguration {
+	newConfig := cm.Copy()
+	i, ok := newConfig.addressToMemberIndex[member.String()]
+	if !ok {
+		return newConfig
+	}
+	members := make([]net.Addr, 0, len(newConfig.members)-1)
+	members = append(members, newConfig.members[:i]...)
+	members = append(members, newConfig.members[i+1:]...)
+	newConfig.members = members
+	delete(newConfig.addressToMemberIndex, member.String())
+	return newConfig
 }
 
 // Head returns the address of the head of the chain.
