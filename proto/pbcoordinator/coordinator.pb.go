@@ -21,10 +21,13 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// MembershipChangeOpType indicates the type of operation that is associated with a MembershipChangeOperation.
 type MembershipChangeOpType int32
 
 const (
-	MembershipChangeOpType_ADD    MembershipChangeOpType = 0
+	// Add a member to a chain configuration.
+	MembershipChangeOpType_ADD MembershipChangeOpType = 0
+	// Remove a member from a chain configuration.
 	MembershipChangeOpType_REMOVE MembershipChangeOpType = 1
 )
 
@@ -67,9 +70,12 @@ func (MembershipChangeOpType) EnumDescriptor() ([]byte, []int) {
 	return file_coordinator_proto_rawDescGZIP(), []int{0}
 }
 
+// MembershipChangeOperation is an operation on a chain configuration that can be applied to a raft cluster.
 type MembershipChangeOperation struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Member        string                 `protobuf:"bytes,1,opt,name=member,proto3" json:"member,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The address that this operation is impacting.
+	Member string `protobuf:"bytes,1,opt,name=member,proto3" json:"member,omitempty"`
+	// The type of the operation occuring.
 	Op            MembershipChangeOpType `protobuf:"varint,2,opt,name=op,proto3,enum=coordinator.MembershipChangeOpType" json:"op,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
