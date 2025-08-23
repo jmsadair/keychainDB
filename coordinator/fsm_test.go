@@ -1,0 +1,128 @@
+package coordinator
+
+import (
+	"io"
+	"net"
+	"testing"
+
+	"github.com/hashicorp/raft"
+	"github.com/jmsadair/keychain/chain"
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
+)
+
+type mockSnapshotReader struct {
+	mock.Mock
+}
+
+func (m *mockSnapshotReader) Read(p []byte) (n int, err error) {
+	args := m.MethodCalled("Read")
+	data := args.Get(0).([]byte)
+	return copy(p, data), args.Error(1)
+}
+
+func (m *mockSnapshotReader) Close() error {
+	args := m.MethodCalled("Close")
+	return args.Error(0)
+}
+
+type mockSnapshotSync struct {
+	mock.Mock
+}
+
+func (m *mockSnapshotSync) ID() string {
+	args := m.MethodCalled("ID")
+	return args.String(0)
+}
+
+func (m *mockSnapshotSync) Write(p []byte) (n int, err error) {
+	args := m.MethodCalled("Write", p)
+	return args.Int(0), args.Error(1)
+}
+
+func (m *mockSnapshotSync) Close() error {
+	args := m.MethodCalled("Close")
+	return args.Error(0)
+}
+
+func (m *mockSnapshotSync) Cancel() error {
+	args := m.MethodCalled("Cancel")
+	return args.Error(0)
+}
+
+func TestMembershipChangeOperationBytes(t *testing.T) {
+	memberAddr, err := net.ResolveTCPAddr("tcp", "127.0.0.1:8080")
+	require.NoError(t, err)
+
+	addOp := &MembershipChangeOperation{Member: memberAddr, OpType: Add}
+	addOpBytes, err := addOp.Bytes()
+	require.NoError(t, err)
+	decodedAddOp, err := NewMembershipChangeOperationFromBytes(addOpBytes)
+	require.NoError(t, err)
+	require.Equal(t, addOp.Member.String(), decodedAddOp.Member.String())
+	require.Equal(t, addOp.OpType, decodedAddOp.OpType)
+
+	removeOp := &MembershipChangeOperation{Member: memberAddr, OpType: Remove}
+	removeOpBytes, err := removeOp.Bytes()
+	require.NoError(t, err)
+	decodedRemoveOp, err := NewMembershipChangeOperationFromBytes(removeOpBytes)
+	require.NoError(t, err)
+	require.Equal(t, removeOp.Member.String(), decodedRemoveOp.Member.String())
+	require.Equal(t, removeOp.OpType, decodedRemoveOp.OpType)
+}
+
+func TestNewFSM(t *testing.T) {
+	fsm := NewFSM()
+	require.NotNil(t, fsm)
+	require.Equal(t, chain.EmptyChain, fsm.chainConfiguration)
+}
+
+func TestApply(t *testing.T) {
+	fsm := NewFSM()
+	memberAddr, err := net.ResolveTCPAddr("tcp", "127.0.0.1:8080")
+	require.NoError(t, err)
+
+	addOp := &MembershipChangeOperation{Member: memberAddr, OpType: Add}
+	addOpBytes, err := addOp.Bytes()
+	require.NoError(t, err)
+	log := raft.Log{Data: addOpBytes}
+	require.Nil(t, fsm.Apply(&log))
+	require.True(t, fsm.chainConfiguration.IsMember(memberAddr))
+
+	removeOp := &MembershipChangeOperation{Member: memberAddr, OpType: Remove}
+	removeOpBytes, err := removeOp.Bytes()
+	require.NoError(t, err)
+	log = raft.Log{Data: removeOpBytes}
+	require.Nil(t, fsm.Apply(&log))
+	require.False(t, fsm.chainConfiguration.IsMember(memberAddr))
+}
+
+func TestSnapshotRestore(t *testing.T) {
+	fsm := NewFSM()
+	memberAddr, err := net.ResolveTCPAddr("tcp", "127.0.0.1:8080")
+	require.NoError(t, err)
+	chainID := "chain-1"
+	config, err := chain.NewChainConfiguration(chain.ChainID(chainID), []net.Addr{memberAddr})
+	require.NoError(t, err)
+
+	// Create a snapshot from the FSM state and ensure its encoded state is correct.
+	fsm.chainConfiguration = config
+	snapshot, err := fsm.Snapshot()
+	require.NoError(t, err)
+	b, err := config.Bytes()
+	require.NoError(t, err)
+	snapshotSink := new(mockSnapshotSync)
+	snapshotSink.On("Write", b).Return(len(b), nil).Once()
+	snapshotSink.On("Close").Return(nil).Once()
+	require.NoError(t, snapshot.Persist(snapshotSink))
+	snapshotSink.AssertExpectations(t)
+
+	// Restore the FSM from a snapshot and ensure its state is correct.
+	fsm.chainConfiguration = nil
+	snapshotReader := new(mockSnapshotReader)
+	snapshotReader.On("Read").Return(b, io.EOF).Once()
+	snapshotReader.On("Close").Return(nil).Once()
+	require.NoError(t, fsm.Restore(snapshotReader))
+	require.True(t, config.Equal(fsm.chainConfiguration))
+	snapshotReader.AssertExpectations(t)
+}

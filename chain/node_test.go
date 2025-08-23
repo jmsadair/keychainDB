@@ -299,7 +299,7 @@ func TestOnNewPredecessor(t *testing.T) {
 
 	// Node becomes new member of existing chain.
 	// It should request all key-value pairs from its predecessor to sync and then signal syncing is complete.
-	// It is the tail so it should commit any key-value pairs it recieves immediately.
+	// It is the tail so it should commit any key-value pairs it receives immediately.
 	node.syncCompleteCh = make(chan any, 1)
 	chain := ChainID("chain")
 	config, err := NewChainConfiguration(chain, []net.Addr{address2, address1})
@@ -320,7 +320,7 @@ func TestOnNewPredecessor(t *testing.T) {
 	// Node is an existing member of the chain and gets a new predecessor.
 	// It should request only the dirty key-value pairs from its predecessor in case its previous
 	// predecessor failed and did not finish sending them. It is the tail so it should commit
-	// any key-value pairs it recieves immediately.
+	// any key-value pairs it receives immediately.
 	config, err = NewChainConfiguration(chain, []net.Addr{address3, address1})
 	require.NoError(t, err)
 	stream.On("Receive").Return(&kv1, nil).Once()
