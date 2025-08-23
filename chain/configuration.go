@@ -72,9 +72,13 @@ func (cm *ChainConfiguration) Bytes() ([]byte, error) {
 }
 
 // Equal returns a boolean value indicating whether this configuration is equal to the provided one.
-// Two configurations are considered equal if and only if they have the same members in the same order.
+// Two configurations are considered equal if and only if they have the same members in the same order
+// and the same chain ID.
 func (cm *ChainConfiguration) Equal(config *ChainConfiguration) bool {
 	if len(cm.members) != len(config.members) {
+		return false
+	}
+	if cm.ID != config.ID {
 		return false
 	}
 	for i := range len(cm.members) {
@@ -120,6 +124,13 @@ func (cm *ChainConfiguration) RemoveMember(member net.Addr) *ChainConfiguration 
 	newConfig.members = members
 	delete(newConfig.addressToMemberIndex, member.String())
 	return newConfig
+}
+
+// Members returns the members of the configuration. The members are ordered head to tail.
+func (cm *ChainConfiguration) Members() []net.Addr {
+	membersCopy := make([]net.Addr, len(cm.members))
+	copy(cm.members, membersCopy)
+	return membersCopy
 }
 
 // Head returns the address of the head of the chain.
