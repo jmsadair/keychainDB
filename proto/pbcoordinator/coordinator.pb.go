@@ -9,6 +9,7 @@ package pbcoordinator
 import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
@@ -125,14 +126,115 @@ func (x *MembershipChangeOperation) GetOp() MembershipChangeOpType {
 	return MembershipChangeOpType_ADD
 }
 
+// Log is a log entry in the raft log.
+type Log struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The index of this log entry.
+	Index uint64 `protobuf:"varint,1,opt,name=index,proto3" json:"index,omitempty"`
+	// The election term of this log entry.
+	Term uint64 `protobuf:"varint,2,opt,name=term,proto3" json:"term,omitempty"`
+	// The type of this log entry.
+	Type uint32 `protobuf:"varint,3,opt,name=type,proto3" json:"type,omitempty"`
+	// The data of this log entry.
+	Data []byte `protobuf:"bytes,4,opt,name=data,proto3" json:"data,omitempty"`
+	// The extensions for this log entry.
+	Extensions []byte `protobuf:"bytes,5,opt,name=extensions,proto3" json:"extensions,omitempty"`
+	// The time at which this log entry was appended to the log in unix seconds.
+	AppendedAt    *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=appended_at,json=appendedAt,proto3" json:"appended_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Log) Reset() {
+	*x = Log{}
+	mi := &file_coordinator_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Log) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Log) ProtoMessage() {}
+
+func (x *Log) ProtoReflect() protoreflect.Message {
+	mi := &file_coordinator_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Log.ProtoReflect.Descriptor instead.
+func (*Log) Descriptor() ([]byte, []int) {
+	return file_coordinator_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *Log) GetIndex() uint64 {
+	if x != nil {
+		return x.Index
+	}
+	return 0
+}
+
+func (x *Log) GetTerm() uint64 {
+	if x != nil {
+		return x.Term
+	}
+	return 0
+}
+
+func (x *Log) GetType() uint32 {
+	if x != nil {
+		return x.Type
+	}
+	return 0
+}
+
+func (x *Log) GetData() []byte {
+	if x != nil {
+		return x.Data
+	}
+	return nil
+}
+
+func (x *Log) GetExtensions() []byte {
+	if x != nil {
+		return x.Extensions
+	}
+	return nil
+}
+
+func (x *Log) GetAppendedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.AppendedAt
+	}
+	return nil
+}
+
 var File_coordinator_proto protoreflect.FileDescriptor
 
 const file_coordinator_proto_rawDesc = "" +
 	"\n" +
-	"\x11coordinator.proto\x12\vcoordinator\"h\n" +
+	"\x11coordinator.proto\x12\vcoordinator\x1a\x1fgoogle/protobuf/timestamp.proto\"h\n" +
 	"\x19MembershipChangeOperation\x12\x16\n" +
 	"\x06member\x18\x01 \x01(\tR\x06member\x123\n" +
-	"\x02op\x18\x02 \x01(\x0e2#.coordinator.MembershipChangeOpTypeR\x02op*-\n" +
+	"\x02op\x18\x02 \x01(\x0e2#.coordinator.MembershipChangeOpTypeR\x02op\"\xb4\x01\n" +
+	"\x03Log\x12\x14\n" +
+	"\x05index\x18\x01 \x01(\x04R\x05index\x12\x12\n" +
+	"\x04term\x18\x02 \x01(\x04R\x04term\x12\x12\n" +
+	"\x04type\x18\x03 \x01(\rR\x04type\x12\x12\n" +
+	"\x04data\x18\x04 \x01(\fR\x04data\x12\x1e\n" +
+	"\n" +
+	"extensions\x18\x05 \x01(\fR\n" +
+	"extensions\x12;\n" +
+	"\vappended_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
+	"appendedAt*-\n" +
 	"\x16MembershipChangeOpType\x12\a\n" +
 	"\x03ADD\x10\x00\x12\n" +
 	"\n" +
@@ -151,18 +253,21 @@ func file_coordinator_proto_rawDescGZIP() []byte {
 }
 
 var file_coordinator_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_coordinator_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_coordinator_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
 var file_coordinator_proto_goTypes = []any{
 	(MembershipChangeOpType)(0),       // 0: coordinator.MembershipChangeOpType
 	(*MembershipChangeOperation)(nil), // 1: coordinator.MembershipChangeOperation
+	(*Log)(nil),                       // 2: coordinator.Log
+	(*timestamppb.Timestamp)(nil),     // 3: google.protobuf.Timestamp
 }
 var file_coordinator_proto_depIdxs = []int32{
 	0, // 0: coordinator.MembershipChangeOperation.op:type_name -> coordinator.MembershipChangeOpType
-	1, // [1:1] is the sub-list for method output_type
-	1, // [1:1] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	3, // 1: coordinator.Log.appended_at:type_name -> google.protobuf.Timestamp
+	2, // [2:2] is the sub-list for method output_type
+	2, // [2:2] is the sub-list for method input_type
+	2, // [2:2] is the sub-list for extension type_name
+	2, // [2:2] is the sub-list for extension extendee
+	0, // [0:2] is the sub-list for field type_name
 }
 
 func init() { file_coordinator_proto_init() }
@@ -176,7 +281,7 @@ func file_coordinator_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_coordinator_proto_rawDesc), len(file_coordinator_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   1,
+			NumMessages:   2,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
