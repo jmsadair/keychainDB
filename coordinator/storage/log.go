@@ -1,4 +1,4 @@
-package log
+package storage
 
 import (
 	"encoding/binary"
@@ -22,19 +22,20 @@ func logToBytes(log *raft.Log) ([]byte, error) {
 	return proto.Marshal(protoLog)
 }
 
-func bytesToLog(b []byte) (*raft.Log, error) {
+func bytesToLog(b []byte, log *raft.Log) error {
 	protoLog := &pb.Log{}
 	if err := proto.Unmarshal(b, protoLog); err != nil {
-		return nil, err
+		return err
 	}
-	return &raft.Log{
-		Index:      protoLog.Index,
-		Term:       protoLog.Term,
-		Type:       raft.LogType(protoLog.Type),
-		Data:       protoLog.Data,
-		Extensions: protoLog.Extensions,
-		AppendedAt: protoLog.AppendedAt.AsTime(),
-	}, nil
+
+	log.Index = protoLog.Index
+	log.Term = protoLog.Term
+	log.Type = raft.LogType(protoLog.Type)
+	log.Data = protoLog.Data
+	log.Extensions = protoLog.Extensions
+	log.AppendedAt = protoLog.AppendedAt.AsTime()
+
+	return nil
 }
 
 type PersistentLog struct {
@@ -53,33 +54,41 @@ func (pl *PersistentLog) FirstIndex() (uint64, error) {
 	var first uint64
 	firstPtr := &first
 
-	return *firstPtr, pl.db.View(func(txn *badger.Txn) error {
+	err := pl.db.View(func(txn *badger.Txn) error {
 		opts := badger.DefaultIteratorOptions
 		opts.PrefetchValues = false
 		it := txn.NewIterator(opts)
 		defer it.Close()
+		it.Rewind()
 		if it.Valid() {
 			*firstPtr = binary.BigEndian.Uint64(it.Item().Key())
 		}
 		return nil
 	})
+
+	return *firstPtr, err
 }
 
 func (pl *PersistentLog) LastIndex() (uint64, error) {
 	var last uint64
 	lastPtr := &last
 
-	return *lastPtr, pl.db.View(func(txn *badger.Txn) error {
+	err := pl.db.View(func(txn *badger.Txn) error {
 		opts := badger.DefaultIteratorOptions
 		opts.PrefetchValues = false
 		opts.Reverse = true
 		it := txn.NewIterator(opts)
 		defer it.Close()
+
+		it.Rewind()
 		if it.Valid() {
 			*lastPtr = binary.BigEndian.Uint64(it.Item().Key())
 		}
+
 		return nil
 	})
+
+	return *lastPtr, err
 }
 
 func (pl *PersistentLog) GetLog(index uint64, log *raft.Log) error {
@@ -94,8 +103,7 @@ func (pl *PersistentLog) GetLog(index uint64, log *raft.Log) error {
 		if err != nil {
 			return err
 		}
-		log, err = bytesToLog(value)
-		return err
+		return bytesToLog(value, log)
 	})
 }
 
@@ -122,15 +130,17 @@ func (pl *PersistentLog) DeleteRange(min uint64, max uint64) error {
 	return pl.db.Update(func(txn *badger.Txn) error {
 		opts := badger.DefaultIteratorOptions
 		opts.PrefetchValues = false
+
 		it := txn.NewIterator(opts)
 		defer it.Close()
 
-		key := make([]byte, 8)
-		binary.BigEndian.PutUint64(key, min)
-		it.Seek(key)
-		for it.Valid() {
-			key = it.Item().Key()
-			it.Next()
+		minKey := make([]byte, 8)
+		binary.BigEndian.PutUint64(minKey, min)
+		for it.Seek(minKey); it.Valid(); it.Next() {
+			key := it.Item().KeyCopy(nil)
+			if binary.BigEndian.Uint64(key) > max {
+				break
+			}
 			if err := txn.Delete(key); err != nil {
 				return err
 			}
