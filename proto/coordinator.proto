@@ -18,7 +18,7 @@ enum MembershipChangeOpType {
 message MembershipChangeOperation {
 	// The address that this operation is impacting.
 	string member = 1;
-	// The type of the operation occuring.
+	// The type of the operation occurring.
 	MembershipChangeOpType op = 2;
 }
 
@@ -34,6 +34,6 @@ message Log {
 	bytes data = 4;
 	// The extensions for this log entry.
 	bytes extensions = 5;
-	// The time at which this log entry was appended to the log in unix seconds.
+	// The time at which this log entry was appended to the log.
 	google.protobuf.Timestamp appended_at = 6;
 }

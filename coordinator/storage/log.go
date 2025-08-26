@@ -17,7 +17,7 @@ func logToBytes(log *raft.Log) ([]byte, error) {
 		Type:       uint32(log.Type),
 		Data:       log.Data,
 		Extensions: log.Extensions,
-		AppendedAt: timestamppb.New(log.AppendedAt),
+		AppendedAt: timestamppb.New(log.AppendedAt.UTC()),
 	}
 	return proto.Marshal(protoLog)
 }
@@ -38,10 +38,12 @@ func bytesToLog(b []byte, log *raft.Log) error {
 	return nil
 }
 
+// PersistentLog is a persistent storage system for raft log entries.
 type PersistentLog struct {
 	db *badger.DB
 }
 
+// NewPersistentLog creates a new log at the provided path.
 func NewPersistentLog(dbpath string) (*PersistentLog, error) {
 	db, err := badger.Open(badger.DefaultOptions(dbpath))
 	if err != nil {
@@ -50,6 +52,7 @@ func NewPersistentLog(dbpath string) (*PersistentLog, error) {
 	return &PersistentLog{db: db}, nil
 }
 
+// FirstIndex returns the index of the first log entry. If there are no log entries, then zero is returned.
 func (pl *PersistentLog) FirstIndex() (uint64, error) {
 	var first uint64
 	firstPtr := &first
@@ -69,6 +72,7 @@ func (pl *PersistentLog) FirstIndex() (uint64, error) {
 	return *firstPtr, err
 }
 
+// LastIndex returns the index of the last log entry. If there are no log entries, then zero is returned.
 func (pl *PersistentLog) LastIndex() (uint64, error) {
 	var last uint64
 	lastPtr := &last
@@ -91,6 +95,7 @@ func (pl *PersistentLog) LastIndex() (uint64, error) {
 	return *lastPtr, err
 }
 
+// GetLog gets the log entry at the provided index.
 func (pl *PersistentLog) GetLog(index uint64, log *raft.Log) error {
 	return pl.db.View(func(txn *badger.Txn) error {
 		key := make([]byte, 8)
@@ -107,10 +112,12 @@ func (pl *PersistentLog) GetLog(index uint64, log *raft.Log) error {
 	})
 }
 
+// StoreLog stores the provided log entry in the log.
 func (pl *PersistentLog) StoreLog(log *raft.Log) error {
 	return pl.StoreLogs([]*raft.Log{log})
 }
 
+// StoreLogs stores multiple log entries.
 func (pl *PersistentLog) StoreLogs(logs []*raft.Log) error {
 	return pl.db.Update(func(txn *badger.Txn) error {
 		for _, log := range logs {
@@ -126,6 +133,7 @@ func (pl *PersistentLog) StoreLogs(logs []*raft.Log) error {
 	})
 }
 
+// DeleteRange deletes all log entries with an index in the provided range inclusive.
 func (pl *PersistentLog) DeleteRange(min uint64, max uint64) error {
 	return pl.db.Update(func(txn *badger.Txn) error {
 		opts := badger.DefaultIteratorOptions

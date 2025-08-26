@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestStoreLog(t *testing.T) {
+func TestStoreGetLog(t *testing.T) {
 	tmpDir := t.TempDir()
 	logStore, err := NewPersistentLog(tmpDir)
 	require.NoError(t, err)
@@ -63,7 +63,7 @@ func TestFirstIndexLastIndex(t *testing.T) {
 	require.Equal(t, uint64(4), lastIndex)
 }
 
-func TestStoreLogs(t *testing.T) {
+func TestStoreGetLogs(t *testing.T) {
 	tmpDir := t.TempDir()
 	logStore, err := NewPersistentLog(tmpDir)
 	require.NoError(t, err)

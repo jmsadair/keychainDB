@@ -76,7 +76,7 @@ type MembershipChangeOperation struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The address that this operation is impacting.
 	Member string `protobuf:"bytes,1,opt,name=member,proto3" json:"member,omitempty"`
-	// The type of the operation occuring.
+	// The type of the operation occurring.
 	Op            MembershipChangeOpType `protobuf:"varint,2,opt,name=op,proto3,enum=coordinator.MembershipChangeOpType" json:"op,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -139,7 +139,7 @@ type Log struct {
 	Data []byte `protobuf:"bytes,4,opt,name=data,proto3" json:"data,omitempty"`
 	// The extensions for this log entry.
 	Extensions []byte `protobuf:"bytes,5,opt,name=extensions,proto3" json:"extensions,omitempty"`
-	// The time at which this log entry was appended to the log in unix seconds.
+	// The time at which this log entry was appended to the log.
 	AppendedAt    *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=appended_at,json=appendedAt,proto3" json:"appended_at,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

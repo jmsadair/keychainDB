@@ -12,7 +12,7 @@ const (
 	Inactive
 )
 
-// State contains the membeship configuration and status of a chain node.
+// State contains the membership configuration and status of a chain node.
 type State struct {
 	// The membership configuration for a chain node.
 	Config *ChainConfiguration
