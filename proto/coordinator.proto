@@ -6,20 +6,28 @@ option go_package = "github.com/jmsadair/keychain/proto/pbcoordinator";
 
 import "google/protobuf/timestamp.proto";
 
-// MembershipChangeOpType indicates the type of operation that is associated with a MembershipChangeOperation.
-enum MembershipChangeOpType {
-	// Add a member to a chain configuration.
-	ADD = 0;
-	// Remove a member from a chain configuration.
-	REMOVE = 1;
-} 
-
-// MembershipChangeOperation is an operation on a chain configuration that can be applied to a raft cluster.
-message MembershipChangeOperation {
-	// The address that this operation is impacting.
+// An operation that adds a member to a chain.
+message AddMemberOperation {
+	// The address of the member being added.
 	string member = 1;
-	// The type of the operation occurring.
-	MembershipChangeOpType op = 2;
+}
+
+// An operation that removes a member from a chain.
+message RemoveMemberOperation {
+	// The address of the member being removed.
+	string member = 1;
+}
+
+// An operation to read the current chain membership configuration.
+message ReadMembershipOperation {}
+
+// An operation that will be replicated across a raft cluster.
+message ReplicatedOperation {
+	oneof operation {
+		AddMemberOperation add_member = 1;
+		RemoveMemberOperation remove_member = 2;
+		ReadMembershipOperation read_membership = 3;
+	}
 }
 
 // Log is a log entry in the raft log.

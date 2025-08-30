@@ -11,58 +11,45 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-type MembershipChangeOpType int
-
-const (
-	Add MembershipChangeOpType = iota
-	Remove
-)
-
-type MembershipChangeOperation struct {
+type AddMemberOperation struct {
 	Member net.Addr
-	OpType MembershipChangeOpType
 }
 
-func NewMembershipChangeOperationFromBytes(b []byte) (*MembershipChangeOperation, error) {
-	pbOp := &pb.MembershipChangeOperation{}
-	if err := proto.Unmarshal(b, pbOp); err != nil {
-		return nil, err
+func (op *AddMemberOperation) Bytes() ([]byte, error) {
+	opProto := &pb.ReplicatedOperation{
+		Operation: &pb.ReplicatedOperation_AddMember{
+			AddMember: &pb.AddMemberOperation{
+				Member: op.Member.String(),
+			},
+		},
 	}
-	member, err := net.ResolveTCPAddr("tcp", pbOp.GetMember())
-	if err != nil {
-		return nil, err
-	}
-
-	op := &MembershipChangeOperation{Member: member}
-	switch pbOp.GetOp() {
-	case pb.MembershipChangeOpType_ADD:
-		op.OpType = Add
-	case pb.MembershipChangeOpType_REMOVE:
-		op.OpType = Remove
-	}
-
-	return op, nil
+	return proto.Marshal(opProto)
 }
 
-func (r *MembershipChangeOperation) Bytes() ([]byte, error) {
-	op := &pb.MembershipChangeOperation{Member: r.Member.String()}
-	switch r.OpType {
-	case Add:
-		op.Op = pb.MembershipChangeOpType_ADD
-	case Remove:
-		op.Op = pb.MembershipChangeOpType_REMOVE
-	}
-	return proto.Marshal(op)
+type RemoveMemberOperation struct {
+	Member net.Addr
 }
 
-func (r *MembershipChangeOperation) Apply(config *chain.ChainConfiguration) *chain.ChainConfiguration {
-	switch r.OpType {
-	case Add:
-		return config.AddMember(r.Member)
-	case Remove:
-		return config.RemoveMember(r.Member)
+func (op *RemoveMemberOperation) Bytes() ([]byte, error) {
+	opProto := &pb.ReplicatedOperation{
+		Operation: &pb.ReplicatedOperation_RemoveMember{
+			RemoveMember: &pb.RemoveMemberOperation{
+				Member: op.Member.String(),
+			},
+		},
 	}
-	return nil
+	return proto.Marshal(opProto)
+}
+
+type ReadMembershipOperation struct{}
+
+func (op *ReadMembershipOperation) Bytes() ([]byte, error) {
+	opProto := &pb.ReplicatedOperation{
+		Operation: &pb.ReplicatedOperation_ReadMembership{
+			ReadMembership: &pb.ReadMembershipOperation{},
+		},
+	}
+	return proto.Marshal(opProto)
 }
 
 type Snapshot struct {
@@ -99,16 +86,29 @@ func NewFSM() *FSM {
 }
 
 func (f *FSM) Apply(log *raft.Log) any {
-	op, err := NewMembershipChangeOperationFromBytes(log.Data)
-	if err != nil {
+	op := &pb.ReplicatedOperation{}
+	if err := proto.Unmarshal(log.Data, op); err != nil {
 		panic(err)
 	}
 
 	f.mu.Lock()
-	f.chainConfiguration = op.Apply(f.chainConfiguration)
-	f.mu.Unlock()
+	defer f.mu.Unlock()
+	switch v := op.Operation.(type) {
+	case *pb.ReplicatedOperation_AddMember:
+		member, err := net.ResolveTCPAddr("tcp", v.AddMember.GetMember())
+		if err != nil {
+			panic(err)
+		}
+		f.chainConfiguration = f.chainConfiguration.AddMember(member)
+	case *pb.ReplicatedOperation_RemoveMember:
+		member, err := net.ResolveTCPAddr("tcp", v.RemoveMember.GetMember())
+		if err != nil {
+			panic(err)
+		}
+		f.chainConfiguration = f.chainConfiguration.RemoveMember(member)
+	}
 
-	return nil
+	return f.chainConfiguration.Copy()
 }
 
 func (f *FSM) Snapshot() (raft.FSMSnapshot, error) {

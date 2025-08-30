@@ -22,80 +22,29 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// MembershipChangeOpType indicates the type of operation that is associated with a MembershipChangeOperation.
-type MembershipChangeOpType int32
-
-const (
-	// Add a member to a chain configuration.
-	MembershipChangeOpType_ADD MembershipChangeOpType = 0
-	// Remove a member from a chain configuration.
-	MembershipChangeOpType_REMOVE MembershipChangeOpType = 1
-)
-
-// Enum value maps for MembershipChangeOpType.
-var (
-	MembershipChangeOpType_name = map[int32]string{
-		0: "ADD",
-		1: "REMOVE",
-	}
-	MembershipChangeOpType_value = map[string]int32{
-		"ADD":    0,
-		"REMOVE": 1,
-	}
-)
-
-func (x MembershipChangeOpType) Enum() *MembershipChangeOpType {
-	p := new(MembershipChangeOpType)
-	*p = x
-	return p
-}
-
-func (x MembershipChangeOpType) String() string {
-	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
-}
-
-func (MembershipChangeOpType) Descriptor() protoreflect.EnumDescriptor {
-	return file_coordinator_proto_enumTypes[0].Descriptor()
-}
-
-func (MembershipChangeOpType) Type() protoreflect.EnumType {
-	return &file_coordinator_proto_enumTypes[0]
-}
-
-func (x MembershipChangeOpType) Number() protoreflect.EnumNumber {
-	return protoreflect.EnumNumber(x)
-}
-
-// Deprecated: Use MembershipChangeOpType.Descriptor instead.
-func (MembershipChangeOpType) EnumDescriptor() ([]byte, []int) {
-	return file_coordinator_proto_rawDescGZIP(), []int{0}
-}
-
-// MembershipChangeOperation is an operation on a chain configuration that can be applied to a raft cluster.
-type MembershipChangeOperation struct {
+// An operation that adds a member to a chain.
+type AddMemberOperation struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The address that this operation is impacting.
-	Member string `protobuf:"bytes,1,opt,name=member,proto3" json:"member,omitempty"`
-	// The type of the operation occurring.
-	Op            MembershipChangeOpType `protobuf:"varint,2,opt,name=op,proto3,enum=coordinator.MembershipChangeOpType" json:"op,omitempty"`
+	// The address of the member being added.
+	Member        string `protobuf:"bytes,1,opt,name=member,proto3" json:"member,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *MembershipChangeOperation) Reset() {
-	*x = MembershipChangeOperation{}
+func (x *AddMemberOperation) Reset() {
+	*x = AddMemberOperation{}
 	mi := &file_coordinator_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *MembershipChangeOperation) String() string {
+func (x *AddMemberOperation) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*MembershipChangeOperation) ProtoMessage() {}
+func (*AddMemberOperation) ProtoMessage() {}
 
-func (x *MembershipChangeOperation) ProtoReflect() protoreflect.Message {
+func (x *AddMemberOperation) ProtoReflect() protoreflect.Message {
 	mi := &file_coordinator_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -107,24 +56,199 @@ func (x *MembershipChangeOperation) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use MembershipChangeOperation.ProtoReflect.Descriptor instead.
-func (*MembershipChangeOperation) Descriptor() ([]byte, []int) {
+// Deprecated: Use AddMemberOperation.ProtoReflect.Descriptor instead.
+func (*AddMemberOperation) Descriptor() ([]byte, []int) {
 	return file_coordinator_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *MembershipChangeOperation) GetMember() string {
+func (x *AddMemberOperation) GetMember() string {
 	if x != nil {
 		return x.Member
 	}
 	return ""
 }
 
-func (x *MembershipChangeOperation) GetOp() MembershipChangeOpType {
-	if x != nil {
-		return x.Op
-	}
-	return MembershipChangeOpType_ADD
+// An operation that removes a member from a chain.
+type RemoveMemberOperation struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The address of the member being removed.
+	Member        string `protobuf:"bytes,1,opt,name=member,proto3" json:"member,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
+
+func (x *RemoveMemberOperation) Reset() {
+	*x = RemoveMemberOperation{}
+	mi := &file_coordinator_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RemoveMemberOperation) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RemoveMemberOperation) ProtoMessage() {}
+
+func (x *RemoveMemberOperation) ProtoReflect() protoreflect.Message {
+	mi := &file_coordinator_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RemoveMemberOperation.ProtoReflect.Descriptor instead.
+func (*RemoveMemberOperation) Descriptor() ([]byte, []int) {
+	return file_coordinator_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *RemoveMemberOperation) GetMember() string {
+	if x != nil {
+		return x.Member
+	}
+	return ""
+}
+
+// An operation to read the current chain membership configuration.
+type ReadMembershipOperation struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ReadMembershipOperation) Reset() {
+	*x = ReadMembershipOperation{}
+	mi := &file_coordinator_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ReadMembershipOperation) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ReadMembershipOperation) ProtoMessage() {}
+
+func (x *ReadMembershipOperation) ProtoReflect() protoreflect.Message {
+	mi := &file_coordinator_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ReadMembershipOperation.ProtoReflect.Descriptor instead.
+func (*ReadMembershipOperation) Descriptor() ([]byte, []int) {
+	return file_coordinator_proto_rawDescGZIP(), []int{2}
+}
+
+// An operation that will be replicated across a raft cluster.
+type ReplicatedOperation struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Types that are valid to be assigned to Operation:
+	//
+	//	*ReplicatedOperation_AddMember
+	//	*ReplicatedOperation_RemoveMember
+	//	*ReplicatedOperation_ReadMembership
+	Operation     isReplicatedOperation_Operation `protobuf_oneof:"operation"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ReplicatedOperation) Reset() {
+	*x = ReplicatedOperation{}
+	mi := &file_coordinator_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ReplicatedOperation) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ReplicatedOperation) ProtoMessage() {}
+
+func (x *ReplicatedOperation) ProtoReflect() protoreflect.Message {
+	mi := &file_coordinator_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ReplicatedOperation.ProtoReflect.Descriptor instead.
+func (*ReplicatedOperation) Descriptor() ([]byte, []int) {
+	return file_coordinator_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *ReplicatedOperation) GetOperation() isReplicatedOperation_Operation {
+	if x != nil {
+		return x.Operation
+	}
+	return nil
+}
+
+func (x *ReplicatedOperation) GetAddMember() *AddMemberOperation {
+	if x != nil {
+		if x, ok := x.Operation.(*ReplicatedOperation_AddMember); ok {
+			return x.AddMember
+		}
+	}
+	return nil
+}
+
+func (x *ReplicatedOperation) GetRemoveMember() *RemoveMemberOperation {
+	if x != nil {
+		if x, ok := x.Operation.(*ReplicatedOperation_RemoveMember); ok {
+			return x.RemoveMember
+		}
+	}
+	return nil
+}
+
+func (x *ReplicatedOperation) GetReadMembership() *ReadMembershipOperation {
+	if x != nil {
+		if x, ok := x.Operation.(*ReplicatedOperation_ReadMembership); ok {
+			return x.ReadMembership
+		}
+	}
+	return nil
+}
+
+type isReplicatedOperation_Operation interface {
+	isReplicatedOperation_Operation()
+}
+
+type ReplicatedOperation_AddMember struct {
+	AddMember *AddMemberOperation `protobuf:"bytes,1,opt,name=add_member,json=addMember,proto3,oneof"`
+}
+
+type ReplicatedOperation_RemoveMember struct {
+	RemoveMember *RemoveMemberOperation `protobuf:"bytes,2,opt,name=remove_member,json=removeMember,proto3,oneof"`
+}
+
+type ReplicatedOperation_ReadMembership struct {
+	ReadMembership *ReadMembershipOperation `protobuf:"bytes,3,opt,name=read_membership,json=readMembership,proto3,oneof"`
+}
+
+func (*ReplicatedOperation_AddMember) isReplicatedOperation_Operation() {}
+
+func (*ReplicatedOperation_RemoveMember) isReplicatedOperation_Operation() {}
+
+func (*ReplicatedOperation_ReadMembership) isReplicatedOperation_Operation() {}
 
 // Log is a log entry in the raft log.
 type Log struct {
@@ -147,7 +271,7 @@ type Log struct {
 
 func (x *Log) Reset() {
 	*x = Log{}
-	mi := &file_coordinator_proto_msgTypes[1]
+	mi := &file_coordinator_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -159,7 +283,7 @@ func (x *Log) String() string {
 func (*Log) ProtoMessage() {}
 
 func (x *Log) ProtoReflect() protoreflect.Message {
-	mi := &file_coordinator_proto_msgTypes[1]
+	mi := &file_coordinator_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -172,7 +296,7 @@ func (x *Log) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Log.ProtoReflect.Descriptor instead.
 func (*Log) Descriptor() ([]byte, []int) {
-	return file_coordinator_proto_rawDescGZIP(), []int{1}
+	return file_coordinator_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *Log) GetIndex() uint64 {
@@ -221,10 +345,18 @@ var File_coordinator_proto protoreflect.FileDescriptor
 
 const file_coordinator_proto_rawDesc = "" +
 	"\n" +
-	"\x11coordinator.proto\x12\vcoordinator\x1a\x1fgoogle/protobuf/timestamp.proto\"h\n" +
-	"\x19MembershipChangeOperation\x12\x16\n" +
-	"\x06member\x18\x01 \x01(\tR\x06member\x123\n" +
-	"\x02op\x18\x02 \x01(\x0e2#.coordinator.MembershipChangeOpTypeR\x02op\"\xb4\x01\n" +
+	"\x11coordinator.proto\x12\vcoordinator\x1a\x1fgoogle/protobuf/timestamp.proto\",\n" +
+	"\x12AddMemberOperation\x12\x16\n" +
+	"\x06member\x18\x01 \x01(\tR\x06member\"/\n" +
+	"\x15RemoveMemberOperation\x12\x16\n" +
+	"\x06member\x18\x01 \x01(\tR\x06member\"\x19\n" +
+	"\x17ReadMembershipOperation\"\x80\x02\n" +
+	"\x13ReplicatedOperation\x12@\n" +
+	"\n" +
+	"add_member\x18\x01 \x01(\v2\x1f.coordinator.AddMemberOperationH\x00R\taddMember\x12I\n" +
+	"\rremove_member\x18\x02 \x01(\v2\".coordinator.RemoveMemberOperationH\x00R\fremoveMember\x12O\n" +
+	"\x0fread_membership\x18\x03 \x01(\v2$.coordinator.ReadMembershipOperationH\x00R\x0ereadMembershipB\v\n" +
+	"\toperation\"\xb4\x01\n" +
 	"\x03Log\x12\x14\n" +
 	"\x05index\x18\x01 \x01(\x04R\x05index\x12\x12\n" +
 	"\x04term\x18\x02 \x01(\x04R\x04term\x12\x12\n" +
@@ -234,11 +366,7 @@ const file_coordinator_proto_rawDesc = "" +
 	"extensions\x18\x05 \x01(\fR\n" +
 	"extensions\x12;\n" +
 	"\vappended_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
-	"appendedAt*-\n" +
-	"\x16MembershipChangeOpType\x12\a\n" +
-	"\x03ADD\x10\x00\x12\n" +
-	"\n" +
-	"\x06REMOVE\x10\x01B2Z0github.com/jmsadair/keychain/proto/pbcoordinatorb\x06proto3"
+	"appendedAtB2Z0github.com/jmsadair/keychain/proto/pbcoordinatorb\x06proto3"
 
 var (
 	file_coordinator_proto_rawDescOnce sync.Once
@@ -252,22 +380,25 @@ func file_coordinator_proto_rawDescGZIP() []byte {
 	return file_coordinator_proto_rawDescData
 }
 
-var file_coordinator_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_coordinator_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_coordinator_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
 var file_coordinator_proto_goTypes = []any{
-	(MembershipChangeOpType)(0),       // 0: coordinator.MembershipChangeOpType
-	(*MembershipChangeOperation)(nil), // 1: coordinator.MembershipChangeOperation
-	(*Log)(nil),                       // 2: coordinator.Log
-	(*timestamppb.Timestamp)(nil),     // 3: google.protobuf.Timestamp
+	(*AddMemberOperation)(nil),      // 0: coordinator.AddMemberOperation
+	(*RemoveMemberOperation)(nil),   // 1: coordinator.RemoveMemberOperation
+	(*ReadMembershipOperation)(nil), // 2: coordinator.ReadMembershipOperation
+	(*ReplicatedOperation)(nil),     // 3: coordinator.ReplicatedOperation
+	(*Log)(nil),                     // 4: coordinator.Log
+	(*timestamppb.Timestamp)(nil),   // 5: google.protobuf.Timestamp
 }
 var file_coordinator_proto_depIdxs = []int32{
-	0, // 0: coordinator.MembershipChangeOperation.op:type_name -> coordinator.MembershipChangeOpType
-	3, // 1: coordinator.Log.appended_at:type_name -> google.protobuf.Timestamp
-	2, // [2:2] is the sub-list for method output_type
-	2, // [2:2] is the sub-list for method input_type
-	2, // [2:2] is the sub-list for extension type_name
-	2, // [2:2] is the sub-list for extension extendee
-	0, // [0:2] is the sub-list for field type_name
+	0, // 0: coordinator.ReplicatedOperation.add_member:type_name -> coordinator.AddMemberOperation
+	1, // 1: coordinator.ReplicatedOperation.remove_member:type_name -> coordinator.RemoveMemberOperation
+	2, // 2: coordinator.ReplicatedOperation.read_membership:type_name -> coordinator.ReadMembershipOperation
+	5, // 3: coordinator.Log.appended_at:type_name -> google.protobuf.Timestamp
+	4, // [4:4] is the sub-list for method output_type
+	4, // [4:4] is the sub-list for method input_type
+	4, // [4:4] is the sub-list for extension type_name
+	4, // [4:4] is the sub-list for extension extendee
+	0, // [0:4] is the sub-list for field type_name
 }
 
 func init() { file_coordinator_proto_init() }
@@ -275,19 +406,23 @@ func file_coordinator_proto_init() {
 	if File_coordinator_proto != nil {
 		return
 	}
+	file_coordinator_proto_msgTypes[3].OneofWrappers = []any{
+		(*ReplicatedOperation_AddMember)(nil),
+		(*ReplicatedOperation_RemoveMember)(nil),
+		(*ReplicatedOperation_ReadMembership)(nil),
+	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_coordinator_proto_rawDesc), len(file_coordinator_proto_rawDesc)),
-			NumEnums:      1,
-			NumMessages:   2,
+			NumEnums:      0,
+			NumMessages:   5,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
 		GoTypes:           file_coordinator_proto_goTypes,
 		DependencyIndexes: file_coordinator_proto_depIdxs,
-		EnumInfos:         file_coordinator_proto_enumTypes,
 		MessageInfos:      file_coordinator_proto_msgTypes,
 	}.Build()
 	File_coordinator_proto = out.File

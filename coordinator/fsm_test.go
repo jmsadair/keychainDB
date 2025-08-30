@@ -50,27 +50,6 @@ func (m *mockSnapshotSync) Cancel() error {
 	return args.Error(0)
 }
 
-func TestMembershipChangeOperationBytes(t *testing.T) {
-	memberAddr, err := net.ResolveTCPAddr("tcp", "127.0.0.1:8080")
-	require.NoError(t, err)
-
-	addOp := &MembershipChangeOperation{Member: memberAddr, OpType: Add}
-	addOpBytes, err := addOp.Bytes()
-	require.NoError(t, err)
-	decodedAddOp, err := NewMembershipChangeOperationFromBytes(addOpBytes)
-	require.NoError(t, err)
-	require.Equal(t, addOp.Member.String(), decodedAddOp.Member.String())
-	require.Equal(t, addOp.OpType, decodedAddOp.OpType)
-
-	removeOp := &MembershipChangeOperation{Member: memberAddr, OpType: Remove}
-	removeOpBytes, err := removeOp.Bytes()
-	require.NoError(t, err)
-	decodedRemoveOp, err := NewMembershipChangeOperationFromBytes(removeOpBytes)
-	require.NoError(t, err)
-	require.Equal(t, removeOp.Member.String(), decodedRemoveOp.Member.String())
-	require.Equal(t, removeOp.OpType, decodedRemoveOp.OpType)
-}
-
 func TestNewFSM(t *testing.T) {
 	fsm := NewFSM()
 	require.NotNil(t, fsm)
@@ -82,19 +61,29 @@ func TestApply(t *testing.T) {
 	memberAddr, err := net.ResolveTCPAddr("tcp", "127.0.0.1:8080")
 	require.NoError(t, err)
 
-	addOp := &MembershipChangeOperation{Member: memberAddr, OpType: Add}
+	readMembershipOp := &ReadMembershipOperation{}
+	readMembershipOpBytes, err := readMembershipOp.Bytes()
+	require.NoError(t, err)
+	log := raft.Log{Data: readMembershipOpBytes}
+	result, ok := fsm.Apply(&log).(*chain.ChainConfiguration)
+	require.True(t, ok)
+	require.True(t, chain.EmptyChain.Equal(result))
+
+	addOp := &AddMemberOperation{Member: memberAddr}
 	addOpBytes, err := addOp.Bytes()
 	require.NoError(t, err)
-	log := raft.Log{Data: addOpBytes}
-	require.Nil(t, fsm.Apply(&log))
-	require.True(t, fsm.chainConfiguration.IsMember(memberAddr))
+	log = raft.Log{Data: addOpBytes}
+	result, ok = fsm.Apply(&log).(*chain.ChainConfiguration)
+	require.True(t, ok)
+	require.True(t, result.IsMember(memberAddr))
 
-	removeOp := &MembershipChangeOperation{Member: memberAddr, OpType: Remove}
+	removeOp := &RemoveMemberOperation{Member: memberAddr}
 	removeOpBytes, err := removeOp.Bytes()
 	require.NoError(t, err)
 	log = raft.Log{Data: removeOpBytes}
-	require.Nil(t, fsm.Apply(&log))
-	require.False(t, fsm.chainConfiguration.IsMember(memberAddr))
+	result, ok = fsm.Apply(&log).(*chain.ChainConfiguration)
+	require.True(t, ok)
+	require.True(t, chain.EmptyChain.Equal(result))
 }
 
 func TestSnapshotRestore(t *testing.T) {
