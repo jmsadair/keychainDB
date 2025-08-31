@@ -12,14 +12,14 @@ var (
 	// Indicates that a node is not a member of any chain.
 	ErrNotMemberOfChain = errors.New("not a member of the chain")
 	// An empty configuration. All chain nodes start with this configuration.
-	EmptyChain = &ChainConfiguration{}
+	EmptyChain = &Configuration{}
 )
 
 // ChainID is an identifier for a particular chain.
 type ChainID string
 
-// ChainConfiguration is a membership configuration for a particular chain.
-type ChainConfiguration struct {
+// Configuration is a membership configuration for a particular chain.
+type Configuration struct {
 	// The ID of the chain that this node belongs to.
 	ID ChainID
 	// All members of the chain ordered from head to tail.
@@ -28,81 +28,81 @@ type ChainConfiguration struct {
 	addressToMemberIndex map[string]int
 }
 
-// NewChainConfiguration creates a new ChainConfiguration instance.
+// NewConfiguration creates a new Configuration instance.
 // The chainID argument is the ID of the chain that the members are associated with.
 // The members argument is a list of all members that belong to the chain, ordered from head to tail.
-func NewChainConfiguration(chainID ChainID, members []net.Addr) (*ChainConfiguration, error) {
+func NewConfiguration(chainID ChainID, members []net.Addr) (*Configuration, error) {
 	addressToMemberIndex := make(map[string]int, len(members))
 	for i, member := range members {
 		addressToMemberIndex[member.String()] = i
 	}
-	return &ChainConfiguration{ID: chainID, members: members, addressToMemberIndex: addressToMemberIndex}, nil
+	return &Configuration{ID: chainID, members: members, addressToMemberIndex: addressToMemberIndex}, nil
 }
 
-// NewChainConfigurationFromProto creates a new ChainConfiguration instance from a protobuf message.
-func NewChainConfigurationFromProto(chainConfigurationProto *pb.ChainConfiguration) (*ChainConfiguration, error) {
-	members := make([]net.Addr, len(chainConfigurationProto.GetMembers()))
-	for i, address := range chainConfigurationProto.GetMembers() {
+// NewConfigurationFromProto creates a new Configuration instance from a protobuf message.
+func NewConfigurationFromProto(configurationProto *pb.Configuration) (*Configuration, error) {
+	members := make([]net.Addr, len(configurationProto.GetMembers()))
+	for i, address := range configurationProto.GetMembers() {
 		member, err := net.ResolveTCPAddr("tcp", address)
 		if err != nil {
 			return nil, err
 		}
 		members[i] = member
 	}
-	return NewChainConfiguration(ChainID(chainConfigurationProto.GetChainId()), members)
+	return NewConfiguration(ChainID(configurationProto.GetChainId()), members)
 }
 
-// NewChainConfigurationFromBytes creates a new ChainConfiguration instance from bytes.
-func NewChainConfigurationFromBytes(b []byte) (*ChainConfiguration, error) {
-	chainConfigurationProto := &pb.ChainConfiguration{}
-	if err := proto.Unmarshal(b, chainConfigurationProto); err != nil {
+// NewConfigurationFromBytes creates a new Configuration instance from bytes.
+func NewConfigurationFromBytes(b []byte) (*Configuration, error) {
+	configurationProto := &pb.Configuration{}
+	if err := proto.Unmarshal(b, configurationProto); err != nil {
 		return nil, err
 	}
-	return NewChainConfigurationFromProto(chainConfigurationProto)
+	return NewConfigurationFromProto(configurationProto)
 }
 
-// Bytes converts the ChainConfiguration instance into bytes.
-func (cm *ChainConfiguration) Bytes() ([]byte, error) {
-	members := make([]string, len(cm.members))
-	for i, member := range cm.members {
+// Bytes converts the Configuration instance into bytes.
+func (c *Configuration) Bytes() ([]byte, error) {
+	members := make([]string, len(c.members))
+	for i, member := range c.members {
 		members[i] = member.String()
 	}
-	chainConfigurationProto := &pb.ChainConfiguration{ChainId: string(cm.ID), Members: members}
-	return proto.Marshal(chainConfigurationProto)
+	configurationProto := &pb.Configuration{ChainId: string(c.ID), Members: members}
+	return proto.Marshal(configurationProto)
 }
 
 // Equal returns a boolean value indicating whether this configuration is equal to the provided one.
 // Two configurations are considered equal if and only if they have the same members in the same order
 // and the same chain ID.
-func (cm *ChainConfiguration) Equal(config *ChainConfiguration) bool {
-	if len(cm.members) != len(config.members) {
+func (c *Configuration) Equal(config *Configuration) bool {
+	if len(c.members) != len(config.members) {
 		return false
 	}
-	if cm.ID != config.ID {
+	if c.ID != config.ID {
 		return false
 	}
-	for i := range len(cm.members) {
-		if cm.members[i].String() != config.members[i].String() {
+	for i := range len(c.members) {
+		if c.members[i].String() != config.members[i].String() {
 			return false
 		}
 	}
 	return true
 }
 
-// Copy creates a copy of the ChainConfiguration instance.
-func (cm *ChainConfiguration) Copy() *ChainConfiguration {
-	members := make([]net.Addr, len(cm.members))
-	addrToMemberIndex := make(map[string]int, len(cm.addressToMemberIndex))
-	for i, member := range cm.members {
+// Copy creates a copy of the Configuration instance.
+func (c *Configuration) Copy() *Configuration {
+	members := make([]net.Addr, len(c.members))
+	addrToMemberIndex := make(map[string]int, len(c.addressToMemberIndex))
+	for i, member := range c.members {
 		members[i] = member
 		addrToMemberIndex[member.String()] = i
 	}
-	return &ChainConfiguration{ID: cm.ID, members: members, addressToMemberIndex: addrToMemberIndex}
+	return &Configuration{ID: c.ID, members: members, addressToMemberIndex: addrToMemberIndex}
 }
 
 // AddMember creates a new configuration with the member added at the tail if it is not already present.
-func (cm *ChainConfiguration) AddMember(member net.Addr) *ChainConfiguration {
-	newConfig := cm.Copy()
+func (c *Configuration) AddMember(member net.Addr) *Configuration {
+	newConfig := c.Copy()
 	if newConfig.IsMember(member) {
 		return newConfig
 	}
@@ -112,8 +112,8 @@ func (cm *ChainConfiguration) AddMember(member net.Addr) *ChainConfiguration {
 }
 
 // RemoveMember creates a new configuration with the member removed.
-func (cm *ChainConfiguration) RemoveMember(member net.Addr) *ChainConfiguration {
-	newConfig := cm.Copy()
+func (c *Configuration) RemoveMember(member net.Addr) *Configuration {
+	newConfig := c.Copy()
 	i, ok := newConfig.addressToMemberIndex[member.String()]
 	if !ok {
 		return newConfig
@@ -127,74 +127,74 @@ func (cm *ChainConfiguration) RemoveMember(member net.Addr) *ChainConfiguration 
 }
 
 // Members returns the members of the configuration. The members are ordered head to tail.
-func (cm *ChainConfiguration) Members() []net.Addr {
-	membersCopy := make([]net.Addr, len(cm.members))
-	copy(cm.members, membersCopy)
+func (c *Configuration) Members() []net.Addr {
+	membersCopy := make([]net.Addr, len(c.members))
+	copy(c.members, membersCopy)
 	return membersCopy
 }
 
 // Head returns the address of the head of the chain.
 // If the chain has no members, nil is returned.
-func (cm *ChainConfiguration) Head() net.Addr {
-	if len(cm.members) == 0 {
+func (c *Configuration) Head() net.Addr {
+	if len(c.members) == 0 {
 		return nil
 	}
-	return cm.members[0]
+	return c.members[0]
 }
 
 // Tail returns the address of the tail of the chain.
 // If the chain has no members, nil is returned.
-func (cm *ChainConfiguration) Tail() net.Addr {
-	if len(cm.members) == 0 {
+func (c *Configuration) Tail() net.Addr {
+	if len(c.members) == 0 {
 		return nil
 	}
-	return cm.members[len(cm.members)-1]
+	return c.members[len(c.members)-1]
 }
 
 // Predecessor returns the predecessor of the provided address.
 // If the address is the head of the chain or is not actually a member of the chain, nil is returned.
-func (cm *ChainConfiguration) Predecessor(member net.Addr) net.Addr {
-	memberIndex, ok := cm.addressToMemberIndex[member.String()]
+func (c *Configuration) Predecessor(member net.Addr) net.Addr {
+	memberIndex, ok := c.addressToMemberIndex[member.String()]
 	if !ok {
 		return nil
 	}
 	if memberIndex-1 < 0 {
 		return nil
 	}
-	return cm.members[memberIndex-1]
+	return c.members[memberIndex-1]
 }
 
 // Successor returns the successor of the provided address.
 // If the address is the tail of the chain or is not actually a member of the chain, nil is returned.
-func (cm *ChainConfiguration) Successor(member net.Addr) net.Addr {
-	memberIndex, ok := cm.addressToMemberIndex[member.String()]
+func (c *Configuration) Successor(member net.Addr) net.Addr {
+	memberIndex, ok := c.addressToMemberIndex[member.String()]
 	if !ok {
 		return nil
 	}
-	if memberIndex+1 >= len(cm.members) {
+	if memberIndex+1 >= len(c.members) {
 		return nil
 	}
-	return cm.members[memberIndex+1]
+	return c.members[memberIndex+1]
 }
 
 // IsHead returns a boolean value indicating whether the provided address is the head of the chain.
-func (cm *ChainConfiguration) IsHead(address net.Addr) bool {
-	if len(cm.members) == 0 {
+func (c *Configuration) IsHead(address net.Addr) bool {
+	if len(c.members) == 0 {
 		return false
 	}
-	return cm.members[0].String() == address.String()
+	return c.members[0].String() == address.String()
 }
 
 // IsTail returns a boolean value indicating whether the provided address is the tail of the chain.
-func (cm *ChainConfiguration) IsTail(address net.Addr) bool {
-	if len(cm.members) == 0 {
+func (c *Configuration) IsTail(address net.Addr) bool {
+	if len(c.members) == 0 {
 		return false
 	}
-	return cm.members[len(cm.members)-1].String() == address.String()
+	return c.members[len(c.members)-1].String() == address.String()
 }
 
 // IsMember returns a boolean value indicating whether the provided address is a member of the chain.
-func (cm *ChainConfiguration) IsMember(address net.Addr) bool {
-	_, ok := cm.addressToMemberIndex[address.String()]
+func (c *Configuration) IsMember(address net.Addr) bool {
+	_, ok := c.addressToMemberIndex[address.String()]
 	return ok
 }

@@ -74,8 +74,8 @@ func (KeyType) EnumDescriptor() ([]byte, []int) {
 	return file_chain_proto_rawDescGZIP(), []int{0}
 }
 
-// ChainConfiguration contains the configuration of the chain.
-type ChainConfiguration struct {
+// Configuration contains the configuration of the chain.
+type Configuration struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The ID that identifies the chain.
 	ChainId string `protobuf:"bytes,1,opt,name=chain_id,json=chainId,proto3" json:"chain_id,omitempty"`
@@ -85,20 +85,20 @@ type ChainConfiguration struct {
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *ChainConfiguration) Reset() {
-	*x = ChainConfiguration{}
+func (x *Configuration) Reset() {
+	*x = Configuration{}
 	mi := &file_chain_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *ChainConfiguration) String() string {
+func (x *Configuration) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ChainConfiguration) ProtoMessage() {}
+func (*Configuration) ProtoMessage() {}
 
-func (x *ChainConfiguration) ProtoReflect() protoreflect.Message {
+func (x *Configuration) ProtoReflect() protoreflect.Message {
 	mi := &file_chain_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -110,19 +110,19 @@ func (x *ChainConfiguration) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ChainConfiguration.ProtoReflect.Descriptor instead.
-func (*ChainConfiguration) Descriptor() ([]byte, []int) {
+// Deprecated: Use Configuration.ProtoReflect.Descriptor instead.
+func (*Configuration) Descriptor() ([]byte, []int) {
 	return file_chain_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *ChainConfiguration) GetChainId() string {
+func (x *Configuration) GetChainId() string {
 	if x != nil {
 		return x.ChainId
 	}
 	return ""
 }
 
-func (x *ChainConfiguration) GetMembers() []string {
+func (x *Configuration) GetMembers() []string {
 	if x != nil {
 		return x.Members
 	}
@@ -133,7 +133,7 @@ func (x *ChainConfiguration) GetMembers() []string {
 type UpdateConfigurationRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The new configuration for the chain.
-	Configuration *ChainConfiguration `protobuf:"bytes,1,opt,name=configuration,proto3" json:"configuration,omitempty"`
+	Configuration *Configuration `protobuf:"bytes,1,opt,name=configuration,proto3" json:"configuration,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -168,7 +168,7 @@ func (*UpdateConfigurationRequest) Descriptor() ([]byte, []int) {
 	return file_chain_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *UpdateConfigurationRequest) GetConfiguration() *ChainConfiguration {
+func (x *UpdateConfigurationRequest) GetConfiguration() *Configuration {
 	if x != nil {
 		return x.Configuration
 	}
@@ -619,12 +619,12 @@ var File_chain_proto protoreflect.FileDescriptor
 
 const file_chain_proto_rawDesc = "" +
 	"\n" +
-	"\vchain.proto\x12\x05chain\"I\n" +
-	"\x12ChainConfiguration\x12\x19\n" +
+	"\vchain.proto\x12\x05chain\"D\n" +
+	"\rConfiguration\x12\x19\n" +
 	"\bchain_id\x18\x01 \x01(\tR\achainId\x12\x18\n" +
-	"\amembers\x18\x02 \x03(\tR\amembers\"]\n" +
-	"\x1aUpdateConfigurationRequest\x12?\n" +
-	"\rconfiguration\x18\x01 \x01(\v2\x19.chain.ChainConfigurationR\rconfiguration\"\x1d\n" +
+	"\amembers\x18\x02 \x03(\tR\amembers\"X\n" +
+	"\x1aUpdateConfigurationRequest\x12:\n" +
+	"\rconfiguration\x18\x01 \x01(\v2\x14.chain.ConfigurationR\rconfiguration\"\x1d\n" +
 	"\x1bUpdateConfigurationResponse\"P\n" +
 	"\fWriteRequest\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
@@ -673,7 +673,7 @@ var file_chain_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
 var file_chain_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
 var file_chain_proto_goTypes = []any{
 	(KeyType)(0),                        // 0: chain.KeyType
-	(*ChainConfiguration)(nil),          // 1: chain.ChainConfiguration
+	(*Configuration)(nil),               // 1: chain.Configuration
 	(*UpdateConfigurationRequest)(nil),  // 2: chain.UpdateConfigurationRequest
 	(*UpdateConfigurationResponse)(nil), // 3: chain.UpdateConfigurationResponse
 	(*WriteRequest)(nil),                // 4: chain.WriteRequest
@@ -686,7 +686,7 @@ var file_chain_proto_goTypes = []any{
 	(*CommitResponse)(nil),              // 11: chain.CommitResponse
 }
 var file_chain_proto_depIdxs = []int32{
-	1,  // 0: chain.UpdateConfigurationRequest.configuration:type_name -> chain.ChainConfiguration
+	1,  // 0: chain.UpdateConfigurationRequest.configuration:type_name -> chain.Configuration
 	0,  // 1: chain.PropagateRequest.key_type:type_name -> chain.KeyType
 	4,  // 2: chain.ChainService.Write:input_type -> chain.WriteRequest
 	6,  // 3: chain.ChainService.Read:input_type -> chain.ReadRequest

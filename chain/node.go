@@ -28,7 +28,7 @@ const (
 )
 
 type onConfigChangeMessage struct {
-	config *ChainConfiguration
+	config *Configuration
 	doneCh chan bool
 }
 
@@ -202,7 +202,7 @@ func (c *ChainNode) Propagate(ctx context.Context, keyFilter storage.KeyFilter, 
 }
 
 // UpdateConfiguration updates the chain configuration for this node.
-func (c *ChainNode) UpdateConfiguration(ctx context.Context, config *ChainConfiguration) error {
+func (c *ChainNode) UpdateConfiguration(ctx context.Context, config *Configuration) error {
 	msg := onConfigChangeMessage{config: config, doneCh: make(chan bool)}
 
 	select {
@@ -306,10 +306,10 @@ func (c *ChainNode) onCommitRoutine(ctx context.Context) {
 func (c *ChainNode) onConfigChangeRoutine(ctx context.Context) {
 	var onNewPredTask, onNewSuccTask cancellableTask
 
-	runNewPredecessorTask := func(config *ChainConfiguration, isSyncing bool) {
+	runNewPredecessorTask := func(config *Configuration, isSyncing bool) {
 		onNewPredTask.run(ctx, func(ctx context.Context) { c.onNewPredecessor(ctx, config, isSyncing) })
 	}
-	runNewSuccessorTask := func(config *ChainConfiguration, isSyncing bool) {
+	runNewSuccessorTask := func(config *Configuration, isSyncing bool) {
 		onNewSuccTask.run(ctx, func(ctx context.Context) {
 			c.onNewSuccessor(ctx, config, isSyncing)
 		})
@@ -370,7 +370,7 @@ func (c *ChainNode) onConfigChangeRoutine(ctx context.Context) {
 	}
 }
 
-func (c *ChainNode) onNewSuccessor(ctx context.Context, config *ChainConfiguration, isSyncing bool) {
+func (c *ChainNode) onNewSuccessor(ctx context.Context, config *Configuration, isSyncing bool) {
 	for {
 		select {
 		case <-ctx.Done():
@@ -408,7 +408,7 @@ func (c *ChainNode) onNewSuccessor(ctx context.Context, config *ChainConfigurati
 	}
 }
 
-func (c *ChainNode) onNewPredecessor(ctx context.Context, config *ChainConfiguration, isSyncing bool) {
+func (c *ChainNode) onNewPredecessor(ctx context.Context, config *Configuration, isSyncing bool) {
 	for {
 		select {
 		case <-ctx.Done():

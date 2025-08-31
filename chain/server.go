@@ -89,7 +89,7 @@ func (s *Server) Read(ctx context.Context, request *pb.ReadRequest) (*pb.ReadRes
 // UpdateConfiguration handles requests from the coordinator to update the membership configuration.
 func (s *Server) UpdateConfiguration(ctx context.Context, request *pb.UpdateConfigurationRequest) (*pb.UpdateConfigurationResponse, error) {
 	pbConfig := request.GetConfiguration()
-	config, err := NewChainConfigurationFromProto(pbConfig)
+	config, err := NewConfigurationFromProto(pbConfig)
 	if err != nil {
 		return nil, err
 	}
