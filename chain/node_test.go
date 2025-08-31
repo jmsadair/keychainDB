@@ -6,7 +6,7 @@ import (
 	"net"
 	"testing"
 
-	"github.com/jmsadair/keychain/storage"
+	"github.com/jmsadair/keychain/chain/storage"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
