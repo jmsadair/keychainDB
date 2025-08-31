@@ -4,9 +4,9 @@ import (
 	"context"
 	"net"
 
+	"github.com/jmsadair/keychain/chain/storage"
+	"github.com/jmsadair/keychain/chain/transport"
 	pb "github.com/jmsadair/keychain/proto/pbchain"
-	"github.com/jmsadair/keychain/storage"
-	"github.com/jmsadair/keychain/transport"
 )
 
 // Storage defines the interface for persistent storage operations on a chain node.
@@ -36,14 +36,19 @@ type Storage interface {
 
 // KeyValueReceiveStream is a stream for receiving key-value pairs.
 type KeyValueReceiveStream interface {
+	// Recieve reads the next key-value pair in a stream of key-value pairs.
 	Receive() (*storage.KeyValuePair, error)
 }
 
 // ChainClient defines the interface for chain node communication.
 type ChainClient interface {
+	// Write will write a versioned key-value pair.
 	Write(ctx context.Context, address net.Addr, key string, value []byte, version uint64) error
+	// Read will read the committed version of the key.
 	Read(ctx context.Context, address net.Addr, key string) ([]byte, error)
+	// Commit will commit the provided version of th key.
 	Commit(ctx context.Context, address net.Addr, key string, version uint64) error
+	// Propagate will initiate a stream of key-value pairs from another node.
 	Propagate(ctx context.Context, address net.Addr, keyFilter storage.KeyFilter) (KeyValueReceiveStream, error)
 }
 

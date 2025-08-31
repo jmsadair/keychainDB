@@ -1,7 +1,7 @@
 package transport
 
 import (
-	"github.com/jmsadair/keychain/storage"
+	"github.com/jmsadair/keychain/chain/storage"
 	"google.golang.org/grpc"
 
 	pb "github.com/jmsadair/keychain/proto/pbchain"

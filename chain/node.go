@@ -8,7 +8,7 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/jmsadair/keychain/storage"
+	"github.com/jmsadair/keychain/chain/storage"
 )
 
 var (
