@@ -40,8 +40,8 @@ type KeyValueReceiveStream interface {
 	Receive() (*storage.KeyValuePair, error)
 }
 
-// ChainClient defines the interface for chain node communication.
-type ChainClient interface {
+// Transport defines the interface for chain node communication.
+type Transport interface {
 	// Write will write a versioned key-value pair.
 	Write(ctx context.Context, address net.Addr, key string, value []byte, version uint64) error
 	// Read will read the committed version of the key.
@@ -59,8 +59,8 @@ type Server struct {
 }
 
 // NewServer creates a new Server instance.
-func NewServer(address net.Addr, store Storage, client ChainClient) *Server {
-	node := NewChainNode(address, store, client)
+func NewServer(address net.Addr, store Storage, tn Transport) *Server {
+	node := NewChainNode(address, store, tn)
 	return &Server{node: node}
 }
 
