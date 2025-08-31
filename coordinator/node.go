@@ -38,7 +38,7 @@ func (c *Coordinator) RemoveMember(ctx context.Context, member net.Addr) error {
 	return future.Error()
 }
 
-func (c *Coordinator) ReadMembershipConfiguration(ctx context.Context) (*chain.ChainConfiguration, error) {
+func (c *Coordinator) ReadMembershipConfiguration(ctx context.Context) (*chain.Configuration, error) {
 	op := &ReadMembershipOperation{}
 	b, err := op.Bytes()
 	if err != nil {
@@ -48,5 +48,5 @@ func (c *Coordinator) ReadMembershipConfiguration(ctx context.Context) (*chain.C
 	if err := future.Error(); err != nil {
 		return nil, err
 	}
-	return future.Response().(*chain.ChainConfiguration), nil
+	return future.Response().(*chain.Configuration), nil
 }

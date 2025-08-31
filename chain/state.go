@@ -15,7 +15,7 @@ const (
 // State contains the membership configuration and status of a chain node.
 type State struct {
 	// The membership configuration for a chain node.
-	Config *ChainConfiguration
+	Config *Configuration
 	// The operation status of a chain node.
 	Status Status
 }

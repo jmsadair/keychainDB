@@ -53,15 +53,15 @@ func (op *ReadMembershipOperation) Bytes() ([]byte, error) {
 }
 
 type Snapshot struct {
-	ChainConfiguration *chain.ChainConfiguration
+	Configuration *chain.Configuration
 }
 
-func NewSnapshot(config *chain.ChainConfiguration) *Snapshot {
-	return &Snapshot{ChainConfiguration: config}
+func NewSnapshot(config *chain.Configuration) *Snapshot {
+	return &Snapshot{Configuration: config}
 }
 
 func (s *Snapshot) Persist(sink raft.SnapshotSink) error {
-	b, err := s.ChainConfiguration.Bytes()
+	b, err := s.Configuration.Bytes()
 	if err != nil {
 		sink.Cancel()
 		return err
@@ -77,12 +77,12 @@ func (s *Snapshot) Persist(sink raft.SnapshotSink) error {
 func (s *Snapshot) Release() {}
 
 type FSM struct {
-	chainConfiguration *chain.ChainConfiguration
+	configuration *chain.Configuration
 	mu                 sync.Mutex
 }
 
 func NewFSM() *FSM {
-	return &FSM{chainConfiguration: chain.EmptyChain}
+	return &FSM{configuration: chain.EmptyChain}
 }
 
 func (f *FSM) Apply(log *raft.Log) any {
@@ -99,22 +99,22 @@ func (f *FSM) Apply(log *raft.Log) any {
 		if err != nil {
 			panic(err)
 		}
-		f.chainConfiguration = f.chainConfiguration.AddMember(member)
+		f.configuration = f.configuration.AddMember(member)
 	case *pb.ReplicatedOperation_RemoveMember:
 		member, err := net.ResolveTCPAddr("tcp", v.RemoveMember.GetMember())
 		if err != nil {
 			panic(err)
 		}
-		f.chainConfiguration = f.chainConfiguration.RemoveMember(member)
+		f.configuration = f.configuration.RemoveMember(member)
 	}
 
-	return f.chainConfiguration.Copy()
+	return f.configuration.Copy()
 }
 
 func (f *FSM) Snapshot() (raft.FSMSnapshot, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	return NewSnapshot(f.chainConfiguration.Copy()), nil
+	return NewSnapshot(f.configuration.Copy()), nil
 }
 
 func (f *FSM) Restore(snapshot io.ReadCloser) error {
@@ -123,13 +123,13 @@ func (f *FSM) Restore(snapshot io.ReadCloser) error {
 	if err != nil {
 		return err
 	}
-	config, err := chain.NewChainConfigurationFromBytes(b)
+	config, err := chain.NewConfigurationFromBytes(b)
 	if err != nil {
 		return err
 	}
 
 	f.mu.Lock()
-	f.chainConfiguration = config
+	f.configuration = config
 	f.mu.Unlock()
 
 	return nil

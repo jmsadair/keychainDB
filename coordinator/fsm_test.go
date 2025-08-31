@@ -53,7 +53,7 @@ func (m *mockSnapshotSync) Cancel() error {
 func TestNewFSM(t *testing.T) {
 	fsm := NewFSM()
 	require.NotNil(t, fsm)
-	require.Equal(t, chain.EmptyChain, fsm.chainConfiguration)
+	require.Equal(t, chain.EmptyChain, fsm.configuration)
 }
 
 func TestApply(t *testing.T) {
@@ -65,7 +65,7 @@ func TestApply(t *testing.T) {
 	readMembershipOpBytes, err := readMembershipOp.Bytes()
 	require.NoError(t, err)
 	log := raft.Log{Data: readMembershipOpBytes}
-	result, ok := fsm.Apply(&log).(*chain.ChainConfiguration)
+	result, ok := fsm.Apply(&log).(*chain.Configuration)
 	require.True(t, ok)
 	require.True(t, chain.EmptyChain.Equal(result))
 
@@ -73,7 +73,7 @@ func TestApply(t *testing.T) {
 	addOpBytes, err := addOp.Bytes()
 	require.NoError(t, err)
 	log = raft.Log{Data: addOpBytes}
-	result, ok = fsm.Apply(&log).(*chain.ChainConfiguration)
+	result, ok = fsm.Apply(&log).(*chain.Configuration)
 	require.True(t, ok)
 	require.True(t, result.IsMember(memberAddr))
 
@@ -81,7 +81,7 @@ func TestApply(t *testing.T) {
 	removeOpBytes, err := removeOp.Bytes()
 	require.NoError(t, err)
 	log = raft.Log{Data: removeOpBytes}
-	result, ok = fsm.Apply(&log).(*chain.ChainConfiguration)
+	result, ok = fsm.Apply(&log).(*chain.Configuration)
 	require.True(t, ok)
 	require.True(t, chain.EmptyChain.Equal(result))
 }
@@ -91,11 +91,11 @@ func TestSnapshotRestore(t *testing.T) {
 	memberAddr, err := net.ResolveTCPAddr("tcp", "127.0.0.1:8080")
 	require.NoError(t, err)
 	chainID := "chain-1"
-	config, err := chain.NewChainConfiguration(chain.ChainID(chainID), []net.Addr{memberAddr})
+	config, err := chain.NewConfiguration(chain.ChainID(chainID), []net.Addr{memberAddr})
 	require.NoError(t, err)
 
 	// Create a snapshot from the FSM state and ensure its encoded state is correct.
-	fsm.chainConfiguration = config
+	fsm.configuration = config
 	snapshot, err := fsm.Snapshot()
 	require.NoError(t, err)
 	b, err := config.Bytes()
@@ -107,11 +107,11 @@ func TestSnapshotRestore(t *testing.T) {
 	snapshotSink.AssertExpectations(t)
 
 	// Restore the FSM from a snapshot and ensure its state is correct.
-	fsm.chainConfiguration = nil
+	fsm.configuration = nil
 	snapshotReader := new(mockSnapshotReader)
 	snapshotReader.On("Read").Return(b, io.EOF).Once()
 	snapshotReader.On("Close").Return(nil).Once()
 	require.NoError(t, fsm.Restore(snapshotReader))
-	require.True(t, config.Equal(fsm.chainConfiguration))
+	require.True(t, config.Equal(fsm.configuration))
 	snapshotReader.AssertExpectations(t)
 }

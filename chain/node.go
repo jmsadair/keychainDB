@@ -28,7 +28,7 @@ const (
 )
 
 type onConfigChangeMessage struct {
-	config *ChainConfiguration
+	config *Configuration
 	doneCh chan bool
 }
 
@@ -65,21 +65,21 @@ func (ct *cancellableTask) run(ctx context.Context, fn func(ctx context.Context)
 type ChainNode struct {
 	address          net.Addr
 	store            Storage
-	client           ChainClient
+	tn               Transport
 	onCommitCh       chan onCommitMessage
 	onConfigChangeCh chan onConfigChangeMessage
 	syncCompleteCh   chan any
 	state            atomic.Pointer[State]
 }
 
-// NewChainNode creates a new ChainNode instance with the given address, storage, and client.
+// NewChainNode creates a new ChainNode instance with the given address, storage, and transport.
 // The node starts with an inactive status and an empty chain configuration.
-func NewChainNode(address net.Addr, store Storage, client ChainClient) *ChainNode {
+func NewChainNode(address net.Addr, store Storage, tn Transport) *ChainNode {
 	state := &State{Config: EmptyChain, Status: Inactive}
 	node := &ChainNode{
 		address:          address,
 		store:            store,
-		client:           client,
+		tn:               tn,
 		onCommitCh:       make(chan onCommitMessage, defaultBufferedChSize),
 		onConfigChangeCh: make(chan onConfigChangeMessage),
 		syncCompleteCh:   make(chan any),
@@ -115,7 +115,7 @@ func (c *ChainNode) WriteWithVersion(ctx context.Context, key string, value []by
 		return err
 	}
 
-	return c.client.Write(ctx, succ, key, value, version)
+	return c.tn.Write(ctx, succ, key, value, version)
 }
 
 // InitiateReplicatedWrite starts a new replicated write operation from the head of the chain.
@@ -139,7 +139,7 @@ func (c *ChainNode) InitiateReplicatedWrite(ctx context.Context, key string, val
 		return err
 	}
 
-	return c.client.Write(ctx, succ, key, value, version)
+	return c.tn.Write(ctx, succ, key, value, version)
 }
 
 // Commit commits a previously written version, making it visible for reads.
@@ -173,7 +173,7 @@ func (c *ChainNode) Read(ctx context.Context, key string) ([]byte, error) {
 	value, err := c.store.CommittedRead(key)
 	if err != nil && errors.Is(err, storage.ErrDirtyRead) {
 		tail := state.Config.Tail()
-		return c.client.Read(ctx, tail, key)
+		return c.tn.Read(ctx, tail, key)
 	}
 
 	return value, err
@@ -202,7 +202,7 @@ func (c *ChainNode) Propagate(ctx context.Context, keyFilter storage.KeyFilter, 
 }
 
 // UpdateConfiguration updates the chain configuration for this node.
-func (c *ChainNode) UpdateConfiguration(ctx context.Context, config *ChainConfiguration) error {
+func (c *ChainNode) UpdateConfiguration(ctx context.Context, config *Configuration) error {
 	msg := onConfigChangeMessage{config: config, doneCh: make(chan bool)}
 
 	select {
@@ -220,7 +220,7 @@ func (c *ChainNode) UpdateConfiguration(ctx context.Context, config *ChainConfig
 }
 
 func (c *ChainNode) requestPropagation(ctx context.Context, address net.Addr, keyFilter storage.KeyFilter, isTail bool) error {
-	stream, err := c.client.Propagate(ctx, address, keyFilter)
+	stream, err := c.tn.Propagate(ctx, address, keyFilter)
 	if err != nil {
 		return err
 	}
@@ -272,7 +272,7 @@ func (c *ChainNode) onCommit(ctx context.Context, key string, version uint64) er
 		return nil
 	}
 
-	return c.client.Commit(ctx, pred, key, version)
+	return c.tn.Commit(ctx, pred, key, version)
 }
 
 func (c *ChainNode) onCommitRoutine(ctx context.Context) {
@@ -306,10 +306,10 @@ func (c *ChainNode) onCommitRoutine(ctx context.Context) {
 func (c *ChainNode) onConfigChangeRoutine(ctx context.Context) {
 	var onNewPredTask, onNewSuccTask cancellableTask
 
-	runNewPredecessorTask := func(config *ChainConfiguration, isSyncing bool) {
+	runNewPredecessorTask := func(config *Configuration, isSyncing bool) {
 		onNewPredTask.run(ctx, func(ctx context.Context) { c.onNewPredecessor(ctx, config, isSyncing) })
 	}
-	runNewSuccessorTask := func(config *ChainConfiguration, isSyncing bool) {
+	runNewSuccessorTask := func(config *Configuration, isSyncing bool) {
 		onNewSuccTask.run(ctx, func(ctx context.Context) {
 			c.onNewSuccessor(ctx, config, isSyncing)
 		})
@@ -370,7 +370,7 @@ func (c *ChainNode) onConfigChangeRoutine(ctx context.Context) {
 	}
 }
 
-func (c *ChainNode) onNewSuccessor(ctx context.Context, config *ChainConfiguration, isSyncing bool) {
+func (c *ChainNode) onNewSuccessor(ctx context.Context, config *Configuration, isSyncing bool) {
 	for {
 		select {
 		case <-ctx.Done():
@@ -408,7 +408,7 @@ func (c *ChainNode) onNewSuccessor(ctx context.Context, config *ChainConfigurati
 	}
 }
 
-func (c *ChainNode) onNewPredecessor(ctx context.Context, config *ChainConfiguration, isSyncing bool) {
+func (c *ChainNode) onNewPredecessor(ctx context.Context, config *Configuration, isSyncing bool) {
 	for {
 		select {
 		case <-ctx.Done():
