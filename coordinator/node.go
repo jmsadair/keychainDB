@@ -50,6 +50,12 @@ func NewCoordinator(address net.Addr, tn Transport, raft Raft) *Coordinator {
 	}
 }
 
+func (c *Coordinator) Run(ctx context.Context) {
+	go c.heartbeatLoop(ctx)
+	go c.failedChainMemberLoop(ctx)
+	go c.leadershipChangeLoop(ctx)
+}
+
 func (c *Coordinator) AddMember(ctx context.Context, member net.Addr) error {
 	config, err := c.raft.AddChainMember(ctx, member)
 	if err != nil {
