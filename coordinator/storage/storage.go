@@ -10,6 +10,31 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
+type keyType uint8
+
+const (
+	configuration keyType = iota
+	logEntry
+)
+
+func newLogKey(key uint64) []byte {
+	b := make([]byte, 9)
+	b[0] = byte(logEntry)
+	binary.BigEndian.PutUint64(b[1:], key)
+	return b
+}
+
+func newConfigurationKey(key uint64) []byte {
+	b := make([]byte, 9)
+	b[0] = byte(configuration)
+	binary.BigEndian.PutUint64(b[1:], key)
+	return b
+}
+
+func uint64FromKey(b []byte) uint64 {
+	return binary.BigEndian.Uint64(b[1:])
+}
+
 func logToBytes(log *raft.Log) ([]byte, error) {
 	protoLog := &pb.Log{
 		Index:      log.Index,
@@ -38,22 +63,22 @@ func bytesToLog(b []byte, log *raft.Log) error {
 	return nil
 }
 
-// PersistentLog is a persistent storage system for raft log entries.
-type PersistentLog struct {
+// PersistentStorage is a persistent storage system for raft log entries and metadata.
+type PersistentStorage struct {
 	db *badger.DB
 }
 
-// NewPersistentLog creates a new log at the provided path.
-func NewPersistentLog(dbpath string) (*PersistentLog, error) {
+// NewPersistentStorage creates a new log at the provided path.
+func NewPersistentStorage(dbpath string) (*PersistentStorage, error) {
 	db, err := badger.Open(badger.DefaultOptions(dbpath))
 	if err != nil {
 		return nil, err
 	}
-	return &PersistentLog{db: db}, nil
+	return &PersistentStorage{db: db}, nil
 }
 
 // FirstIndex returns the index of the first log entry. If there are no log entries, then zero is returned.
-func (pl *PersistentLog) FirstIndex() (uint64, error) {
+func (pl *PersistentStorage) FirstIndex() (uint64, error) {
 	var first uint64
 	firstPtr := &first
 
@@ -62,10 +87,13 @@ func (pl *PersistentLog) FirstIndex() (uint64, error) {
 		opts.PrefetchValues = false
 		it := txn.NewIterator(opts)
 		defer it.Close()
-		it.Rewind()
-		if it.Valid() {
-			*firstPtr = binary.BigEndian.Uint64(it.Item().Key())
+
+		minKey := newLogKey(uint64(0))
+		it.Seek(minKey)
+		if it.ValidForPrefix([]byte{byte(logEntry)}) {
+			*firstPtr = uint64FromKey(it.Item().Key())
 		}
+
 		return nil
 	})
 
@@ -73,7 +101,7 @@ func (pl *PersistentLog) FirstIndex() (uint64, error) {
 }
 
 // LastIndex returns the index of the last log entry. If there are no log entries, then zero is returned.
-func (pl *PersistentLog) LastIndex() (uint64, error) {
+func (pl *PersistentStorage) LastIndex() (uint64, error) {
 	var last uint64
 	lastPtr := &last
 
@@ -84,9 +112,10 @@ func (pl *PersistentLog) LastIndex() (uint64, error) {
 		it := txn.NewIterator(opts)
 		defer it.Close()
 
-		it.Rewind()
-		if it.Valid() {
-			*lastPtr = binary.BigEndian.Uint64(it.Item().Key())
+		maxKey := newLogKey(^uint64(0))
+		it.Seek(maxKey)
+		if it.ValidForPrefix([]byte{byte(logEntry)}) {
+			*lastPtr = uint64FromKey(it.Item().Key())
 		}
 
 		return nil
@@ -96,10 +125,9 @@ func (pl *PersistentLog) LastIndex() (uint64, error) {
 }
 
 // GetLog gets the log entry at the provided index.
-func (pl *PersistentLog) GetLog(index uint64, log *raft.Log) error {
+func (pl *PersistentStorage) GetLog(index uint64, log *raft.Log) error {
 	return pl.db.View(func(txn *badger.Txn) error {
-		key := make([]byte, 8)
-		binary.BigEndian.PutUint64(key, index)
+		key := newLogKey(index)
 		item, err := txn.Get(key)
 		if err != nil {
 			return err
@@ -113,16 +141,15 @@ func (pl *PersistentLog) GetLog(index uint64, log *raft.Log) error {
 }
 
 // StoreLog stores the provided log entry in the log.
-func (pl *PersistentLog) StoreLog(log *raft.Log) error {
+func (pl *PersistentStorage) StoreLog(log *raft.Log) error {
 	return pl.StoreLogs([]*raft.Log{log})
 }
 
 // StoreLogs stores multiple log entries.
-func (pl *PersistentLog) StoreLogs(logs []*raft.Log) error {
+func (pl *PersistentStorage) StoreLogs(logs []*raft.Log) error {
 	return pl.db.Update(func(txn *badger.Txn) error {
 		for _, log := range logs {
-			key := make([]byte, 8)
-			binary.BigEndian.PutUint64(key, log.Index)
+			key := newLogKey(log.Index)
 			value, err := logToBytes(log)
 			if err != nil {
 				return err
@@ -134,7 +161,7 @@ func (pl *PersistentLog) StoreLogs(logs []*raft.Log) error {
 }
 
 // DeleteRange deletes all log entries with an index in the provided range inclusive.
-func (pl *PersistentLog) DeleteRange(min uint64, max uint64) error {
+func (pl *PersistentStorage) DeleteRange(min uint64, max uint64) error {
 	return pl.db.Update(func(txn *badger.Txn) error {
 		opts := badger.DefaultIteratorOptions
 		opts.PrefetchValues = false
@@ -142,11 +169,11 @@ func (pl *PersistentLog) DeleteRange(min uint64, max uint64) error {
 		it := txn.NewIterator(opts)
 		defer it.Close()
 
-		minKey := make([]byte, 8)
-		binary.BigEndian.PutUint64(minKey, min)
-		for it.Seek(minKey); it.Valid(); it.Next() {
+		minKey := newLogKey(min)
+		for it.Seek(minKey); it.ValidForPrefix([]byte{byte(logEntry)}); it.Next() {
 			key := it.Item().KeyCopy(nil)
-			if binary.BigEndian.Uint64(key) > max {
+			index := uint64FromKey(key)
+			if index > max {
 				break
 			}
 			if err := txn.Delete(key); err != nil {

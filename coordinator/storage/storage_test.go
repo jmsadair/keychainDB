@@ -11,7 +11,7 @@ import (
 
 func TestStoreGetLog(t *testing.T) {
 	tmpDir := t.TempDir()
-	logStore, err := NewPersistentLog(tmpDir)
+	logStore, err := NewPersistentStorage(tmpDir)
 	require.NoError(t, err)
 
 	storedLog := &raft.Log{}
@@ -32,7 +32,7 @@ func TestStoreGetLog(t *testing.T) {
 
 func TestFirstIndexLastIndex(t *testing.T) {
 	tmpDir := t.TempDir()
-	logStore, err := NewPersistentLog(tmpDir)
+	logStore, err := NewPersistentStorage(tmpDir)
 	require.NoError(t, err)
 
 	logToStore := &raft.Log{Index: 1, Term: 1}
@@ -65,7 +65,7 @@ func TestFirstIndexLastIndex(t *testing.T) {
 
 func TestStoreGetLogs(t *testing.T) {
 	tmpDir := t.TempDir()
-	logStore, err := NewPersistentLog(tmpDir)
+	logStore, err := NewPersistentStorage(tmpDir)
 	require.NoError(t, err)
 
 	numLogs := 100
@@ -93,7 +93,7 @@ func TestStoreGetLogs(t *testing.T) {
 
 func TestDeleteRange(t *testing.T) {
 	tmpDir := t.TempDir()
-	logStore, err := NewPersistentLog(tmpDir)
+	logStore, err := NewPersistentStorage(tmpDir)
 	require.NoError(t, err)
 
 	logToStore1 := &raft.Log{Index: 1, Term: 1, Data: []byte("data-1")}
