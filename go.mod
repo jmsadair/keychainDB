@@ -7,6 +7,7 @@ require (
 	github.com/dgraph-io/ristretto/v2 v2.2.0
 	github.com/hashicorp/raft v1.7.3
 	github.com/stretchr/testify v1.10.0
+	golang.org/x/sync v0.12.0
 	google.golang.org/grpc v1.73.0
 	google.golang.org/protobuf v1.36.6
 )

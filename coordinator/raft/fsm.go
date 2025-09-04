@@ -1,4 +1,4 @@
-package coordinator
+package raft
 
 import (
 	"io"
@@ -78,7 +78,7 @@ func (s *Snapshot) Release() {}
 
 type FSM struct {
 	configuration *chain.Configuration
-	mu                 sync.Mutex
+	mu            sync.Mutex
 }
 
 func NewFSM() *FSM {
@@ -133,4 +133,10 @@ func (f *FSM) Restore(snapshot io.ReadCloser) error {
 	f.mu.Unlock()
 
 	return nil
+}
+
+func (f *FSM) ChainConfiguration() *chain.Configuration {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.configuration.Copy()
 }
