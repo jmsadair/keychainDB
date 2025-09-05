@@ -199,6 +199,7 @@ func (ps *PersistentStorage) Set(key []byte, value []byte) error {
 // Get returns the value associated with the provided key or an empty byte slice if the key does not exist.
 func (ps *PersistentStorage) Get(key []byte) ([]byte, error) {
 	value := []byte{}
+
 	err := ps.db.View(func(txn *badger.Txn) error {
 		configurationKey := newConfigurationKey(key)
 		item, err := txn.Get(configurationKey)
@@ -211,6 +212,7 @@ func (ps *PersistentStorage) Get(key []byte) ([]byte, error) {
 		value, err = item.ValueCopy(nil)
 		return err
 	})
+
 	return value, err
 }
 
@@ -227,7 +229,6 @@ func (ps *PersistentStorage) SetUint64(key []byte, value uint64) error {
 // GetUint64 returns the value associated with the provided key or zero if the key does not exist.
 func (ps *PersistentStorage) GetUint64(key []byte) (uint64, error) {
 	var value uint64
-	valuePtr := &value
 
 	err := ps.db.View(func(txn *badger.Txn) error {
 		configurationKey := newConfigurationKey(key)
@@ -242,7 +243,7 @@ func (ps *PersistentStorage) GetUint64(key []byte) (uint64, error) {
 		if errors.Is(err, badger.ErrKeyNotFound) {
 			return nil
 		}
-		*valuePtr = binary.BigEndian.Uint64(b)
+		value = binary.BigEndian.Uint64(b)
 		return nil
 	})
 
