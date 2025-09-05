@@ -2,6 +2,7 @@ package storage
 
 import (
 	"encoding/binary"
+	"errors"
 
 	"github.com/dgraph-io/badger/v4"
 	"github.com/hashicorp/raft"
@@ -17,18 +18,17 @@ const (
 	logEntry
 )
 
-func newLogKey(key uint64) []byte {
+func newLogKey(index uint64) []byte {
 	b := make([]byte, 9)
 	b[0] = byte(logEntry)
-	binary.BigEndian.PutUint64(b[1:], key)
+	binary.BigEndian.PutUint64(b[1:], index)
 	return b
 }
 
-func newConfigurationKey(key uint64) []byte {
-	b := make([]byte, 9)
-	b[0] = byte(configuration)
-	binary.BigEndian.PutUint64(b[1:], key)
-	return b
+func newConfigurationKey(key []byte) []byte {
+	b := make([]byte, 0, len(key)+1)
+	b = append(b, byte(configuration))
+	return append(b, key...)
 }
 
 func uint64FromKey(b []byte) uint64 {
@@ -77,19 +77,24 @@ func NewPersistentStorage(dbpath string) (*PersistentStorage, error) {
 	return &PersistentStorage{db: db}, nil
 }
 
+// Close closes the storage.
+func (ps *PersistentStorage) Close() error {
+	return ps.db.Close()
+}
+
 // FirstIndex returns the index of the first log entry. If there are no log entries, then zero is returned.
-func (pl *PersistentStorage) FirstIndex() (uint64, error) {
+func (ps *PersistentStorage) FirstIndex() (uint64, error) {
 	var first uint64
 	firstPtr := &first
 
-	err := pl.db.View(func(txn *badger.Txn) error {
+	err := ps.db.View(func(txn *badger.Txn) error {
 		opts := badger.DefaultIteratorOptions
 		opts.PrefetchValues = false
 		it := txn.NewIterator(opts)
 		defer it.Close()
 
-		minKey := newLogKey(uint64(0))
-		it.Seek(minKey)
+		minLogKey := newLogKey(uint64(0))
+		it.Seek(minLogKey)
 		if it.ValidForPrefix([]byte{byte(logEntry)}) {
 			*firstPtr = uint64FromKey(it.Item().Key())
 		}
@@ -101,19 +106,19 @@ func (pl *PersistentStorage) FirstIndex() (uint64, error) {
 }
 
 // LastIndex returns the index of the last log entry. If there are no log entries, then zero is returned.
-func (pl *PersistentStorage) LastIndex() (uint64, error) {
+func (ps *PersistentStorage) LastIndex() (uint64, error) {
 	var last uint64
 	lastPtr := &last
 
-	err := pl.db.View(func(txn *badger.Txn) error {
+	err := ps.db.View(func(txn *badger.Txn) error {
 		opts := badger.DefaultIteratorOptions
 		opts.PrefetchValues = false
 		opts.Reverse = true
 		it := txn.NewIterator(opts)
 		defer it.Close()
 
-		maxKey := newLogKey(^uint64(0))
-		it.Seek(maxKey)
+		maxLogKey := newLogKey(^uint64(0))
+		it.Seek(maxLogKey)
 		if it.ValidForPrefix([]byte{byte(logEntry)}) {
 			*lastPtr = uint64FromKey(it.Item().Key())
 		}
@@ -125,10 +130,10 @@ func (pl *PersistentStorage) LastIndex() (uint64, error) {
 }
 
 // GetLog gets the log entry at the provided index.
-func (pl *PersistentStorage) GetLog(index uint64, log *raft.Log) error {
-	return pl.db.View(func(txn *badger.Txn) error {
-		key := newLogKey(index)
-		item, err := txn.Get(key)
+func (ps *PersistentStorage) GetLog(index uint64, log *raft.Log) error {
+	return ps.db.View(func(txn *badger.Txn) error {
+		logKey := newLogKey(index)
+		item, err := txn.Get(logKey)
 		if err != nil {
 			return err
 		}
@@ -141,28 +146,28 @@ func (pl *PersistentStorage) GetLog(index uint64, log *raft.Log) error {
 }
 
 // StoreLog stores the provided log entry in the log.
-func (pl *PersistentStorage) StoreLog(log *raft.Log) error {
-	return pl.StoreLogs([]*raft.Log{log})
+func (ps *PersistentStorage) StoreLog(log *raft.Log) error {
+	return ps.StoreLogs([]*raft.Log{log})
 }
 
-// StoreLogs stores multiple log entries.
-func (pl *PersistentStorage) StoreLogs(logs []*raft.Log) error {
-	return pl.db.Update(func(txn *badger.Txn) error {
+// StoreLogs stores multipse log entries.
+func (ps *PersistentStorage) StoreLogs(logs []*raft.Log) error {
+	return ps.db.Update(func(txn *badger.Txn) error {
 		for _, log := range logs {
-			key := newLogKey(log.Index)
+			logKey := newLogKey(log.Index)
 			value, err := logToBytes(log)
 			if err != nil {
 				return err
 			}
-			txn.Set(key, value)
+			txn.Set(logKey, value)
 		}
 		return nil
 	})
 }
 
 // DeleteRange deletes all log entries with an index in the provided range inclusive.
-func (pl *PersistentStorage) DeleteRange(min uint64, max uint64) error {
-	return pl.db.Update(func(txn *badger.Txn) error {
+func (ps *PersistentStorage) DeleteRange(min uint64, max uint64) error {
+	return ps.db.Update(func(txn *badger.Txn) error {
 		opts := badger.DefaultIteratorOptions
 		opts.PrefetchValues = false
 
@@ -183,4 +188,65 @@ func (pl *PersistentStorage) DeleteRange(min uint64, max uint64) error {
 
 		return nil
 	})
+}
+
+// Set sets the value associated with the provided key.
+func (ps *PersistentStorage) Set(key []byte, value []byte) error {
+	return ps.db.Update(func(txn *badger.Txn) error {
+		configurationKey := newConfigurationKey(key)
+		return txn.Set(configurationKey, value)
+	})
+}
+
+// Get returns the value associated with the provided key or an empty byte slice if the key does not exist.
+func (ps *PersistentStorage) Get(key []byte) ([]byte, error) {
+	value := []byte{}
+	err := ps.db.View(func(txn *badger.Txn) error {
+		configurationKey := newConfigurationKey(key)
+		item, err := txn.Get(configurationKey)
+		if err != nil && !errors.Is(err, badger.ErrKeyNotFound) {
+			return err
+		}
+		if errors.Is(err, badger.ErrKeyNotFound) {
+			return nil
+		}
+		value, err = item.ValueCopy(nil)
+		return err
+	})
+	return value, err
+}
+
+// SetUint64 sets the value associated with the provided key.
+func (ps *PersistentStorage) SetUint64(key []byte, value uint64) error {
+	return ps.db.Update(func(txn *badger.Txn) error {
+		configurationKey := newConfigurationKey(key)
+		b := make([]byte, 8)
+		binary.BigEndian.PutUint64(b, value)
+		return txn.Set(configurationKey, b)
+	})
+}
+
+// GetUint64 returns the value associated with the provided key or zero if the key does not exist.
+func (ps *PersistentStorage) GetUint64(key []byte) (uint64, error) {
+	var value uint64
+	valuePtr := &value
+
+	err := ps.db.View(func(txn *badger.Txn) error {
+		configurationKey := newConfigurationKey(key)
+		item, err := txn.Get(configurationKey)
+		if err != nil {
+			return nil
+		}
+		b, err := item.ValueCopy(nil)
+		if err != nil && !errors.Is(err, badger.ErrKeyNotFound) {
+			return err
+		}
+		if errors.Is(err, badger.ErrKeyNotFound) {
+			return nil
+		}
+		*valuePtr = binary.BigEndian.Uint64(b)
+		return nil
+	})
+
+	return value, err
 }
