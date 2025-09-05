@@ -85,7 +85,6 @@ func (ps *PersistentStorage) Close() error {
 // FirstIndex returns the index of the first log entry. If there are no log entries, then zero is returned.
 func (ps *PersistentStorage) FirstIndex() (uint64, error) {
 	var first uint64
-	firstPtr := &first
 
 	err := ps.db.View(func(txn *badger.Txn) error {
 		opts := badger.DefaultIteratorOptions
@@ -96,19 +95,18 @@ func (ps *PersistentStorage) FirstIndex() (uint64, error) {
 		minLogKey := newLogKey(uint64(0))
 		it.Seek(minLogKey)
 		if it.ValidForPrefix([]byte{byte(logEntry)}) {
-			*firstPtr = uint64FromKey(it.Item().Key())
+			first = uint64FromKey(it.Item().Key())
 		}
 
 		return nil
 	})
 
-	return *firstPtr, err
+	return first, err
 }
 
 // LastIndex returns the index of the last log entry. If there are no log entries, then zero is returned.
 func (ps *PersistentStorage) LastIndex() (uint64, error) {
 	var last uint64
-	lastPtr := &last
 
 	err := ps.db.View(func(txn *badger.Txn) error {
 		opts := badger.DefaultIteratorOptions
@@ -120,13 +118,13 @@ func (ps *PersistentStorage) LastIndex() (uint64, error) {
 		maxLogKey := newLogKey(^uint64(0))
 		it.Seek(maxLogKey)
 		if it.ValidForPrefix([]byte{byte(logEntry)}) {
-			*lastPtr = uint64FromKey(it.Item().Key())
+			last = uint64FromKey(it.Item().Key())
 		}
 
 		return nil
 	})
 
-	return *lastPtr, err
+	return last, err
 }
 
 // GetLog gets the log entry at the provided index.
@@ -150,7 +148,7 @@ func (ps *PersistentStorage) StoreLog(log *raft.Log) error {
 	return ps.StoreLogs([]*raft.Log{log})
 }
 
-// StoreLogs stores multipse log entries.
+// StoreLogs stores multiple log entries.
 func (ps *PersistentStorage) StoreLogs(logs []*raft.Log) error {
 	return ps.db.Update(func(txn *badger.Txn) error {
 		for _, log := range logs {
