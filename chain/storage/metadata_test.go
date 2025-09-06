@@ -10,10 +10,10 @@ import (
 
 func TestNewObjectMetadata(t *testing.T) {
 	key := "key"
-	objectMetadata := NewObjectMetadata(key)
-	require.Equal(t, key, objectMetadata.Key)
-	require.Equal(t, uint64(0), objectMetadata.LastCommitted)
-	require.Equal(t, []uint64{}, objectMetadata.Versions)
+	md := newObjectMetadata(key)
+	require.Equal(t, key, md.key)
+	require.Equal(t, uint64(0), md.lastCommitted)
+	require.Equal(t, []uint64{}, md.versions)
 }
 
 func TestNewObjectMetadataFromBytes(t *testing.T) {
@@ -21,15 +21,15 @@ func TestNewObjectMetadataFromBytes(t *testing.T) {
 	versions := []uint64{2, 3}
 	lastCommited := uint64(2)
 
-	objectMetadataProto := pb.ObjectMetadata{Key: key, LastCommitted: lastCommited, Versions: versions}
-	b, err := proto.Marshal(&objectMetadataProto)
+	mdProto := pb.ObjectMetadata{Key: key, LastCommitted: lastCommited, Versions: versions}
+	b, err := proto.Marshal(&mdProto)
 	require.NoError(t, err)
 
-	objectMetadata, err := NewObjectMetadataFromBytes(b)
+	md, err := newObjectMetadataFromBytes(b)
 	require.NoError(t, err)
-	require.Equal(t, key, objectMetadata.Key)
-	require.Equal(t, lastCommited, objectMetadata.LastCommitted)
-	require.Equal(t, versions, objectMetadata.Versions)
+	require.Equal(t, key, md.key)
+	require.Equal(t, lastCommited, md.lastCommitted)
+	require.Equal(t, versions, md.versions)
 }
 
 func TestObjectMetadataBytes(t *testing.T) {
@@ -37,70 +37,70 @@ func TestObjectMetadataBytes(t *testing.T) {
 	versions := []uint64{2, 3}
 	lastCommited := uint64(2)
 
-	objectMetadata := ObjectMetadata{Key: key, LastCommitted: lastCommited, Versions: versions}
-	b, err := objectMetadata.Bytes()
+	md := objectMetadata{key: key, lastCommitted: lastCommited, versions: versions}
+	b, err := md.bytes()
 	require.NoError(t, err)
 
-	var objectMetadataProto pb.ObjectMetadata
-	err = proto.Unmarshal(b, &objectMetadataProto)
+	var mdProto pb.ObjectMetadata
+	err = proto.Unmarshal(b, &mdProto)
 	require.NoError(t, err)
-	require.Equal(t, key, objectMetadataProto.GetKey())
-	require.Equal(t, lastCommited, objectMetadataProto.GetLastCommitted())
-	require.Equal(t, versions, objectMetadataProto.GetVersions())
+	require.Equal(t, key, mdProto.GetKey())
+	require.Equal(t, lastCommited, mdProto.GetLastCommitted())
+	require.Equal(t, versions, mdProto.GetVersions())
 }
 
 func TestObjectMetadataHasVersion(t *testing.T) {
 	key := "key"
-	objectMetadata := NewObjectMetadata(key)
+	md := newObjectMetadata(key)
 
-	require.NoError(t, objectMetadata.AddVersion(1))
-	require.NoError(t, objectMetadata.AddVersion(2))
-	require.True(t, objectMetadata.HasVersion(1))
-	require.True(t, objectMetadata.HasVersion(2))
-	require.False(t, objectMetadata.HasVersion(3))
+	require.NoError(t, md.addVersion(1))
+	require.NoError(t, md.addVersion(2))
+	require.True(t, md.hasVersion(1))
+	require.True(t, md.hasVersion(2))
+	require.False(t, md.hasVersion(3))
 }
 
 func TestObjectMetadataAddVersion(t *testing.T) {
 	key := "key"
-	objectMetadata := NewObjectMetadata(key)
+	md := newObjectMetadata(key)
 
-	require.NoError(t, objectMetadata.AddVersion(1))
-	require.Equal(t, uint64(1), objectMetadata.OldestVersion())
-	require.Equal(t, uint64(1), objectMetadata.NewestVersion())
-	require.Equal(t, uint64(2), objectMetadata.NextVersion())
+	require.NoError(t, md.addVersion(1))
+	require.Equal(t, uint64(1), md.oldestVersion())
+	require.Equal(t, uint64(1), md.newestVersion())
+	require.Equal(t, uint64(2), md.nextVersion())
 
-	require.NoError(t, objectMetadata.AddVersion(2))
-	require.Equal(t, uint64(1), objectMetadata.OldestVersion())
-	require.Equal(t, uint64(2), objectMetadata.NewestVersion())
-	require.Equal(t, uint64(3), objectMetadata.NextVersion())
+	require.NoError(t, md.addVersion(2))
+	require.Equal(t, uint64(1), md.oldestVersion())
+	require.Equal(t, uint64(2), md.newestVersion())
+	require.Equal(t, uint64(3), md.nextVersion())
 
-	require.NoError(t, objectMetadata.AddVersion(4))
-	require.Equal(t, uint64(1), objectMetadata.OldestVersion())
-	require.Equal(t, uint64(4), objectMetadata.NewestVersion())
-	require.Equal(t, uint64(5), objectMetadata.NextVersion())
+	require.NoError(t, md.addVersion(4))
+	require.Equal(t, uint64(1), md.oldestVersion())
+	require.Equal(t, uint64(4), md.newestVersion())
+	require.Equal(t, uint64(5), md.nextVersion())
 }
 
 func TestObjectMetadataCommitVersion(t *testing.T) {
 	key := "key"
-	objectMetadata := NewObjectMetadata(key)
+	md := newObjectMetadata(key)
 
-	require.NoError(t, objectMetadata.AddVersion(1))
-	require.NoError(t, objectMetadata.AddVersion(2))
-	require.NoError(t, objectMetadata.AddVersion(3))
-	require.NoError(t, objectMetadata.AddVersion(4))
-	require.Equal(t, uint64(0), objectMetadata.LastCommitted)
+	require.NoError(t, md.addVersion(1))
+	require.NoError(t, md.addVersion(2))
+	require.NoError(t, md.addVersion(3))
+	require.NoError(t, md.addVersion(4))
+	require.Equal(t, uint64(0), md.lastCommitted)
 
-	require.NoError(t, objectMetadata.CommitVersion(3))
-	require.Equal(t, uint64(3), objectMetadata.OldestVersion())
-	require.Equal(t, uint64(4), objectMetadata.NewestVersion())
-	require.Equal(t, uint64(5), objectMetadata.NextVersion())
-	require.True(t, objectMetadata.IsDirty())
-	require.Equal(t, uint64(3), objectMetadata.LastCommitted)
+	require.NoError(t, md.commitVersion(3))
+	require.Equal(t, uint64(3), md.oldestVersion())
+	require.Equal(t, uint64(4), md.newestVersion())
+	require.Equal(t, uint64(5), md.nextVersion())
+	require.True(t, md.isDirty())
+	require.Equal(t, uint64(3), md.lastCommitted)
 
-	require.NoError(t, objectMetadata.CommitVersion(4))
-	require.Equal(t, uint64(4), objectMetadata.OldestVersion())
-	require.Equal(t, uint64(4), objectMetadata.NewestVersion())
-	require.Equal(t, uint64(5), objectMetadata.NextVersion())
-	require.False(t, objectMetadata.IsDirty())
-	require.Equal(t, uint64(4), objectMetadata.LastCommitted)
+	require.NoError(t, md.commitVersion(4))
+	require.Equal(t, uint64(4), md.oldestVersion())
+	require.Equal(t, uint64(4), md.newestVersion())
+	require.Equal(t, uint64(5), md.nextVersion())
+	require.False(t, md.isDirty())
+	require.Equal(t, uint64(4), md.lastCommitted)
 }

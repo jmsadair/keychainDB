@@ -6,28 +6,28 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestNewKey(t *testing.T) {
+func TestKey(t *testing.T) {
 	key := "key"
 	version := uint64(1)
 
-	k := NewMetadataKey(key)
-	require.Equal(t, key, k.ClientKey())
-	require.True(t, k.IsMetadata())
-	require.False(t, k.IsCommitted())
-	require.False(t, k.IsDirty())
-	require.Zero(t, k.Version())
+	k := newMetadataKey(key)
+	require.Equal(t, key, k.clientKey())
+	require.True(t, k.isMetadata())
+	require.False(t, k.isCommitted())
+	require.False(t, k.isDirty())
+	require.Zero(t, k.version())
 
-	k = NewCommittedKey(key, version)
-	require.Equal(t, key, k.ClientKey())
-	require.False(t, k.IsMetadata())
-	require.True(t, k.IsCommitted())
-	require.False(t, k.IsDirty())
-	require.Equal(t, version, k.Version())
+	k = newCommittedKey(key, version)
+	require.Equal(t, key, k.clientKey())
+	require.False(t, k.isMetadata())
+	require.True(t, k.isCommitted())
+	require.False(t, k.isDirty())
+	require.Equal(t, version, k.version())
 
-	k = NewDirtyKey(key, version)
-	require.Equal(t, key, k.ClientKey())
-	require.False(t, k.IsMetadata())
-	require.False(t, k.IsCommitted())
-	require.True(t, k.IsDirty())
-	require.Equal(t, version, k.Version())
+	k = newDirtyKey(key, version)
+	require.Equal(t, key, k.clientKey())
+	require.False(t, k.isMetadata())
+	require.False(t, k.isCommitted())
+	require.True(t, k.isDirty())
+	require.Equal(t, version, k.version())
 }

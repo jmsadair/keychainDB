@@ -17,55 +17,45 @@ const (
 	versionOffset = 1
 )
 
-// Key is an internal representation of a key that is meant to uniquely identify an item in the storage system.
-type Key []byte
+type internalKey []byte
 
-// NewMetadataKey creates a new key that is intended to identify object metadata.
-func NewMetadataKey(key string) Key {
+func newMetadataKey(key string) internalKey {
 	b := []byte{byte(metadata)}
 	return append(b, []byte(key)...)
 }
 
-// NewDirtyKey creates a new key that is intended to identify a dirty object.
-func NewDirtyKey(key string, version uint64) Key {
+func newDirtyKey(key string, version uint64) internalKey {
 	b := []byte{byte(dirty)}
 	b = binary.BigEndian.AppendUint64(b, version)
 	return append(b, []byte(key)...)
 }
 
-// NewCommittedKey creates a new key that is intended to identify a committed object.
-func NewCommittedKey(key string, version uint64) Key {
+func newCommittedKey(key string, version uint64) internalKey {
 	b := []byte{byte(committed)}
 	b = binary.BigEndian.AppendUint64(b, version)
 	return append(b, []byte(key)...)
 }
 
-// IsMetadata returns true if this key identifies object metadata.
-func (k Key) IsMetadata() bool {
-	return k[keyTypeOffset]^byte(metadata) == 0
+func (k internalKey) isMetadata() bool {
+	return k[keyTypeOffset] == byte(metadata)
 }
 
-// IsCommitted returns true if this key identifies a committed object version.
-func (k Key) IsCommitted() bool {
-	return k[keyTypeOffset]^byte(committed) == 0
+func (k internalKey) isCommitted() bool {
+	return k[keyTypeOffset] == byte(committed)
 }
 
-// IsDirty returns true if this key identifies a dirty object version.
-func (k Key) IsDirty() bool {
-	return k[keyTypeOffset]^byte(dirty) == 0
+func (k internalKey) isDirty() bool {
+	return k[keyTypeOffset] == byte(dirty)
 }
 
-// Version returns the version of the key. Note that this only applies to committed and dirty key types.
-// If the key is a metadata key, zero will always be returned.
-func (k Key) Version() uint64 {
-	if k.IsMetadata() {
+func (k internalKey) version() uint64 {
+	if k.isMetadata() {
 		return 0
 	}
 	return binary.BigEndian.Uint64(k[versionOffset:])
 }
 
-// ClientKey returns the client key.
-func (k Key) ClientKey() string {
+func (k internalKey) clientKey() string {
 	switch keyType(k[keyTypeOffset]) {
 	case metadata:
 		return string(k[keyTypeOffset+1:])
