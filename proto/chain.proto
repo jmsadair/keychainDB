@@ -19,10 +19,8 @@ service ChainService {
 	rpc UpdateConfiguration (UpdateConfigurationRequest) returns (UpdateConfigurationResponse) {}
 }
 
-// Configuration contains the configuration of the chain.
+// Configuration contains the membership configuration of the chain.
 message Configuration {
-	// The ID that identifies the chain.
-	string chain_id = 1;
 	// The addresses of the members of the chain.
 	repeated string members = 2;
 }

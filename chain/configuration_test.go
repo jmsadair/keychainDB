@@ -8,8 +8,6 @@ import (
 )
 
 func TestEqual(t *testing.T) {
-	chainID1 := ChainID("chain-1")
-	chainID2 := ChainID("chain-2")
 	member1, err := net.ResolveTCPAddr("tcp", "127.0.0.1:8080")
 	require.NoError(t, err)
 	member2, err := net.ResolveTCPAddr("tcp", "127.0.0.2:8080")
@@ -17,33 +15,28 @@ func TestEqual(t *testing.T) {
 	member3, err := net.ResolveTCPAddr("tcp", "127.0.0.3:8080")
 	require.NoError(t, err)
 
-	config1, err := NewConfiguration(chainID1, []net.Addr{member1, member2, member3})
+	config1, err := NewConfiguration([]net.Addr{member1, member2, member3})
 	require.NoError(t, err)
-	config2, err := NewConfiguration(chainID1, []net.Addr{member2, member1, member3})
+	config2, err := NewConfiguration([]net.Addr{member2, member1, member3})
 	require.NoError(t, err)
-	config3, err := NewConfiguration(chainID1, []net.Addr{member1, member2})
+	config3, err := NewConfiguration([]net.Addr{member1, member2})
 	require.NoError(t, err)
-	config4, err := NewConfiguration(chainID2, []net.Addr{member1, member2, member3})
-	require.NoError(t, err)
-	config5, err := NewConfiguration(chainID1, []net.Addr{member1, member2, member3})
+	config4, err := NewConfiguration([]net.Addr{member1, member2, member3})
 	require.NoError(t, err)
 
 	// Same members of the chain but different order.
 	require.False(t, config1.Equal(config2))
 	// Same order but missing the last member of the chain.
 	require.False(t, config1.Equal(config3))
-	// Same members of the chain in the same order, but different chain ID.
-	require.False(t, config1.Equal(config4))
-	// Same members of the chain in the same order with the same chain ID.
-	require.True(t, config1.Equal(config5))
+	// Same members of the chain in the same order.
+	require.True(t, config1.Equal(config4))
 }
 
 func TestCopy(t *testing.T) {
-	chainID := ChainID("chain-1")
 	member1, err := net.ResolveTCPAddr("tcp", "127.0.0.1:8080")
 	require.NoError(t, err)
 
-	config, err := NewConfiguration(chainID, []net.Addr{member1})
+	config, err := NewConfiguration([]net.Addr{member1})
 	require.NoError(t, err)
 	require.Len(t, config.members, 1)
 	require.Len(t, config.addressToMemberIndex, 1)
@@ -63,7 +56,6 @@ func TestCopy(t *testing.T) {
 }
 
 func TestAddMemberRemoveMember(t *testing.T) {
-	chainID := ChainID("chain-1")
 	member1, err := net.ResolveTCPAddr("tcp", "127.0.0.1:8080")
 	require.NoError(t, err)
 	member2, err := net.ResolveTCPAddr("tcp", "127.0.0.2:8080")
@@ -71,7 +63,7 @@ func TestAddMemberRemoveMember(t *testing.T) {
 	member3, err := net.ResolveTCPAddr("tcp", "127.0.0.3:8080")
 	require.NoError(t, err)
 
-	config, err := NewConfiguration(chainID, []net.Addr{})
+	config, err := NewConfiguration([]net.Addr{})
 	require.NoError(t, err)
 	config = config.AddMember(member1)
 	require.True(t, config.IsMember(member1))
@@ -112,7 +104,6 @@ func TestAddMemberRemoveMember(t *testing.T) {
 }
 
 func TestPredecessorSuccessor(t *testing.T) {
-	chainID := ChainID("chain-1")
 	head, err := net.ResolveTCPAddr("tcp", "127.0.0.1:8080")
 	require.NoError(t, err)
 	middle, err := net.ResolveTCPAddr("tcp", "127.0.0.2:8080")
@@ -120,7 +111,7 @@ func TestPredecessorSuccessor(t *testing.T) {
 	tail, err := net.ResolveTCPAddr("tcp", "127.0.0.3:8080")
 	require.NoError(t, err)
 
-	config, err := NewConfiguration(chainID, []net.Addr{head, middle, tail})
+	config, err := NewConfiguration([]net.Addr{head, middle, tail})
 	require.NoError(t, err)
 
 	pred := config.Predecessor(head)
@@ -140,7 +131,6 @@ func TestPredecessorSuccessor(t *testing.T) {
 }
 
 func TestChainBytes(t *testing.T) {
-	chainID := ChainID("chain-1")
 	head, err := net.ResolveTCPAddr("tcp", "127.0.0.1:8080")
 	require.NoError(t, err)
 	middle, err := net.ResolveTCPAddr("tcp", "127.0.0.2:8080")
@@ -148,7 +138,7 @@ func TestChainBytes(t *testing.T) {
 	tail, err := net.ResolveTCPAddr("tcp", "127.0.0.3:8080")
 	require.NoError(t, err)
 
-	config, err := NewConfiguration(chainID, []net.Addr{head, middle, tail})
+	config, err := NewConfiguration([]net.Addr{head, middle, tail})
 	require.NoError(t, err)
 
 	b, err := config.Bytes()
@@ -159,7 +149,6 @@ func TestChainBytes(t *testing.T) {
 }
 
 func TestIsHeadIsTail(t *testing.T) {
-	chainID := ChainID("chain-1")
 	head, err := net.ResolveTCPAddr("tcp", "127.0.0.1:8080")
 	require.NoError(t, err)
 	middle, err := net.ResolveTCPAddr("tcp", "127.0.0.2:8080")
@@ -167,7 +156,7 @@ func TestIsHeadIsTail(t *testing.T) {
 	tail, err := net.ResolveTCPAddr("tcp", "127.0.0.3:8080")
 	require.NoError(t, err)
 
-	config, err := NewConfiguration(chainID, []net.Addr{head, middle, tail})
+	config, err := NewConfiguration([]net.Addr{head, middle, tail})
 	require.NoError(t, err)
 
 	require.True(t, config.IsHead(head))

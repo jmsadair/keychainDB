@@ -90,8 +90,7 @@ func TestSnapshotRestore(t *testing.T) {
 	fsm := NewFSM()
 	memberAddr, err := net.ResolveTCPAddr("tcp", "127.0.0.1:8080")
 	require.NoError(t, err)
-	chainID := "chain-1"
-	config, err := chain.NewConfiguration(chain.ChainID(chainID), []net.Addr{memberAddr})
+	config, err := chain.NewConfiguration([]net.Addr{memberAddr})
 	require.NoError(t, err)
 
 	// Create a snapshot from the FSM state and ensure its encoded state is correct.
