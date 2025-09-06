@@ -129,7 +129,7 @@ func (c *Configuration) RemoveMember(member net.Addr) *Configuration {
 // Members returns the members of the configuration. The members are ordered head to tail.
 func (c *Configuration) Members() []net.Addr {
 	membersCopy := make([]net.Addr, len(c.members))
-	copy(c.members, membersCopy)
+	copy(membersCopy, c.members)
 	return membersCopy
 }
 

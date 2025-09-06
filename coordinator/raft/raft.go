@@ -2,14 +2,24 @@ package raft
 
 import (
 	"context"
+	"errors"
 	"net"
+	"os"
 	"time"
 
 	"github.com/hashicorp/raft"
 	"github.com/jmsadair/keychain/chain"
+	"github.com/jmsadair/keychain/coordinator/storage"
 )
 
-const defaultApplyTimeout = 500 * time.Millisecond
+const (
+	defaultApplyTimeout  = 500 * time.Millisecond
+	transportTimeout     = 10 * time.Second
+	maxPool              = 5
+	numSnapshotsToRetain = 10
+)
+
+var ErrNodeExists = errors.New("node already exists with same ID or address")
 
 func timeoutFromContext(ctx context.Context, defaultTimeout time.Duration) time.Duration {
 	if deadline, ok := ctx.Deadline(); ok {
@@ -24,13 +34,55 @@ type operation interface {
 	Bytes() ([]byte, error)
 }
 
-type RaftBackend struct {
-	raft *raft.Raft
-	fsm  *FSM
+type Status struct {
+	Members map[string]string
+	Leader  string
 }
 
-func NewRaftBackend(raft *raft.Raft, fsm *FSM) *RaftBackend {
-	return &RaftBackend{raft: raft, fsm: fsm}
+type RaftBackend struct {
+	raft  *raft.Raft
+	fsm   *FSM
+	store *storage.PersistentStorage
+}
+
+func NewRaftBackend(nodeID string, address net.Addr, storePath string, snapshotStorePath string, bootstrap bool) (*RaftBackend, error) {
+	store, err := storage.NewPersistentStorage(storePath)
+	if err != nil {
+		return nil, err
+	}
+	tn, err := raft.NewTCPTransport(address.String(), address, maxPool, transportTimeout, os.Stderr)
+	if err != nil {
+		return nil, err
+	}
+
+	snapshotStore, err := raft.NewFileSnapshotStore(snapshotStorePath, numSnapshotsToRetain, os.Stderr)
+	if err != nil {
+		return nil, err
+	}
+
+	config := raft.DefaultConfig()
+	config.LocalID = raft.ServerID(nodeID)
+	fsm := NewFSM()
+	r, err := raft.NewRaft(config, fsm, store, store, snapshotStore, tn)
+	if err != nil {
+		return nil, err
+	}
+
+	if bootstrap {
+		clusterConfig := raft.Configuration{Servers: []raft.Server{{ID: config.LocalID, Address: tn.LocalAddr()}}}
+		future := r.BootstrapCluster(clusterConfig)
+		if err := future.Error(); err != nil {
+			return nil, err
+		}
+	}
+
+	return &RaftBackend{raft: r, fsm: fsm, store: store}, nil
+}
+
+func (rb *RaftBackend) Shutdown() error {
+	defer rb.store.Close()
+	future := rb.raft.Shutdown()
+	return future.Error()
 }
 
 func (rb *RaftBackend) AddChainMember(ctx context.Context, member net.Addr) (*chain.Configuration, error) {
@@ -58,6 +110,56 @@ func (rb *RaftBackend) ReadChainConfiguration(ctx context.Context) (*chain.Confi
 		return nil, err
 	}
 	return result.(*chain.Configuration), nil
+}
+
+func (rb *RaftBackend) JoinCluster(ctx context.Context, nodeID string, address net.Addr) error {
+	configFuture := rb.raft.GetConfiguration()
+	if err := configFuture.Error(); err != nil {
+		return err
+	}
+
+	for _, srv := range configFuture.Configuration().Servers {
+		if srv.ID == raft.ServerID(nodeID) || srv.Address == raft.ServerAddress(address.String()) {
+			if srv.Address == raft.ServerAddress(address.String()) && srv.ID == raft.ServerID(nodeID) {
+				return nil
+			}
+			return ErrNodeExists
+		}
+	}
+
+	indexFuture := rb.raft.AddVoter(raft.ServerID(nodeID), raft.ServerAddress(address.String()), 0, timeoutFromContext(ctx, defaultApplyTimeout))
+	return indexFuture.Error()
+}
+
+func (rb *RaftBackend) RemoveFromCluster(ctx context.Context, nodeID string) error {
+	configFuture := rb.raft.GetConfiguration()
+	if err := configFuture.Error(); err != nil {
+		return err
+	}
+
+	for _, srv := range configFuture.Configuration().Servers {
+		if srv.ID == raft.ServerID(nodeID) {
+			indexFuture := rb.raft.RemoveServer(raft.ServerID(nodeID), 0, timeoutFromContext(ctx, defaultApplyTimeout))
+			return indexFuture.Error()
+		}
+	}
+
+	return nil
+}
+
+func (rb *RaftBackend) ClusterStatus() (*Status, error) {
+	_, leaderID := rb.raft.LeaderWithID()
+
+	configFuture := rb.raft.GetConfiguration()
+	if err := configFuture.Error(); err != nil {
+		return nil, err
+	}
+	nodeIDToAddr := make(map[string]string, len(configFuture.Configuration().Servers))
+	for _, srv := range configFuture.Configuration().Servers {
+		nodeIDToAddr[string(srv.ID)] = string(srv.Address)
+	}
+
+	return &Status{Members: nodeIDToAddr, Leader: string(leaderID)}, nil
 }
 
 func (rb *RaftBackend) LeadershipCh() <-chan bool {
