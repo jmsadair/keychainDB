@@ -148,7 +148,7 @@ func TestAddRemoveChainMember(t *testing.T) {
 
 	readConfig, err = leader.ReadChainConfiguration(context.TODO())
 	require.NoError(t, err)
-	expectedConfig, err := chain.NewConfiguration("", []net.Addr{memberAddr1, memberAddr2, memberAddr3})
+	expectedConfig, err := chain.NewConfiguration([]net.Addr{memberAddr1, memberAddr2, memberAddr3})
 	require.NoError(t, err)
 	require.True(t, expectedConfig.Equal(readConfig))
 
@@ -162,7 +162,7 @@ func TestAddRemoveChainMember(t *testing.T) {
 
 	readConfig, err = leader.ReadChainConfiguration(context.TODO())
 	require.NoError(t, err)
-	expectedConfig, err = chain.NewConfiguration("", []net.Addr{memberAddr2})
+	expectedConfig, err = chain.NewConfiguration([]net.Addr{memberAddr2})
 	require.NoError(t, err)
 	require.True(t, expectedConfig.Equal(readConfig))
 }

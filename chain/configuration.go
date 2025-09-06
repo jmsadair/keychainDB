@@ -15,28 +15,22 @@ var (
 	EmptyChain = &Configuration{}
 )
 
-// ChainID is an identifier for a particular chain.
-type ChainID string
-
 // Configuration is a membership configuration for a particular chain.
 type Configuration struct {
-	// The ID of the chain that this node belongs to.
-	ID ChainID
 	// All members of the chain ordered from head to tail.
 	members []net.Addr
 	// Maps member address to its index in the chain.
 	addressToMemberIndex map[string]int
 }
 
-// NewConfiguration creates a new Configuration instance.
-// The chainID argument is the ID of the chain that the members are associated with.
-// The members argument is a list of all members that belong to the chain, ordered from head to tail.
-func NewConfiguration(chainID ChainID, members []net.Addr) (*Configuration, error) {
+// NewConfiguration creates a new Configuration instance. The provided members should include all members
+// that belong to the chain, ordered from head to tail.
+func NewConfiguration(members []net.Addr) (*Configuration, error) {
 	addressToMemberIndex := make(map[string]int, len(members))
 	for i, member := range members {
 		addressToMemberIndex[member.String()] = i
 	}
-	return &Configuration{ID: chainID, members: members, addressToMemberIndex: addressToMemberIndex}, nil
+	return &Configuration{members: members, addressToMemberIndex: addressToMemberIndex}, nil
 }
 
 // NewConfigurationFromProto creates a new Configuration instance from a protobuf message.
@@ -49,7 +43,7 @@ func NewConfigurationFromProto(configurationProto *pb.Configuration) (*Configura
 		}
 		members[i] = member
 	}
-	return NewConfiguration(ChainID(configurationProto.GetChainId()), members)
+	return NewConfiguration(members)
 }
 
 // NewConfigurationFromBytes creates a new Configuration instance from bytes.
@@ -67,18 +61,14 @@ func (c *Configuration) Bytes() ([]byte, error) {
 	for i, member := range c.members {
 		members[i] = member.String()
 	}
-	configurationProto := &pb.Configuration{ChainId: string(c.ID), Members: members}
+	configurationProto := &pb.Configuration{Members: members}
 	return proto.Marshal(configurationProto)
 }
 
 // Equal returns a boolean value indicating whether this configuration is equal to the provided one.
-// Two configurations are considered equal if and only if they have the same members in the same order
-// and the same chain ID.
+// Two configurations are considered equal if and only if they have the same members in the same order.
 func (c *Configuration) Equal(config *Configuration) bool {
 	if len(c.members) != len(config.members) {
-		return false
-	}
-	if c.ID != config.ID {
 		return false
 	}
 	for i := range len(c.members) {
@@ -97,7 +87,7 @@ func (c *Configuration) Copy() *Configuration {
 		members[i] = member
 		addrToMemberIndex[member.String()] = i
 	}
-	return &Configuration{ID: c.ID, members: members, addressToMemberIndex: addrToMemberIndex}
+	return &Configuration{members: members, addressToMemberIndex: addrToMemberIndex}
 }
 
 // AddMember creates a new configuration with the member added at the tail if it is not already present.

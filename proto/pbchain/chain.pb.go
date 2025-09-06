@@ -74,11 +74,9 @@ func (KeyType) EnumDescriptor() ([]byte, []int) {
 	return file_chain_proto_rawDescGZIP(), []int{0}
 }
 
-// Configuration contains the configuration of the chain.
+// Configuration contains the membership configuration of the chain.
 type Configuration struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The ID that identifies the chain.
-	ChainId string `protobuf:"bytes,1,opt,name=chain_id,json=chainId,proto3" json:"chain_id,omitempty"`
 	// The addresses of the members of the chain.
 	Members       []string `protobuf:"bytes,2,rep,name=members,proto3" json:"members,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -113,13 +111,6 @@ func (x *Configuration) ProtoReflect() protoreflect.Message {
 // Deprecated: Use Configuration.ProtoReflect.Descriptor instead.
 func (*Configuration) Descriptor() ([]byte, []int) {
 	return file_chain_proto_rawDescGZIP(), []int{0}
-}
-
-func (x *Configuration) GetChainId() string {
-	if x != nil {
-		return x.ChainId
-	}
-	return ""
 }
 
 func (x *Configuration) GetMembers() []string {
@@ -619,9 +610,8 @@ var File_chain_proto protoreflect.FileDescriptor
 
 const file_chain_proto_rawDesc = "" +
 	"\n" +
-	"\vchain.proto\x12\x05chain\"D\n" +
-	"\rConfiguration\x12\x19\n" +
-	"\bchain_id\x18\x01 \x01(\tR\achainId\x12\x18\n" +
+	"\vchain.proto\x12\x05chain\")\n" +
+	"\rConfiguration\x12\x18\n" +
 	"\amembers\x18\x02 \x03(\tR\amembers\"X\n" +
 	"\x1aUpdateConfigurationRequest\x12:\n" +
 	"\rconfiguration\x18\x01 \x01(\v2\x14.chain.ConfigurationR\rconfiguration\"\x1d\n" +
