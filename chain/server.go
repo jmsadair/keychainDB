@@ -5,7 +5,6 @@ import (
 	"net"
 
 	"github.com/jmsadair/keychain/chain/storage"
-	"github.com/jmsadair/keychain/chain/transport"
 	pb "github.com/jmsadair/keychain/proto/pbchain"
 )
 
@@ -32,12 +31,6 @@ type Storage interface {
 	SendKeyValuePairs(ctx context.Context, sendFunc func(ctx context.Context, kvPairs []storage.KeyValuePair) error, keyFilter storage.KeyFilter) error
 	// CommitAll commits all dirty keys in storage and invokes the provided callback for each.
 	CommitAll(ctx context.Context, onCommit func(ctx context.Context, key string, version uint64) error) error
-}
-
-// KeyValueReceiveStream is a stream for receiving key-value pairs.
-type KeyValueReceiveStream interface {
-	// Recieve reads the next key-value pair in a stream of key-value pairs.
-	Receive() (*storage.KeyValuePair, error)
 }
 
 // Transport defines the interface for chain node communication.
@@ -111,5 +104,5 @@ func (s *Server) Propagate(request *pb.PropagateRequest, stream pb.ChainService_
 		keyFilter = storage.DirtyKeys
 	}
 
-	return s.node.Propagate(stream.Context(), keyFilter, &transport.KeyValueSendStream{Stream: stream})
+	return s.node.Propagate(stream.Context(), keyFilter, &wrappedSendStream{stream: stream})
 }

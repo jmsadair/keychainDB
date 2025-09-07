@@ -16,9 +16,13 @@ var (
 	ErrNotHead = errors.New("writes must be initiated from the head of the chain")
 	// Indicates a node is in the syncing state.
 	ErrSyncing = errors.New("syncing and cannot serve reads at this time")
+	// Indicates that a node is not a member of any chain.
+	ErrNotMemberOfChain = errors.New("not a member of the chain")
 )
 
+// KeyValueSendStream is a stream for sending key-value pairs.
 type KeyValueSendStream interface {
+	// Send sends the key-valur pair over the stream.
 	Send(*storage.KeyValuePair) error
 }
 
