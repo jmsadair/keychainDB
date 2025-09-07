@@ -131,6 +131,10 @@ func (c *Coordinator) onFailedChainMember(ctx context.Context) error {
 	var toRemove []net.Addr
 
 	c.mu.Lock()
+	if !c.isLeader {
+		c.mu.Unlock()
+		return nil
+	}
 	for member, lastContact := range c.lastContacted {
 		if time.Since(lastContact) > chainFailureTimeout {
 			addr, err := net.ResolveTCPAddr("tcp", member)
@@ -154,12 +158,18 @@ func (c *Coordinator) onFailedChainMember(ctx context.Context) error {
 func (c *Coordinator) onHeartbeat(ctx context.Context) error {
 	c.mu.Lock()
 	if !c.isLeader {
+		c.mu.Unlock()
 		return nil
 	}
 	config := c.raft.ChainConfiguration()
-	for _, member := range config.Members() {
-		if !config.IsMember(member) {
-			delete(c.lastContacted, member.String())
+	for member := range c.lastContacted {
+		addr, err := net.ResolveTCPAddr("tcp", member)
+		if err != nil {
+			c.mu.Unlock()
+			return err
+		}
+		if !config.IsMember(addr) {
+			delete(c.lastContacted, member)
 		}
 	}
 	for _, member := range config.Members() {
