@@ -1,4 +1,4 @@
-package coordinator
+package node
 
 import (
 	"context"
@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jmsadair/keychain/chain"
+	chainnode "github.com/jmsadair/keychain/chain/node"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
@@ -16,19 +16,19 @@ type mockRaft struct {
 	mock.Mock
 }
 
-func (m *mockRaft) AddChainMember(ctx context.Context, member net.Addr) (*chain.Configuration, error) {
+func (m *mockRaft) AddChainMember(ctx context.Context, member net.Addr) (*chainnode.Configuration, error) {
 	args := m.MethodCalled("AddChainMember", member.String())
-	return args.Get(0).(*chain.Configuration), args.Error(1)
+	return args.Get(0).(*chainnode.Configuration), args.Error(1)
 }
 
-func (m *mockRaft) RemoveChainMember(ctx context.Context, member net.Addr) (*chain.Configuration, error) {
+func (m *mockRaft) RemoveChainMember(ctx context.Context, member net.Addr) (*chainnode.Configuration, error) {
 	args := m.MethodCalled("RemoveChainMember", member.String())
-	return args.Get(0).(*chain.Configuration), args.Error(1)
+	return args.Get(0).(*chainnode.Configuration), args.Error(1)
 }
 
-func (m *mockRaft) ReadChainConfiguration(ctx context.Context) (*chain.Configuration, error) {
+func (m *mockRaft) ReadChainConfiguration(ctx context.Context) (*chainnode.Configuration, error) {
 	args := m.MethodCalled("ReadChainConfiguration")
-	return args.Get(0).(*chain.Configuration), args.Error(1)
+	return args.Get(0).(*chainnode.Configuration), args.Error(1)
 }
 
 func (m *mockRaft) LeaderCh() <-chan bool {
@@ -36,9 +36,9 @@ func (m *mockRaft) LeaderCh() <-chan bool {
 	return args.Get(0).(chan bool)
 }
 
-func (m *mockRaft) ChainConfiguration() *chain.Configuration {
+func (m *mockRaft) ChainConfiguration() *chainnode.Configuration {
 	args := m.MethodCalled("ChainConfiguration")
-	return args.Get(0).(*chain.Configuration)
+	return args.Get(0).(*chainnode.Configuration)
 }
 
 type mockTransport struct {
@@ -50,7 +50,7 @@ func (m *mockTransport) Ping(ctx context.Context, address net.Addr) error {
 	return args.Error(0)
 }
 
-func (m *mockTransport) UpdateConfiguration(ctx context.Context, address net.Addr, config *chain.Configuration) error {
+func (m *mockTransport) UpdateConfiguration(ctx context.Context, address net.Addr, config *chainnode.Configuration) error {
 	args := m.MethodCalled("UpdateConfiguration", address.String())
 	return args.Error(0)
 }
@@ -82,7 +82,7 @@ func TestAddMember(t *testing.T) {
 
 	member, err := net.ResolveTCPAddr("tcp", "127.0.0.2:9000")
 	require.NoError(t, err)
-	config, err := chain.NewConfiguration([]net.Addr{member})
+	config, err := chainnode.NewConfiguration([]net.Addr{member})
 	require.NoError(t, err)
 
 	raft.On("AddChainMember", member.String()).Return(config, nil).Once()
@@ -104,7 +104,7 @@ func TestRemoveMember(t *testing.T) {
 
 	member, err := net.ResolveTCPAddr("tcp", "127.0.0.2:9000")
 	require.NoError(t, err)
-	config, err := chain.NewConfiguration([]net.Addr{})
+	config, err := chainnode.NewConfiguration([]net.Addr{})
 	require.NoError(t, err)
 
 	raft.On("RemoveChainMember", member.String()).Return(config, nil).Once()
@@ -127,7 +127,7 @@ func TestReadMembershipConfiguration(t *testing.T) {
 	member2, err := net.ResolveTCPAddr("tcp", "127.0.0.2:9000")
 	require.NoError(t, err)
 
-	expectedConfig, err := chain.NewConfiguration([]net.Addr{member1, member2})
+	expectedConfig, err := chainnode.NewConfiguration([]net.Addr{member1, member2})
 	require.NoError(t, err)
 	raft.On("ReadChainConfiguration").Return(expectedConfig, nil).Once()
 	config, err := coordinator.ReadMembershipConfiguration(context.Background())
@@ -151,7 +151,7 @@ func TestOnHeartbeat(t *testing.T) {
 	require.NoError(t, err)
 	member3, err := net.ResolveTCPAddr("tcp", "127.0.0.4:9000")
 	require.NoError(t, err)
-	config, err := chain.NewConfiguration([]net.Addr{member1, member2, member3})
+	config, err := chainnode.NewConfiguration([]net.Addr{member1, member2, member3})
 	require.NoError(t, err)
 
 	// This coordinator is the leader and all pings to chain members are successful.
@@ -218,7 +218,7 @@ func TestOnFailedChainMember(t *testing.T) {
 		member2.String(): time.Now().Add(-60 * time.Second),
 		member3.String(): time.Now(),
 	}
-	config, err := chain.NewConfiguration([]net.Addr{member1, member3})
+	config, err := chainnode.NewConfiguration([]net.Addr{member1, member3})
 	require.NoError(t, err)
 	raft.On("RemoveChainMember", member2.String()).Return(config, nil)
 	tn.On("UpdateConfiguration", member1.String()).Return(nil)

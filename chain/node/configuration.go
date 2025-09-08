@@ -1,19 +1,14 @@
-package chain
+package node
 
 import (
-	"errors"
 	"net"
 
 	pb "github.com/jmsadair/keychain/proto/pbchain"
 	"google.golang.org/protobuf/proto"
 )
 
-var (
-	// Indicates that a node is not a member of any chain.
-	ErrNotMemberOfChain = errors.New("not a member of the chain")
-	// An empty configuration. All chain nodes start with this configuration.
-	EmptyChain = &Configuration{}
-)
+// EmptyChain is an empty configuration. All chain nodes start with this configuration.
+var EmptyChain = &Configuration{}
 
 // Configuration is a membership configuration for a particular chain.
 type Configuration struct {

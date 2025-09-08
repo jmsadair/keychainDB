@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/raft"
-	"github.com/jmsadair/keychain/chain"
+	chainnode "github.com/jmsadair/keychain/chain/node"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
@@ -53,7 +53,7 @@ func (m *mockSnapshotSync) Cancel() error {
 func TestNewFSM(t *testing.T) {
 	fsm := NewFSM()
 	require.NotNil(t, fsm)
-	require.Equal(t, chain.EmptyChain, fsm.configuration)
+	require.Equal(t, chainnode.EmptyChain, fsm.configuration)
 }
 
 func TestApply(t *testing.T) {
@@ -65,15 +65,15 @@ func TestApply(t *testing.T) {
 	readMembershipOpBytes, err := readMembershipOp.Bytes()
 	require.NoError(t, err)
 	log := raft.Log{Data: readMembershipOpBytes}
-	result, ok := fsm.Apply(&log).(*chain.Configuration)
+	result, ok := fsm.Apply(&log).(*chainnode.Configuration)
 	require.True(t, ok)
-	require.True(t, chain.EmptyChain.Equal(result))
+	require.True(t, chainnode.EmptyChain.Equal(result))
 
 	addOp := &AddMemberOperation{Member: memberAddr}
 	addOpBytes, err := addOp.Bytes()
 	require.NoError(t, err)
 	log = raft.Log{Data: addOpBytes}
-	result, ok = fsm.Apply(&log).(*chain.Configuration)
+	result, ok = fsm.Apply(&log).(*chainnode.Configuration)
 	require.True(t, ok)
 	require.True(t, result.IsMember(memberAddr))
 
@@ -81,16 +81,16 @@ func TestApply(t *testing.T) {
 	removeOpBytes, err := removeOp.Bytes()
 	require.NoError(t, err)
 	log = raft.Log{Data: removeOpBytes}
-	result, ok = fsm.Apply(&log).(*chain.Configuration)
+	result, ok = fsm.Apply(&log).(*chainnode.Configuration)
 	require.True(t, ok)
-	require.True(t, chain.EmptyChain.Equal(result))
+	require.True(t, chainnode.EmptyChain.Equal(result))
 }
 
 func TestSnapshotRestore(t *testing.T) {
 	fsm := NewFSM()
 	memberAddr, err := net.ResolveTCPAddr("tcp", "127.0.0.1:8080")
 	require.NoError(t, err)
-	config, err := chain.NewConfiguration([]net.Addr{memberAddr})
+	config, err := chainnode.NewConfiguration([]net.Addr{memberAddr})
 	require.NoError(t, err)
 
 	// Create a snapshot from the FSM state and ensure its encoded state is correct.
