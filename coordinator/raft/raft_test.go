@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jmsadair/keychain/chain"
+	chainnode "github.com/jmsadair/keychain/chain/node"
 	"github.com/stretchr/testify/require"
 )
 
@@ -127,9 +127,9 @@ func TestAddRemoveChainMember(t *testing.T) {
 	// Chain configuration should initially not contain any members.
 	readConfig, err := leader.ReadChainConfiguration(context.TODO())
 	require.NoError(t, err)
-	require.True(t, readConfig.Equal(chain.EmptyChain))
+	require.True(t, readConfig.Equal(chainnode.EmptyChain))
 
-	// Add three members to the chain.
+	// Add three members to the chainnode.
 	memberAddr1, err := net.ResolveTCPAddr("tcp", "127.0.0.2:8080")
 	require.NoError(t, err)
 	newConfig, err := leader.AddChainMember(context.TODO(), memberAddr1)
@@ -148,7 +148,7 @@ func TestAddRemoveChainMember(t *testing.T) {
 
 	readConfig, err = leader.ReadChainConfiguration(context.TODO())
 	require.NoError(t, err)
-	expectedConfig, err := chain.NewConfiguration([]net.Addr{memberAddr1, memberAddr2, memberAddr3})
+	expectedConfig, err := chainnode.NewConfiguration([]net.Addr{memberAddr1, memberAddr2, memberAddr3})
 	require.NoError(t, err)
 	require.True(t, expectedConfig.Equal(readConfig))
 
@@ -162,7 +162,7 @@ func TestAddRemoveChainMember(t *testing.T) {
 
 	readConfig, err = leader.ReadChainConfiguration(context.TODO())
 	require.NoError(t, err)
-	expectedConfig, err = chain.NewConfiguration([]net.Addr{memberAddr2})
+	expectedConfig, err = chainnode.NewConfiguration([]net.Addr{memberAddr2})
 	require.NoError(t, err)
 	require.True(t, expectedConfig.Equal(readConfig))
 }

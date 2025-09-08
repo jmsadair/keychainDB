@@ -6,7 +6,7 @@ import (
 	"sync"
 
 	"github.com/hashicorp/raft"
-	"github.com/jmsadair/keychain/chain"
+	chainnode "github.com/jmsadair/keychain/chain/node"
 	pb "github.com/jmsadair/keychain/proto/pbcoordinator"
 	"google.golang.org/protobuf/proto"
 )
@@ -53,10 +53,10 @@ func (op *ReadMembershipOperation) Bytes() ([]byte, error) {
 }
 
 type Snapshot struct {
-	Configuration *chain.Configuration
+	Configuration *chainnode.Configuration
 }
 
-func NewSnapshot(config *chain.Configuration) *Snapshot {
+func NewSnapshot(config *chainnode.Configuration) *Snapshot {
 	return &Snapshot{Configuration: config}
 }
 
@@ -77,12 +77,12 @@ func (s *Snapshot) Persist(sink raft.SnapshotSink) error {
 func (s *Snapshot) Release() {}
 
 type FSM struct {
-	configuration *chain.Configuration
+	configuration *chainnode.Configuration
 	mu            sync.Mutex
 }
 
 func NewFSM() *FSM {
-	return &FSM{configuration: chain.EmptyChain}
+	return &FSM{configuration: chainnode.EmptyChain}
 }
 
 func (f *FSM) Apply(log *raft.Log) any {
@@ -123,7 +123,7 @@ func (f *FSM) Restore(snapshot io.ReadCloser) error {
 	if err != nil {
 		return err
 	}
-	config, err := chain.NewConfigurationFromBytes(b)
+	config, err := chainnode.NewConfigurationFromBytes(b)
 	if err != nil {
 		return err
 	}
@@ -135,7 +135,7 @@ func (f *FSM) Restore(snapshot io.ReadCloser) error {
 	return nil
 }
 
-func (f *FSM) ChainConfiguration() *chain.Configuration {
+func (f *FSM) ChainConfiguration() *chainnode.Configuration {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	return f.configuration.Copy()

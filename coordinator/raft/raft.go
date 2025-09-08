@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/raft"
-	"github.com/jmsadair/keychain/chain"
+	chainnode "github.com/jmsadair/keychain/chain/node"
 	"github.com/jmsadair/keychain/coordinator/storage"
 )
 
@@ -85,31 +85,31 @@ func (rb *RaftBackend) Shutdown() error {
 	return future.Error()
 }
 
-func (rb *RaftBackend) AddChainMember(ctx context.Context, member net.Addr) (*chain.Configuration, error) {
+func (rb *RaftBackend) AddChainMember(ctx context.Context, member net.Addr) (*chainnode.Configuration, error) {
 	op := &AddMemberOperation{Member: member}
 	result, err := rb.apply(ctx, op)
 	if err != nil {
 		return nil, err
 	}
-	return result.(*chain.Configuration), nil
+	return result.(*chainnode.Configuration), nil
 }
 
-func (rb *RaftBackend) RemoveChainMember(ctx context.Context, member net.Addr) (*chain.Configuration, error) {
+func (rb *RaftBackend) RemoveChainMember(ctx context.Context, member net.Addr) (*chainnode.Configuration, error) {
 	op := &RemoveMemberOperation{Member: member}
 	result, err := rb.apply(ctx, op)
 	if err != nil {
 		return nil, err
 	}
-	return result.(*chain.Configuration), nil
+	return result.(*chainnode.Configuration), nil
 }
 
-func (rb *RaftBackend) ReadChainConfiguration(ctx context.Context) (*chain.Configuration, error) {
+func (rb *RaftBackend) ReadChainConfiguration(ctx context.Context) (*chainnode.Configuration, error) {
 	op := &ReadMembershipOperation{}
 	result, err := rb.apply(ctx, op)
 	if err != nil {
 		return nil, err
 	}
-	return result.(*chain.Configuration), nil
+	return result.(*chainnode.Configuration), nil
 }
 
 func (rb *RaftBackend) JoinCluster(ctx context.Context, nodeID string, address net.Addr) error {
@@ -166,7 +166,7 @@ func (rb *RaftBackend) LeadershipCh() <-chan bool {
 	return rb.raft.LeaderCh()
 }
 
-func (rb *RaftBackend) ChainConfiguration() *chain.Configuration {
+func (rb *RaftBackend) ChainConfiguration() *chainnode.Configuration {
 	return rb.fsm.ChainConfiguration()
 }
 

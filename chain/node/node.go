@@ -1,4 +1,4 @@
-package chain
+package node
 
 import (
 	"context"
@@ -20,16 +20,79 @@ var (
 	ErrNotMemberOfChain = errors.New("not a member of the chain")
 )
 
+const (
+	defaultBufferedChSize = 256
+	numOnCommitWorkers    = 16
+)
+
+// Status represents the operational status of a chain node.
+type Status int
+
+const (
+	// Syncing indicates the node is synchronizing with the chain.
+	Syncing Status = iota
+	// Active indicates the node is actively participating in the chain.
+	Active
+	// Inactive indicates the node is not participating in any chain.
+	Inactive
+)
+
+// State contains the membership configuration and status of a chain node.
+type State struct {
+	// The membership configuration for a chain node.
+	Config *Configuration
+	// The operation status of a chain node.
+	Status Status
+}
+
 // KeyValueSendStream is a stream for sending key-value pairs.
 type KeyValueSendStream interface {
 	// Send sends the key-valur pair over the stream.
 	Send(*storage.KeyValuePair) error
 }
 
-const (
-	defaultBufferedChSize = 256
-	numOnCommitWorkers    = 16
-)
+// KeyValueReceiveStream is a stream for receiving key-value pairs.
+type KeyValueReceiveStream interface {
+	// Recieve reads the next key-value pair in a stream of key-value pairs.
+	Receive() (*storage.KeyValuePair, error)
+}
+
+// Storage defines the interface for persistent storage operations on a chain node.
+type Storage interface {
+	// UncommittedWrite writes a versioned key-value pair to storage without committing it.
+	UncommittedWrite(key string, value []byte, version uint64) error
+	// UncommittedWriteNewVersion generates a new version number and writes the
+	// key-value pair to storage without committing it.
+	UncommittedWriteNewVersion(key string, value []byte) (uint64, error)
+	// CommittedWrite writes a versioned key-value pair to storage and immediately commits it.
+	// If a later version has already been committed, this operation is a no-op.
+	CommittedWrite(key string, value []byte, version uint64) error
+	// CommittedWriteNewVersion generates a new version number, writes the
+	// key-value pair to storage, and immediately commits it.
+	CommittedWriteNewVersion(key string, value []byte) (uint64, error)
+	// CommittedRead reads the committed version of a key-value pair.
+	CommittedRead(key string) ([]byte, error)
+	// CommitVersion commits the provided version of the key. If a later version already
+	// exists, this operation is a no-op.
+	CommitVersion(key string, version uint64) error
+	// SendKeyValuePairs iterates over storage, filters key-value pairs according to the key filter,
+	// and invokes the callback for each.
+	SendKeyValuePairs(ctx context.Context, sendFunc func(ctx context.Context, kvPairs []storage.KeyValuePair) error, keyFilter storage.KeyFilter) error
+	// CommitAll commits all dirty keys in storage and invokes the provided callback for each.
+	CommitAll(ctx context.Context, onCommit func(ctx context.Context, key string, version uint64) error) error
+}
+
+// Transport defines the interface for chain node communication.
+type Transport interface {
+	// Write will write a versioned key-value pair.
+	Write(ctx context.Context, address net.Addr, key string, value []byte, version uint64) error
+	// Read will read the committed version of the key.
+	Read(ctx context.Context, address net.Addr, key string) ([]byte, error)
+	// Commit will commit the provided version of th key.
+	Commit(ctx context.Context, address net.Addr, key string, version uint64) error
+	// Propagate will initiate a stream of key-value pairs from another node.
+	Propagate(ctx context.Context, address net.Addr, keyFilter storage.KeyFilter) (KeyValueReceiveStream, error)
+}
 
 type onConfigChangeMessage struct {
 	config *Configuration

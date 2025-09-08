@@ -1,4 +1,4 @@
-package coordinator
+package node
 
 import (
 	"context"
@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/jmsadair/keychain/chain"
+	chainnode "github.com/jmsadair/keychain/chain/node"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -16,16 +16,16 @@ const (
 )
 
 type Transport interface {
-	UpdateConfiguration(ctx context.Context, address net.Addr, config *chain.Configuration) error
+	UpdateConfiguration(ctx context.Context, address net.Addr, config *chainnode.Configuration) error
 	Ping(ctx context.Context, address net.Addr) error
 }
 
 type Raft interface {
-	AddChainMember(ctx context.Context, member net.Addr) (*chain.Configuration, error)
-	RemoveChainMember(ctx context.Context, member net.Addr) (*chain.Configuration, error)
-	ReadChainConfiguration(ctx context.Context) (*chain.Configuration, error)
+	AddChainMember(ctx context.Context, member net.Addr) (*chainnode.Configuration, error)
+	RemoveChainMember(ctx context.Context, member net.Addr) (*chainnode.Configuration, error)
+	ReadChainConfiguration(ctx context.Context) (*chainnode.Configuration, error)
 	LeaderCh() <-chan bool
-	ChainConfiguration() *chain.Configuration
+	ChainConfiguration() *chainnode.Configuration
 }
 
 type Coordinator struct {
@@ -72,11 +72,11 @@ func (c *Coordinator) RemoveMember(ctx context.Context, member net.Addr) error {
 	return c.updateChainMemberConfigurations(ctx, config)
 }
 
-func (c *Coordinator) ReadMembershipConfiguration(ctx context.Context) (*chain.Configuration, error) {
+func (c *Coordinator) ReadMembershipConfiguration(ctx context.Context) (*chainnode.Configuration, error) {
 	return c.raft.ReadChainConfiguration(ctx)
 }
 
-func (c *Coordinator) updateChainMemberConfigurations(ctx context.Context, config *chain.Configuration) error {
+func (c *Coordinator) updateChainMemberConfigurations(ctx context.Context, config *chainnode.Configuration) error {
 	g, ctx := errgroup.WithContext(ctx)
 	for _, member := range config.Members() {
 		g.Go(func() error {
@@ -191,7 +191,7 @@ func (c *Coordinator) onHeartbeat(ctx context.Context) error {
 	return err
 }
 
-func (c *Coordinator) sendHeartbeats(ctx context.Context, config *chain.Configuration) error {
+func (c *Coordinator) sendHeartbeats(ctx context.Context, config *chainnode.Configuration) error {
 	g, ctx := errgroup.WithContext(ctx)
 
 	for _, member := range config.Members() {
