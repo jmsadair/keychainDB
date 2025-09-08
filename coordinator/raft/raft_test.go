@@ -129,7 +129,7 @@ func TestAddRemoveChainMember(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, readConfig.Equal(chainnode.EmptyChain))
 
-	// Add three members to the chainnode.
+	// Add three members to the chain.
 	memberAddr1, err := net.ResolveTCPAddr("tcp", "127.0.0.2:8080")
 	require.NoError(t, err)
 	newConfig, err := leader.AddChainMember(context.TODO(), memberAddr1)
