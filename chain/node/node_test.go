@@ -3,7 +3,6 @@ package node
 import (
 	"context"
 	"io"
-	"net"
 	"testing"
 
 	"github.com/jmsadair/keychain/chain/storage"
@@ -27,12 +26,12 @@ type mockTransport struct {
 	mock.Mock
 }
 
-func (mc *mockTransport) Write(ctx context.Context, address net.Addr, key string, value []byte, version uint64) error {
+func (mc *mockTransport) Write(ctx context.Context, address string, key string, value []byte, version uint64) error {
 	args := mc.MethodCalled("Write", address, key, value, version)
 	return args.Error(0)
 }
 
-func (mc *mockTransport) Read(ctx context.Context, address net.Addr, key string) ([]byte, error) {
+func (mc *mockTransport) Read(ctx context.Context, address string, key string) ([]byte, error) {
 	args := mc.MethodCalled("Read", address, key)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -40,12 +39,12 @@ func (mc *mockTransport) Read(ctx context.Context, address net.Addr, key string)
 	return args.Get(0).([]byte), args.Error(1)
 }
 
-func (mc *mockTransport) Commit(ctx context.Context, address net.Addr, key string, version uint64) error {
+func (mc *mockTransport) Commit(ctx context.Context, address string, key string, version uint64) error {
 	args := mc.MethodCalled("Commit", address, key, version)
 	return args.Error(0)
 }
 
-func (mc *mockTransport) Propagate(ctx context.Context, address net.Addr, keyFilter storage.KeyFilter) (KeyValueReceiveStream, error) {
+func (mc *mockTransport) Propagate(ctx context.Context, address string, keyFilter storage.KeyFilter) (KeyValueReceiveStream, error) {
 	args := mc.MethodCalled("Propagate", address, keyFilter)
 	return args.Get(0).(KeyValueReceiveStream), args.Error(1)
 }
@@ -98,23 +97,22 @@ func (ms *mockStorage) CommitAll(ctx context.Context, onCommit func(ctx context.
 }
 
 func TestInitiateReplicatedWrite(t *testing.T) {
-	address1, err := net.ResolveTCPAddr("tcp", "127.0.0.1:8080")
-	require.NoError(t, err)
-	address2, err := net.ResolveTCPAddr("tcp", "127.0.0.2:8080")
-	require.NoError(t, err)
+	address1 := "127.0.0.1:8080"
+	address2 := "127.0.0.2:8080"
 
 	transport := new(mockTransport)
 	store := new(mockStorage)
-	node := NewChainNode(address1, store, transport)
+	node := NewChainNode("member-1", address1, store, transport)
 
 	key := "key"
 	value := []byte("value")
 	version := uint64(1)
 
-	err = node.InitiateReplicatedWrite(context.TODO(), key, value)
+	err := node.InitiateReplicatedWrite(context.TODO(), key, value)
 	require.ErrorIs(t, err, ErrNotMemberOfChain)
 
-	config, err := NewConfiguration([]net.Addr{address1})
+	member1 := &ChainMember{ID: "member-1", Address: address1}
+	config, err := NewConfiguration([]*ChainMember{member1})
 	require.NoError(t, err)
 	node.state.Load().Config = config
 	store.On("CommittedWriteNewVersion", key, value).Return(version, nil).Once()
@@ -122,7 +120,8 @@ func TestInitiateReplicatedWrite(t *testing.T) {
 	require.NoError(t, err)
 	store.AssertExpectations(t)
 
-	config, err = NewConfiguration([]net.Addr{address1, address2})
+	member2 := &ChainMember{ID: "member-2", Address: address2}
+	config, err = NewConfiguration([]*ChainMember{member1, member2})
 	require.NoError(t, err)
 	node.state.Load().Config = config
 	store.On("UncommittedWriteNewVersion", key, value).Return(version, nil).Once()
@@ -132,7 +131,7 @@ func TestInitiateReplicatedWrite(t *testing.T) {
 	store.AssertExpectations(t)
 	transport.AssertExpectations(t)
 
-	config, err = NewConfiguration([]net.Addr{address2, address1})
+	config, err = NewConfiguration([]*ChainMember{member2, member1})
 	require.NoError(t, err)
 	node.state.Load().Config = config
 	err = node.InitiateReplicatedWrite(context.TODO(), key, value)
@@ -140,25 +139,26 @@ func TestInitiateReplicatedWrite(t *testing.T) {
 }
 
 func TestWriteWithVersion(t *testing.T) {
-	address1, err := net.ResolveTCPAddr("tcp", "127.0.0.1:8080")
-	require.NoError(t, err)
-	address2, err := net.ResolveTCPAddr("tcp", "127.0.0.2:8080")
-	require.NoError(t, err)
-	address3, err := net.ResolveTCPAddr("tcp", "127.0.0.3:8080")
-	require.NoError(t, err)
+	address1 := "127.0.0.1:8080"
+	address2 := "127.0.0.2:8080"
+	address3 := "127.0.0.3:8080"
 
 	store := new(mockStorage)
 	transport := new(mockTransport)
-	node := NewChainNode(address1, store, transport)
+	node := NewChainNode("member-1", address1, store, transport)
 
 	key := "key"
 	value := []byte("value")
 	version := uint64(1)
 
-	err = node.WriteWithVersion(context.TODO(), key, value, version)
+	err := node.WriteWithVersion(context.TODO(), key, value, version)
 	require.ErrorIs(t, err, ErrNotMemberOfChain)
 
-	config, err := NewConfiguration([]net.Addr{address2, address1})
+	member1 := &ChainMember{ID: "member-1", Address: address1}
+	member2 := &ChainMember{ID: "member-2", Address: address2}
+	member3 := &ChainMember{ID: "member-3", Address: address3}
+
+	config, err := NewConfiguration([]*ChainMember{member2, member1})
 	require.NoError(t, err)
 	node.state.Load().Config = config
 	store.On("CommittedWrite", key, value, version).Return(nil).Once()
@@ -166,7 +166,7 @@ func TestWriteWithVersion(t *testing.T) {
 	require.NoError(t, err)
 	store.AssertExpectations(t)
 
-	config, err = NewConfiguration([]net.Addr{address2, address1, address3})
+	config, err = NewConfiguration([]*ChainMember{member2, member1, member3})
 	require.NoError(t, err)
 	node.state.Load().Config = config
 	store.On("UncommittedWrite", key, value, version).Return(nil).Once()
@@ -178,24 +178,25 @@ func TestWriteWithVersion(t *testing.T) {
 }
 
 func TestRead(t *testing.T) {
-	address1, err := net.ResolveTCPAddr("tcp", "127.0.0.1:8080")
-	require.NoError(t, err)
-	address2, err := net.ResolveTCPAddr("tcp", "127.0.0.2:8080")
-	require.NoError(t, err)
-	address3, err := net.ResolveTCPAddr("tcp", "127.0.0.3:8080")
-	require.NoError(t, err)
+	address1 := "127.0.0.1:8080"
+	address2 := "127.0.0.2:8080"
+	address3 := "127.0.0.3:8080"
 
 	store := new(mockStorage)
 	transport := new(mockTransport)
-	node := NewChainNode(address1, store, transport)
+	node := NewChainNode("member-1", address1, store, transport)
 
 	key := "key"
 	value := []byte("value")
 
-	_, err = node.Read(context.TODO(), key)
+	_, err := node.Read(context.TODO(), key)
 	require.ErrorIs(t, err, ErrNotMemberOfChain)
 
-	config, err := NewConfiguration([]net.Addr{address1, address2, address3})
+	member1 := &ChainMember{ID: "member-1", Address: address1}
+	member2 := &ChainMember{ID: "member-2", Address: address2}
+	member3 := &ChainMember{ID: "member-3", Address: address3}
+
+	config, err := NewConfiguration([]*ChainMember{member1, member2, member3})
 	require.NoError(t, err)
 	node.state.Load().Config = config
 	store.On("CommittedRead", key).Return(value, nil).Once()
@@ -214,20 +215,20 @@ func TestRead(t *testing.T) {
 }
 
 func TestCommit(t *testing.T) {
-	address1, err := net.ResolveTCPAddr("tcp", "127.0.0.1:8080")
-	require.NoError(t, err)
+	address1 := "127.0.0.1:8080"
 
 	store := new(mockStorage)
 	transport := new(mockTransport)
-	node := NewChainNode(address1, store, transport)
+	node := NewChainNode("member-1", address1, store, transport)
 
 	key := "key"
 	version := uint64(1)
 
-	err = node.Commit(context.TODO(), key, version)
+	err := node.Commit(context.TODO(), key, version)
 	require.ErrorIs(t, err, ErrNotMemberOfChain)
 
-	config, err := NewConfiguration([]net.Addr{address1})
+	member1 := &ChainMember{ID: "member-1", Address: address1}
+	config, err := NewConfiguration([]*ChainMember{member1})
 	require.NoError(t, err)
 	node.state.Load().Config = config
 	store.On("CommitVersion", key, version).Return(nil).Once()
@@ -241,14 +242,12 @@ func TestCommit(t *testing.T) {
 }
 
 func TestRequestPropagation(t *testing.T) {
-	address1, err := net.ResolveTCPAddr("tcp", "127.0.0.1:8080")
-	require.NoError(t, err)
-	address2, err := net.ResolveTCPAddr("tcp", "127.0.0.2:8080")
-	require.NoError(t, err)
+	address1 := "127.0.0.1:8080"
+	address2 := "127.0.0.2:8080"
 
 	store := new(mockStorage)
 	transport := new(mockTransport)
-	node := NewChainNode(address1, store, transport)
+	node := NewChainNode("member-1", address1, store, transport)
 
 	stream := new(mockKeyValueStreamReader)
 	kv1 := storage.KeyValuePair{Key: "key-1", Value: []byte("value-1"), Committed: false}
@@ -278,16 +277,13 @@ func TestRequestPropagation(t *testing.T) {
 }
 
 func TestOnNewPredecessor(t *testing.T) {
-	address1, err := net.ResolveTCPAddr("tcp", "127.0.0.1:8080")
-	require.NoError(t, err)
-	address2, err := net.ResolveTCPAddr("tcp", "127.0.0.2:8080")
-	require.NoError(t, err)
-	address3, err := net.ResolveTCPAddr("tcp", "127.0.0.3:8080")
-	require.NoError(t, err)
+	address1 := "127.0.0.1:8080"
+	address2 := "127.0.0.2:8080"
+	address3 := "127.0.0.3:8080"
 
 	store := new(mockStorage)
 	transport := new(mockTransport)
-	node := NewChainNode(address1, store, transport)
+	node := NewChainNode("member-1", address1, store, transport)
 
 	stream := new(mockKeyValueStreamReader)
 	kv1 := storage.KeyValuePair{Key: "key-1", Value: []byte("value-1"), Committed: false}
@@ -296,8 +292,12 @@ func TestOnNewPredecessor(t *testing.T) {
 	// Node becomes new member of existing chain.
 	// It should request all key-value pairs from its predecessor to sync and then signal syncing is complete.
 	// It is the tail so it should commit any key-value pairs it receives immediately.
+	member1 := &ChainMember{ID: "member-1", Address: address1}
+	member2 := &ChainMember{ID: "member-2", Address: address2}
+	member3 := &ChainMember{ID: "member-3", Address: address3}
+
 	node.syncCompleteCh = make(chan any, 1)
-	config, err := NewConfiguration([]net.Addr{address2, address1})
+	config, err := NewConfiguration([]*ChainMember{member2, member1})
 	require.NoError(t, err)
 	stream.On("Receive").Return(&kv1, nil).Once()
 	stream.On("Receive").Return(&kv2, nil).Once()
@@ -316,7 +316,7 @@ func TestOnNewPredecessor(t *testing.T) {
 	// It should request only the dirty key-value pairs from its predecessor in case its previous
 	// predecessor failed and did not finish sending them. It is the tail so it should commit
 	// any key-value pairs it receives immediately.
-	config, err = NewConfiguration([]net.Addr{address3, address1})
+	config, err = NewConfiguration([]*ChainMember{member3, member1})
 	require.NoError(t, err)
 	stream.On("Receive").Return(&kv1, nil).Once()
 	stream.On("Receive").Return(&kv2, nil).Once()
@@ -331,16 +331,13 @@ func TestOnNewPredecessor(t *testing.T) {
 }
 
 func TestOnNewSuccessor(t *testing.T) {
-	address1, err := net.ResolveTCPAddr("tcp", "127.0.0.1:8080")
-	require.NoError(t, err)
-	address2, err := net.ResolveTCPAddr("tcp", "127.0.0.2:8080")
-	require.NoError(t, err)
-	address3, err := net.ResolveTCPAddr("tcp", "127.0.0.3:8080")
-	require.NoError(t, err)
+	address1 := "127.0.0.1:8080"
+	address2 := "127.0.0.2:8080"
+	address3 := "127.0.0.3:8080"
 
 	store := new(mockStorage)
 	transport := new(mockTransport)
-	node := NewChainNode(address1, store, transport)
+	node := NewChainNode("member-1", address1, store, transport)
 
 	stream := new(mockKeyValueStreamReader)
 	kv1 := storage.KeyValuePair{Key: "key-1", Value: []byte("value-1"), Committed: false}
@@ -349,8 +346,12 @@ func TestOnNewSuccessor(t *testing.T) {
 	// Node becomes new member of existing chain.
 	// It should request all key-value pairs from its successor to sync and then signal syncing is complete.
 	// It is not the tail, so it should only commit key-value pairs that it knows are committed.
+	member1 := &ChainMember{ID: "member-1", Address: address1}
+	member2 := &ChainMember{ID: "member-2", Address: address2}
+	member3 := &ChainMember{ID: "member-3", Address: address3}
+
 	node.syncCompleteCh = make(chan any, 1)
-	config, err := NewConfiguration([]net.Addr{address1, address2})
+	config, err := NewConfiguration([]*ChainMember{member1, member2})
 	require.NoError(t, err)
 	stream.On("Receive").Return(&kv1, nil).Once()
 	stream.On("Receive").Return(&kv2, nil).Once()
@@ -368,7 +369,7 @@ func TestOnNewSuccessor(t *testing.T) {
 	// Node is an existing member of the chain and gets a new successor.
 	// It should request only the committed key-value pairs from its predecessor in case its previous
 	// successor failed without sending an acknowledgement of the commit.
-	config, err = NewConfiguration([]net.Addr{address1, address3})
+	config, err = NewConfiguration([]*ChainMember{member1, member3})
 	require.NoError(t, err)
 	stream.On("Receive").Return(&kv2, nil).Once()
 	stream.On("Receive").Return(nil, io.EOF).Once()
@@ -381,7 +382,7 @@ func TestOnNewSuccessor(t *testing.T) {
 
 	// Node is an existing member of the chain and becomes the new tail.
 	// It should immediately commit all of its dirty key-value pairs.
-	config, err = NewConfiguration([]net.Addr{address1})
+	config, err = NewConfiguration([]*ChainMember{member1})
 	require.NoError(t, err)
 	store.On("CommitAll").Return(nil).Once()
 	node.onNewSuccessor(context.TODO(), config, false)

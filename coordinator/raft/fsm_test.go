@@ -2,7 +2,6 @@ package raft
 
 import (
 	"io"
-	"net"
 	"testing"
 
 	"github.com/hashicorp/raft"
@@ -58,8 +57,8 @@ func TestNewFSM(t *testing.T) {
 
 func TestApply(t *testing.T) {
 	fsm := NewFSM()
-	memberAddr, err := net.ResolveTCPAddr("tcp", "127.0.0.1:8080")
-	require.NoError(t, err)
+	memberID := "member-1"
+	memberAddr := "127.0.0.1:8080"
 
 	readMembershipOp := &ReadMembershipOperation{}
 	readMembershipOpBytes, err := readMembershipOp.Bytes()
@@ -69,15 +68,15 @@ func TestApply(t *testing.T) {
 	require.True(t, ok)
 	require.True(t, chainnode.EmptyChain.Equal(result))
 
-	addOp := &AddMemberOperation{Member: memberAddr}
+	addOp := &AddMemberOperation{ID: memberID, Address: memberAddr}
 	addOpBytes, err := addOp.Bytes()
 	require.NoError(t, err)
 	log = raft.Log{Data: addOpBytes}
 	result, ok = fsm.Apply(&log).(*chainnode.Configuration)
 	require.True(t, ok)
-	require.True(t, result.IsMember(memberAddr))
+	require.True(t, result.IsMemberByID(memberID))
 
-	removeOp := &RemoveMemberOperation{Member: memberAddr}
+	removeOp := &RemoveMemberOperation{ID: memberID}
 	removeOpBytes, err := removeOp.Bytes()
 	require.NoError(t, err)
 	log = raft.Log{Data: removeOpBytes}
@@ -88,9 +87,8 @@ func TestApply(t *testing.T) {
 
 func TestSnapshotRestore(t *testing.T) {
 	fsm := NewFSM()
-	memberAddr, err := net.ResolveTCPAddr("tcp", "127.0.0.1:8080")
-	require.NoError(t, err)
-	config, err := chainnode.NewConfiguration([]net.Addr{memberAddr})
+	member := &chainnode.ChainMember{ID: "member-1", Address: "127.0.0.1:8080"}
+	config, err := chainnode.NewConfiguration([]*chainnode.ChainMember{member})
 	require.NoError(t, err)
 
 	// Create a snapshot from the FSM state and ensure its encoded state is correct.

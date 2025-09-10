@@ -2,7 +2,6 @@ package node
 
 import (
 	"context"
-	"net"
 	"sync"
 	"time"
 
@@ -29,7 +28,7 @@ type Raft interface {
 }
 
 type Coordinator struct {
-	address             net.Addr
+	address             string
 	tn                  Transport
 	raft                Raft
 	lastContacted       map[string]time.Time
@@ -39,7 +38,7 @@ type Coordinator struct {
 	mu                  sync.Mutex
 }
 
-func NewCoordinator(address net.Addr, tn Transport, raft Raft) *Coordinator {
+func NewCoordinator(address string, tn Transport, raft Raft) *Coordinator {
 	return &Coordinator{
 		address:             address,
 		tn:                  tn,

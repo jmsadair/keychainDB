@@ -1,27 +1,23 @@
 package node
 
 import (
-	"net"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 )
 
 func TestEqual(t *testing.T) {
-	member1, err := net.ResolveTCPAddr("tcp", "127.0.0.1:8080")
-	require.NoError(t, err)
-	member2, err := net.ResolveTCPAddr("tcp", "127.0.0.2:8080")
-	require.NoError(t, err)
-	member3, err := net.ResolveTCPAddr("tcp", "127.0.0.3:8080")
-	require.NoError(t, err)
+	member1 := &ChainMember{ID: "member-1", Address: "127.0.0.1:8080"}
+	member2 := &ChainMember{ID: "member-2", Address: "127.0.0.2:8080"}
+	member3 := &ChainMember{ID: "member-3", Address: "127.0.0.3:8080"}
 
-	config1, err := NewConfiguration([]net.Addr{member1, member2, member3})
+	config1, err := NewConfiguration([]*ChainMember{member1, member2, member3})
 	require.NoError(t, err)
-	config2, err := NewConfiguration([]net.Addr{member2, member1, member3})
+	config2, err := NewConfiguration([]*ChainMember{member2, member1, member3})
 	require.NoError(t, err)
-	config3, err := NewConfiguration([]net.Addr{member1, member2})
+	config3, err := NewConfiguration([]*ChainMember{member1, member2})
 	require.NoError(t, err)
-	config4, err := NewConfiguration([]net.Addr{member1, member2, member3})
+	config4, err := NewConfiguration([]*ChainMember{member1, member2, member3})
 	require.NoError(t, err)
 
 	// Same members of the chain but different order.
@@ -33,15 +29,15 @@ func TestEqual(t *testing.T) {
 }
 
 func TestCopy(t *testing.T) {
-	member1, err := net.ResolveTCPAddr("tcp", "127.0.0.1:8080")
-	require.NoError(t, err)
+	member1 := &ChainMember{ID: "member-1", Address: "127.0.0.1:8080"}
 
-	config, err := NewConfiguration([]net.Addr{member1})
+	config, err := NewConfiguration([]*ChainMember{member1})
 	require.NoError(t, err)
 	require.Len(t, config.members, 1)
 	require.Len(t, config.addressToMemberIndex, 1)
-	require.Contains(t, config.addressToMemberIndex, member1.String())
-	require.Equal(t, member1.String(), config.members[0].String())
+	require.Contains(t, config.addressToMemberIndex, member1.Address)
+	require.Equal(t, member1.Address, config.members[0].Address)
+	require.Equal(t, member1.ID, config.members[0].ID)
 
 	// Create a copy of the original configuration and mutate it.
 	configCopy := config.Copy()
@@ -51,94 +47,87 @@ func TestCopy(t *testing.T) {
 	// Ensure the original configuration as not been modified.
 	require.Len(t, config.members, 1)
 	require.Len(t, config.addressToMemberIndex, 1)
-	require.Contains(t, config.addressToMemberIndex, member1.String())
-	require.Equal(t, member1.String(), config.members[0].String())
+	require.Contains(t, config.addressToMemberIndex, member1.Address)
+	require.Equal(t, member1.Address, config.members[0].Address)
+	require.Equal(t, member1.ID, config.members[0].ID)
 }
 
 func TestAddMemberRemoveMember(t *testing.T) {
-	member1, err := net.ResolveTCPAddr("tcp", "127.0.0.1:8080")
+	config, err := NewConfiguration([]*ChainMember{})
 	require.NoError(t, err)
-	member2, err := net.ResolveTCPAddr("tcp", "127.0.0.2:8080")
-	require.NoError(t, err)
-	member3, err := net.ResolveTCPAddr("tcp", "127.0.0.3:8080")
-	require.NoError(t, err)
+	config = config.AddMember("member-1", "127.0.0.1:8080")
+	require.True(t, config.IsMemberByID("member-1"))
+	require.True(t, config.IsMemberByAddress("127.0.0.1:8080"))
+	require.True(t, config.IsHead("member-1"))
+	require.True(t, config.IsTail("member-1"))
 
-	config, err := NewConfiguration([]net.Addr{})
-	require.NoError(t, err)
-	config = config.AddMember(member1)
-	require.True(t, config.IsMember(member1))
-	require.True(t, config.IsHead(member1))
-	require.True(t, config.IsTail(member1))
+	config = config.AddMember("member-2", "127.0.0.2:8080")
+	require.True(t, config.IsMemberByID("member-1"))
+	require.True(t, config.IsMemberByID("member-2"))
+	require.True(t, config.IsHead("member-1"))
+	require.True(t, config.IsTail("member-2"))
 
-	config = config.AddMember(member2)
-	require.True(t, config.IsMember(member1))
-	require.True(t, config.IsMember(member2))
-	require.True(t, config.IsHead(member1))
-	require.True(t, config.IsTail(member2))
+	config = config.AddMember("member-3", "127.0.0.3:8080")
+	require.True(t, config.IsMemberByID("member-1"))
+	require.True(t, config.IsMemberByID("member-2"))
+	require.True(t, config.IsMemberByID("member-3"))
+	require.True(t, config.IsHead("member-1"))
+	require.True(t, config.IsTail("member-3"))
 
-	config = config.AddMember(member3)
-	require.True(t, config.IsMember(member1))
-	require.True(t, config.IsMember(member2))
-	require.True(t, config.IsMember(member3))
-	require.True(t, config.IsHead(member1))
-	require.True(t, config.IsTail(member3))
+	config = config.RemoveMember("member-2")
+	require.True(t, config.IsMemberByID("member-1"))
+	require.False(t, config.IsMemberByID("member-2"))
+	require.True(t, config.IsMemberByID("member-3"))
+	require.True(t, config.IsHead("member-1"))
+	require.True(t, config.IsTail("member-3"))
 
-	config = config.RemoveMember(member2)
-	require.True(t, config.IsMember(member1))
-	require.False(t, config.IsMember(member2))
-	require.True(t, config.IsMember(member3))
-	require.True(t, config.IsHead(member1))
-	require.True(t, config.IsTail(member3))
+	config = config.RemoveMember("member-1")
+	require.False(t, config.IsMemberByID("member-1"))
+	require.False(t, config.IsMemberByID("member-2"))
+	require.True(t, config.IsMemberByID("member-3"))
+	require.True(t, config.IsHead("member-3"))
+	require.True(t, config.IsTail("member-3"))
 
-	config = config.RemoveMember(member1)
-	require.False(t, config.IsMember(member1))
-	require.False(t, config.IsMember(member2))
-	require.True(t, config.IsMember(member3))
-	require.True(t, config.IsHead(member3))
-	require.True(t, config.IsTail(member3))
-
-	config = config.RemoveMember(member3)
-	require.False(t, config.IsMember(member1))
-	require.False(t, config.IsMember(member2))
-	require.False(t, config.IsMember(member3))
+	config = config.RemoveMember("member-3")
+	require.False(t, config.IsMemberByID("member-1"))
+	require.False(t, config.IsMemberByID("member-2"))
+	require.False(t, config.IsMemberByID("member-3"))
 }
 
 func TestPredecessorSuccessor(t *testing.T) {
-	head, err := net.ResolveTCPAddr("tcp", "127.0.0.1:8080")
-	require.NoError(t, err)
-	middle, err := net.ResolveTCPAddr("tcp", "127.0.0.2:8080")
-	require.NoError(t, err)
-	tail, err := net.ResolveTCPAddr("tcp", "127.0.0.3:8080")
+	head := &ChainMember{ID: "member-1", Address: "127.0.0.1:8080"}
+	middle := &ChainMember{ID: "member-2", Address: "127.0.0.2:8080"}
+	tail := &ChainMember{ID: "member-3", Address: "127.0.0.3:8080"}
+
+	config, err := NewConfiguration([]*ChainMember{head, middle, tail})
 	require.NoError(t, err)
 
-	config, err := NewConfiguration([]net.Addr{head, middle, tail})
-	require.NoError(t, err)
-
-	pred := config.Predecessor(head)
+	pred := config.Predecessor(head.ID)
 	require.Nil(t, pred)
-	succ := config.Successor(head)
-	require.Equal(t, middle.String(), succ.String())
+	succ := config.Successor(head.ID)
+	require.Equal(t, middle.Address, succ.Address)
+	require.Equal(t, middle.ID, succ.ID)
 
-	pred = config.Predecessor(middle)
-	require.Equal(t, head.String(), pred.String())
-	succ = config.Successor(middle)
-	require.Equal(t, tail.String(), succ.String())
+	pred = config.Predecessor(middle.ID)
+	require.Equal(t, head.Address, pred.Address)
+	require.Equal(t, head.ID, pred.ID)
+	succ = config.Successor(middle.ID)
+	require.Equal(t, tail.Address, succ.Address)
+	require.Equal(t, tail.ID, succ.ID)
 
-	pred = config.Predecessor(tail)
-	require.Equal(t, middle.String(), pred.String())
-	succ = config.Successor(tail)
+	pred = config.Predecessor(tail.ID)
+	require.Equal(t, middle.Address, pred.Address)
+	require.Equal(t, middle.ID, pred.ID)
+	succ = config.Successor(tail.ID)
 	require.Nil(t, succ)
 }
 
 func TestChainBytes(t *testing.T) {
-	head, err := net.ResolveTCPAddr("tcp", "127.0.0.1:8080")
-	require.NoError(t, err)
-	middle, err := net.ResolveTCPAddr("tcp", "127.0.0.2:8080")
-	require.NoError(t, err)
-	tail, err := net.ResolveTCPAddr("tcp", "127.0.0.3:8080")
-	require.NoError(t, err)
+	head := &ChainMember{ID: "member-1", Address: "127.0.0.1:8080"}
+	middle := &ChainMember{ID: "member-2", Address: "127.0.0.2:8080"}
+	tail := &ChainMember{ID: "member-3", Address: "127.0.0.3:8080"}
 
-	config, err := NewConfiguration([]net.Addr{head, middle, tail})
+	config, err := NewConfiguration([]*ChainMember{head, middle, tail})
 	require.NoError(t, err)
 
 	b, err := config.Bytes()
@@ -149,21 +138,18 @@ func TestChainBytes(t *testing.T) {
 }
 
 func TestIsHeadIsTail(t *testing.T) {
-	head, err := net.ResolveTCPAddr("tcp", "127.0.0.1:8080")
-	require.NoError(t, err)
-	middle, err := net.ResolveTCPAddr("tcp", "127.0.0.2:8080")
-	require.NoError(t, err)
-	tail, err := net.ResolveTCPAddr("tcp", "127.0.0.3:8080")
+	head := &ChainMember{ID: "member-1", Address: "127.0.0.1:8080"}
+	middle := &ChainMember{ID: "member-2", Address: "127.0.0.2:8080"}
+	tail := &ChainMember{ID: "member-3", Address: "127.0.0.3:8080"}
+
+	config, err := NewConfiguration([]*ChainMember{head, middle, tail})
 	require.NoError(t, err)
 
-	config, err := NewConfiguration([]net.Addr{head, middle, tail})
-	require.NoError(t, err)
+	require.True(t, config.IsHead(head.ID))
+	require.False(t, config.IsHead(middle.ID))
+	require.False(t, config.IsHead(tail.ID))
 
-	require.True(t, config.IsHead(head))
-	require.False(t, config.IsHead(middle))
-	require.False(t, config.IsHead(tail))
-
-	require.False(t, config.IsTail(head))
-	require.False(t, config.IsTail(middle))
-	require.True(t, config.IsTail(tail))
+	require.False(t, config.IsTail(head.ID))
+	require.False(t, config.IsTail(middle.ID))
+	require.True(t, config.IsTail(tail.ID))
 }

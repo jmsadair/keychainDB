@@ -45,12 +45,16 @@ type RaftBackend struct {
 	store *storage.PersistentStorage
 }
 
-func NewRaftBackend(nodeID string, address net.Addr, storePath string, snapshotStorePath string, bootstrap bool) (*RaftBackend, error) {
+func NewRaftBackend(nodeID string, address string, storePath string, snapshotStorePath string, bootstrap bool) (*RaftBackend, error) {
 	store, err := storage.NewPersistentStorage(storePath)
 	if err != nil {
 		return nil, err
 	}
-	tn, err := raft.NewTCPTransport(address.String(), address, maxPool, transportTimeout, os.Stderr)
+	addr, err := net.ResolveTCPAddr("tcp", address)
+	if err != nil {
+		return nil, err
+	}
+	tn, err := raft.NewTCPTransport(address, addr, maxPool, transportTimeout, os.Stderr)
 	if err != nil {
 		return nil, err
 	}
@@ -112,22 +116,22 @@ func (rb *RaftBackend) ReadChainConfiguration(ctx context.Context) (*chainnode.C
 	return result.(*chainnode.Configuration), nil
 }
 
-func (rb *RaftBackend) JoinCluster(ctx context.Context, nodeID string, address net.Addr) error {
+func (rb *RaftBackend) JoinCluster(ctx context.Context, nodeID string, address string) error {
 	configFuture := rb.raft.GetConfiguration()
 	if err := configFuture.Error(); err != nil {
 		return err
 	}
 
 	for _, srv := range configFuture.Configuration().Servers {
-		if srv.ID == raft.ServerID(nodeID) || srv.Address == raft.ServerAddress(address.String()) {
-			if srv.Address == raft.ServerAddress(address.String()) && srv.ID == raft.ServerID(nodeID) {
+		if srv.ID == raft.ServerID(nodeID) || srv.Address == raft.ServerAddress(address) {
+			if srv.Address == raft.ServerAddress(address) && srv.ID == raft.ServerID(nodeID) {
 				return nil
 			}
 			return ErrNodeExists
 		}
 	}
 
-	indexFuture := rb.raft.AddVoter(raft.ServerID(nodeID), raft.ServerAddress(address.String()), 0, timeoutFromContext(ctx, defaultApplyTimeout))
+	indexFuture := rb.raft.AddVoter(raft.ServerID(nodeID), raft.ServerAddress(address), 0, timeoutFromContext(ctx, defaultApplyTimeout))
 	return indexFuture.Error()
 }
 
