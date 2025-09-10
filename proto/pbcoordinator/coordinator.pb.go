@@ -25,8 +25,10 @@ const (
 // An operation that adds a member to a chain.
 type AddMemberOperation struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
+	// The ID of the member being added.
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	// The address of the member being added.
-	Member        string `protobuf:"bytes,1,opt,name=member,proto3" json:"member,omitempty"`
+	Address       string `protobuf:"bytes,2,opt,name=address,proto3" json:"address,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -61,9 +63,16 @@ func (*AddMemberOperation) Descriptor() ([]byte, []int) {
 	return file_coordinator_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *AddMemberOperation) GetMember() string {
+func (x *AddMemberOperation) GetId() string {
 	if x != nil {
-		return x.Member
+		return x.Id
+	}
+	return ""
+}
+
+func (x *AddMemberOperation) GetAddress() string {
+	if x != nil {
+		return x.Address
 	}
 	return ""
 }
@@ -71,8 +80,8 @@ func (x *AddMemberOperation) GetMember() string {
 // An operation that removes a member from a chain.
 type RemoveMemberOperation struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The address of the member being removed.
-	Member        string `protobuf:"bytes,1,opt,name=member,proto3" json:"member,omitempty"`
+	// The ID of the member being removed.
+	Id            string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -107,9 +116,9 @@ func (*RemoveMemberOperation) Descriptor() ([]byte, []int) {
 	return file_coordinator_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *RemoveMemberOperation) GetMember() string {
+func (x *RemoveMemberOperation) GetId() string {
 	if x != nil {
-		return x.Member
+		return x.Id
 	}
 	return ""
 }
@@ -345,11 +354,12 @@ var File_coordinator_proto protoreflect.FileDescriptor
 
 const file_coordinator_proto_rawDesc = "" +
 	"\n" +
-	"\x11coordinator.proto\x12\vcoordinator\x1a\x1fgoogle/protobuf/timestamp.proto\",\n" +
-	"\x12AddMemberOperation\x12\x16\n" +
-	"\x06member\x18\x01 \x01(\tR\x06member\"/\n" +
-	"\x15RemoveMemberOperation\x12\x16\n" +
-	"\x06member\x18\x01 \x01(\tR\x06member\"\x19\n" +
+	"\x11coordinator.proto\x12\vcoordinator\x1a\x1fgoogle/protobuf/timestamp.proto\">\n" +
+	"\x12AddMemberOperation\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x18\n" +
+	"\aaddress\x18\x02 \x01(\tR\aaddress\"'\n" +
+	"\x15RemoveMemberOperation\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"\x19\n" +
 	"\x17ReadMembershipOperation\"\x80\x02\n" +
 	"\x13ReplicatedOperation\x12@\n" +
 	"\n" +

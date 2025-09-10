@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"io"
-	"net"
 	"sync"
 	"sync/atomic"
 
@@ -85,13 +84,13 @@ type Storage interface {
 // Transport defines the interface for chain node communication.
 type Transport interface {
 	// Write will write a versioned key-value pair.
-	Write(ctx context.Context, address net.Addr, key string, value []byte, version uint64) error
+	Write(ctx context.Context, address string, key string, value []byte, version uint64) error
 	// Read will read the committed version of the key.
-	Read(ctx context.Context, address net.Addr, key string) ([]byte, error)
+	Read(ctx context.Context, address string, key string) ([]byte, error)
 	// Commit will commit the provided version of th key.
-	Commit(ctx context.Context, address net.Addr, key string, version uint64) error
+	Commit(ctx context.Context, address string, key string, version uint64) error
 	// Propagate will initiate a stream of key-value pairs from another node.
-	Propagate(ctx context.Context, address net.Addr, keyFilter storage.KeyFilter) (KeyValueReceiveStream, error)
+	Propagate(ctx context.Context, address string, keyFilter storage.KeyFilter) (KeyValueReceiveStream, error)
 }
 
 type onConfigChangeMessage struct {
@@ -130,7 +129,8 @@ func (ct *cancellableTask) run(ctx context.Context, fn func(ctx context.Context)
 
 // ChainNode represents a node in a chain replication system.
 type ChainNode struct {
-	address          net.Addr
+	id               string
+	address          string
 	store            Storage
 	tn               Transport
 	onCommitCh       chan onCommitMessage
@@ -139,11 +139,12 @@ type ChainNode struct {
 	state            atomic.Pointer[State]
 }
 
-// NewChainNode creates a new ChainNode instance with the given address, storage, and transport.
+// NewChainNode creates a new ChainNode instance with the given ID, address, storage, and transport.
 // The node starts with an inactive status and an empty chain configuration.
-func NewChainNode(address net.Addr, store Storage, tn Transport) *ChainNode {
+func NewChainNode(id, address string, store Storage, tn Transport) *ChainNode {
 	state := &State{Config: EmptyChain, Status: Inactive}
 	node := &ChainNode{
+		id:               id,
 		address:          address,
 		store:            store,
 		tn:               tn,
@@ -165,11 +166,11 @@ func (c *ChainNode) Run(ctx context.Context) {
 // This is used for replicated writes that are part of the chain replication protocol.
 func (c *ChainNode) WriteWithVersion(ctx context.Context, key string, value []byte, version uint64) error {
 	state := c.state.Load()
-	if !state.Config.IsMember(c.address) {
+	if !state.Config.IsMemberByID(c.id) {
 		return ErrNotMemberOfChain
 	}
 
-	succ := state.Config.Successor(c.address)
+	succ := state.Config.Successor(c.id)
 	if succ == nil {
 		err := c.store.CommittedWrite(key, value, version)
 		if err != nil {
@@ -182,21 +183,21 @@ func (c *ChainNode) WriteWithVersion(ctx context.Context, key string, value []by
 		return err
 	}
 
-	return c.tn.Write(ctx, succ, key, value, version)
+	return c.tn.Write(ctx, succ.Address, key, value, version)
 }
 
 // InitiateReplicatedWrite starts a new replicated write operation from the head of the chain.
 // This method can only be called on the head node and will generate a new version number.
 func (c *ChainNode) InitiateReplicatedWrite(ctx context.Context, key string, value []byte) error {
 	state := c.state.Load()
-	if !state.Config.IsMember(c.address) {
+	if !state.Config.IsMemberByID(c.id) {
 		return ErrNotMemberOfChain
 	}
-	if !state.Config.IsHead(c.address) {
+	if !state.Config.IsHead(c.id) {
 		return ErrNotHead
 	}
 
-	succ := state.Config.Successor(c.address)
+	succ := state.Config.Successor(c.id)
 	if succ == nil {
 		_, err := c.store.CommittedWriteNewVersion(key, value)
 		return err
@@ -206,14 +207,14 @@ func (c *ChainNode) InitiateReplicatedWrite(ctx context.Context, key string, val
 		return err
 	}
 
-	return c.tn.Write(ctx, succ, key, value, version)
+	return c.tn.Write(ctx, succ.Address, key, value, version)
 }
 
 // Commit commits a previously written version, making it visible for reads.
 // This is part of the two-phase commit protocol used in chain replication.
 func (c *ChainNode) Commit(ctx context.Context, key string, version uint64) error {
 	state := c.state.Load()
-	if !state.Config.IsMember(c.address) {
+	if !state.Config.IsMemberByID(c.id) {
 		return ErrNotMemberOfChain
 	}
 
@@ -229,7 +230,7 @@ func (c *ChainNode) Commit(ctx context.Context, key string, version uint64) erro
 // If the local store has uncommitted data, it forwards the read to the tail node.
 func (c *ChainNode) Read(ctx context.Context, key string) ([]byte, error) {
 	state := c.state.Load()
-	if !state.Config.IsMember(c.address) {
+	if !state.Config.IsMemberByID(c.id) {
 		return nil, ErrNotMemberOfChain
 	}
 
@@ -240,7 +241,7 @@ func (c *ChainNode) Read(ctx context.Context, key string) ([]byte, error) {
 	value, err := c.store.CommittedRead(key)
 	if err != nil && errors.Is(err, storage.ErrDirtyRead) {
 		tail := state.Config.Tail()
-		return c.tn.Read(ctx, tail, key)
+		return c.tn.Read(ctx, tail.Address, key)
 	}
 
 	return value, err
@@ -249,7 +250,7 @@ func (c *ChainNode) Read(ctx context.Context, key string) ([]byte, error) {
 // Propagate sends key-value pairs to a requesting node through the provided stream.
 func (c *ChainNode) Propagate(ctx context.Context, keyFilter storage.KeyFilter, stream KeyValueSendStream) error {
 	state := c.state.Load()
-	if !state.Config.IsMember(c.address) {
+	if !state.Config.IsMemberByID(c.id) {
 		return ErrNotMemberOfChain
 	}
 	if state.Status == Syncing {
@@ -286,7 +287,7 @@ func (c *ChainNode) UpdateConfiguration(ctx context.Context, config *Configurati
 	}
 }
 
-func (c *ChainNode) requestPropagation(ctx context.Context, address net.Addr, keyFilter storage.KeyFilter, isTail bool) error {
+func (c *ChainNode) requestPropagation(ctx context.Context, address string, keyFilter storage.KeyFilter, isTail bool) error {
 	stream, err := c.tn.Propagate(ctx, address, keyFilter)
 	if err != nil {
 		return err
@@ -326,7 +327,7 @@ func (c *ChainNode) requestPropagation(ctx context.Context, address net.Addr, ke
 
 func (c *ChainNode) onCommit(ctx context.Context, key string, version uint64) error {
 	state := c.state.Load()
-	if !state.Config.IsMember(c.address) {
+	if !state.Config.IsMemberByID(c.id) {
 		return ErrNotMemberOfChain
 	}
 
@@ -334,12 +335,12 @@ func (c *ChainNode) onCommit(ctx context.Context, key string, version uint64) er
 	if err != nil {
 		return err
 	}
-	pred := state.Config.Predecessor(c.address)
+	pred := state.Config.Predecessor(c.id)
 	if pred == nil {
 		return nil
 	}
 
-	return c.tn.Commit(ctx, pred, key, version)
+	return c.tn.Commit(ctx, pred.Address, key, version)
 }
 
 func (c *ChainNode) onCommitRoutine(ctx context.Context) {
@@ -401,10 +402,10 @@ func (c *ChainNode) onConfigChangeRoutine(ctx context.Context) {
 
 			state := c.state.Load()
 			newState := &State{Config: msg.config, Status: state.Status}
-			lostMembership := state.Config.IsMember(c.address) && !msg.config.IsMember(c.address)
-			isNewMember := !state.Config.IsMember(c.address) && msg.config.IsMember(c.address)
-			hasNewPred := state.Config.Predecessor(c.address) != msg.config.Predecessor(c.address)
-			hasNewSucc := state.Config.Successor(c.address) != msg.config.Successor(c.address)
+			lostMembership := state.Config.IsMemberByID(c.id) && !msg.config.IsMemberByID(c.id)
+			isNewMember := !state.Config.IsMemberByID(c.id) && msg.config.IsMemberByID(c.id)
+			hasNewPred := !state.Config.Predecessor(c.id).Equal(msg.config.Predecessor(c.id))
+			hasNewSucc := !state.Config.Successor(c.id).Equal(msg.config.Successor(c.id))
 
 			if lostMembership {
 				onNewPredTask.cancelAndWait()
@@ -447,8 +448,8 @@ func (c *ChainNode) onNewSuccessor(ctx context.Context, config *Configuration, i
 			if isSyncing {
 				keyFilter = storage.AllKeys
 			}
-			if succ := config.Successor(c.address); succ != nil {
-				if err := c.requestPropagation(ctx, succ, keyFilter, config.IsTail(c.address)); err != nil {
+			if succ := config.Successor(c.id); succ != nil {
+				if err := c.requestPropagation(ctx, succ.Address, keyFilter, config.IsTail(c.id)); err != nil {
 					continue
 				}
 			} else {
@@ -485,8 +486,8 @@ func (c *ChainNode) onNewPredecessor(ctx context.Context, config *Configuration,
 			if isSyncing {
 				keyFilter = storage.AllKeys
 			}
-			if pred := config.Predecessor(c.address); pred != nil {
-				err := c.requestPropagation(ctx, pred, keyFilter, config.IsTail(c.address))
+			if pred := config.Predecessor(c.id); pred != nil {
+				err := c.requestPropagation(ctx, pred.Address, keyFilter, config.IsTail(c.id))
 				if err != nil {
 					continue
 				}

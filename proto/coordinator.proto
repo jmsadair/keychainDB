@@ -8,14 +8,16 @@ import "google/protobuf/timestamp.proto";
 
 // An operation that adds a member to a chain.
 message AddMemberOperation {
+	// The ID of the member being added.
+	string id = 1;
 	// The address of the member being added.
-	string member = 1;
+	string address = 2;
 }
 
 // An operation that removes a member from a chain.
 message RemoveMemberOperation {
-	// The address of the member being removed.
-	string member = 1;
+	// The ID of the member being removed.
+	string id = 1;
 }
 
 // An operation to read the current chain membership configuration.

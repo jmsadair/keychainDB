@@ -85,8 +85,8 @@ func (rb *RaftBackend) Shutdown() error {
 	return future.Error()
 }
 
-func (rb *RaftBackend) AddChainMember(ctx context.Context, member net.Addr) (*chainnode.Configuration, error) {
-	op := &AddMemberOperation{Member: member}
+func (rb *RaftBackend) AddChainMember(ctx context.Context, id, address string) (*chainnode.Configuration, error) {
+	op := &AddMemberOperation{ID: id, Address: address}
 	result, err := rb.apply(ctx, op)
 	if err != nil {
 		return nil, err
@@ -94,8 +94,8 @@ func (rb *RaftBackend) AddChainMember(ctx context.Context, member net.Addr) (*ch
 	return result.(*chainnode.Configuration), nil
 }
 
-func (rb *RaftBackend) RemoveChainMember(ctx context.Context, member net.Addr) (*chainnode.Configuration, error) {
-	op := &RemoveMemberOperation{Member: member}
+func (rb *RaftBackend) RemoveChainMember(ctx context.Context, id string) (*chainnode.Configuration, error) {
+	op := &RemoveMemberOperation{ID: id}
 	result, err := rb.apply(ctx, op)
 	if err != nil {
 		return nil, err
@@ -163,6 +163,10 @@ func (rb *RaftBackend) ClusterStatus() (*Status, error) {
 }
 
 func (rb *RaftBackend) LeadershipCh() <-chan bool {
+	return rb.raft.LeaderCh()
+}
+
+func (rb *RaftBackend) LeaderCh() <-chan bool {
 	return rb.raft.LeaderCh()
 }
 

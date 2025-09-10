@@ -74,18 +74,73 @@ func (KeyType) EnumDescriptor() ([]byte, []int) {
 	return file_chain_proto_rawDescGZIP(), []int{0}
 }
 
+// ChainMember represents a member of the chain with an ID and address.
+type ChainMember struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The unique ID of the chain member.
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	// The address of the chain member.
+	Address       string `protobuf:"bytes,2,opt,name=address,proto3" json:"address,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ChainMember) Reset() {
+	*x = ChainMember{}
+	mi := &file_chain_proto_msgTypes[0]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ChainMember) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ChainMember) ProtoMessage() {}
+
+func (x *ChainMember) ProtoReflect() protoreflect.Message {
+	mi := &file_chain_proto_msgTypes[0]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ChainMember.ProtoReflect.Descriptor instead.
+func (*ChainMember) Descriptor() ([]byte, []int) {
+	return file_chain_proto_rawDescGZIP(), []int{0}
+}
+
+func (x *ChainMember) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *ChainMember) GetAddress() string {
+	if x != nil {
+		return x.Address
+	}
+	return ""
+}
+
 // Configuration contains the membership configuration of the chain.
 type Configuration struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The addresses of the members of the chain.
-	Members       []string `protobuf:"bytes,2,rep,name=members,proto3" json:"members,omitempty"`
+	// The members of the chain with their IDs and addresses.
+	Members       []*ChainMember `protobuf:"bytes,2,rep,name=members,proto3" json:"members,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *Configuration) Reset() {
 	*x = Configuration{}
-	mi := &file_chain_proto_msgTypes[0]
+	mi := &file_chain_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -97,7 +152,7 @@ func (x *Configuration) String() string {
 func (*Configuration) ProtoMessage() {}
 
 func (x *Configuration) ProtoReflect() protoreflect.Message {
-	mi := &file_chain_proto_msgTypes[0]
+	mi := &file_chain_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -110,10 +165,10 @@ func (x *Configuration) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Configuration.ProtoReflect.Descriptor instead.
 func (*Configuration) Descriptor() ([]byte, []int) {
-	return file_chain_proto_rawDescGZIP(), []int{0}
+	return file_chain_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *Configuration) GetMembers() []string {
+func (x *Configuration) GetMembers() []*ChainMember {
 	if x != nil {
 		return x.Members
 	}
@@ -131,7 +186,7 @@ type UpdateConfigurationRequest struct {
 
 func (x *UpdateConfigurationRequest) Reset() {
 	*x = UpdateConfigurationRequest{}
-	mi := &file_chain_proto_msgTypes[1]
+	mi := &file_chain_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -143,7 +198,7 @@ func (x *UpdateConfigurationRequest) String() string {
 func (*UpdateConfigurationRequest) ProtoMessage() {}
 
 func (x *UpdateConfigurationRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_chain_proto_msgTypes[1]
+	mi := &file_chain_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -156,7 +211,7 @@ func (x *UpdateConfigurationRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateConfigurationRequest.ProtoReflect.Descriptor instead.
 func (*UpdateConfigurationRequest) Descriptor() ([]byte, []int) {
-	return file_chain_proto_rawDescGZIP(), []int{1}
+	return file_chain_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *UpdateConfigurationRequest) GetConfiguration() *Configuration {
@@ -174,7 +229,7 @@ type UpdateConfigurationResponse struct {
 
 func (x *UpdateConfigurationResponse) Reset() {
 	*x = UpdateConfigurationResponse{}
-	mi := &file_chain_proto_msgTypes[2]
+	mi := &file_chain_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -186,7 +241,7 @@ func (x *UpdateConfigurationResponse) String() string {
 func (*UpdateConfigurationResponse) ProtoMessage() {}
 
 func (x *UpdateConfigurationResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_chain_proto_msgTypes[2]
+	mi := &file_chain_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -199,7 +254,7 @@ func (x *UpdateConfigurationResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateConfigurationResponse.ProtoReflect.Descriptor instead.
 func (*UpdateConfigurationResponse) Descriptor() ([]byte, []int) {
-	return file_chain_proto_rawDescGZIP(), []int{2}
+	return file_chain_proto_rawDescGZIP(), []int{3}
 }
 
 // WriteRequest is a request sent from one node of a chain to another to write a new version of a key.
@@ -217,7 +272,7 @@ type WriteRequest struct {
 
 func (x *WriteRequest) Reset() {
 	*x = WriteRequest{}
-	mi := &file_chain_proto_msgTypes[3]
+	mi := &file_chain_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -229,7 +284,7 @@ func (x *WriteRequest) String() string {
 func (*WriteRequest) ProtoMessage() {}
 
 func (x *WriteRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_chain_proto_msgTypes[3]
+	mi := &file_chain_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -242,7 +297,7 @@ func (x *WriteRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WriteRequest.ProtoReflect.Descriptor instead.
 func (*WriteRequest) Descriptor() ([]byte, []int) {
-	return file_chain_proto_rawDescGZIP(), []int{3}
+	return file_chain_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *WriteRequest) GetKey() string {
@@ -275,7 +330,7 @@ type WriteResponse struct {
 
 func (x *WriteResponse) Reset() {
 	*x = WriteResponse{}
-	mi := &file_chain_proto_msgTypes[4]
+	mi := &file_chain_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -287,7 +342,7 @@ func (x *WriteResponse) String() string {
 func (*WriteResponse) ProtoMessage() {}
 
 func (x *WriteResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_chain_proto_msgTypes[4]
+	mi := &file_chain_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -300,7 +355,7 @@ func (x *WriteResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WriteResponse.ProtoReflect.Descriptor instead.
 func (*WriteResponse) Descriptor() ([]byte, []int) {
-	return file_chain_proto_rawDescGZIP(), []int{4}
+	return file_chain_proto_rawDescGZIP(), []int{5}
 }
 
 // ReadRequest is a request sent from one node of chain to another to read the value of a key.
@@ -314,7 +369,7 @@ type ReadRequest struct {
 
 func (x *ReadRequest) Reset() {
 	*x = ReadRequest{}
-	mi := &file_chain_proto_msgTypes[5]
+	mi := &file_chain_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -326,7 +381,7 @@ func (x *ReadRequest) String() string {
 func (*ReadRequest) ProtoMessage() {}
 
 func (x *ReadRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_chain_proto_msgTypes[5]
+	mi := &file_chain_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -339,7 +394,7 @@ func (x *ReadRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReadRequest.ProtoReflect.Descriptor instead.
 func (*ReadRequest) Descriptor() ([]byte, []int) {
-	return file_chain_proto_rawDescGZIP(), []int{5}
+	return file_chain_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *ReadRequest) GetKey() string {
@@ -360,7 +415,7 @@ type ReadResponse struct {
 
 func (x *ReadResponse) Reset() {
 	*x = ReadResponse{}
-	mi := &file_chain_proto_msgTypes[6]
+	mi := &file_chain_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -372,7 +427,7 @@ func (x *ReadResponse) String() string {
 func (*ReadResponse) ProtoMessage() {}
 
 func (x *ReadResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_chain_proto_msgTypes[6]
+	mi := &file_chain_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -385,7 +440,7 @@ func (x *ReadResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReadResponse.ProtoReflect.Descriptor instead.
 func (*ReadResponse) Descriptor() ([]byte, []int) {
-	return file_chain_proto_rawDescGZIP(), []int{6}
+	return file_chain_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *ReadResponse) GetValue() []byte {
@@ -406,7 +461,7 @@ type PropagateRequest struct {
 
 func (x *PropagateRequest) Reset() {
 	*x = PropagateRequest{}
-	mi := &file_chain_proto_msgTypes[7]
+	mi := &file_chain_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -418,7 +473,7 @@ func (x *PropagateRequest) String() string {
 func (*PropagateRequest) ProtoMessage() {}
 
 func (x *PropagateRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_chain_proto_msgTypes[7]
+	mi := &file_chain_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -431,7 +486,7 @@ func (x *PropagateRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PropagateRequest.ProtoReflect.Descriptor instead.
 func (*PropagateRequest) Descriptor() ([]byte, []int) {
-	return file_chain_proto_rawDescGZIP(), []int{7}
+	return file_chain_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *PropagateRequest) GetKeyType() KeyType {
@@ -458,7 +513,7 @@ type KeyValuePair struct {
 
 func (x *KeyValuePair) Reset() {
 	*x = KeyValuePair{}
-	mi := &file_chain_proto_msgTypes[8]
+	mi := &file_chain_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -470,7 +525,7 @@ func (x *KeyValuePair) String() string {
 func (*KeyValuePair) ProtoMessage() {}
 
 func (x *KeyValuePair) ProtoReflect() protoreflect.Message {
-	mi := &file_chain_proto_msgTypes[8]
+	mi := &file_chain_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -483,7 +538,7 @@ func (x *KeyValuePair) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use KeyValuePair.ProtoReflect.Descriptor instead.
 func (*KeyValuePair) Descriptor() ([]byte, []int) {
-	return file_chain_proto_rawDescGZIP(), []int{8}
+	return file_chain_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *KeyValuePair) GetKey() string {
@@ -527,7 +582,7 @@ type CommitRequest struct {
 
 func (x *CommitRequest) Reset() {
 	*x = CommitRequest{}
-	mi := &file_chain_proto_msgTypes[9]
+	mi := &file_chain_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -539,7 +594,7 @@ func (x *CommitRequest) String() string {
 func (*CommitRequest) ProtoMessage() {}
 
 func (x *CommitRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_chain_proto_msgTypes[9]
+	mi := &file_chain_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -552,7 +607,7 @@ func (x *CommitRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CommitRequest.ProtoReflect.Descriptor instead.
 func (*CommitRequest) Descriptor() ([]byte, []int) {
-	return file_chain_proto_rawDescGZIP(), []int{9}
+	return file_chain_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *CommitRequest) GetKey() string {
@@ -578,7 +633,7 @@ type CommitResponse struct {
 
 func (x *CommitResponse) Reset() {
 	*x = CommitResponse{}
-	mi := &file_chain_proto_msgTypes[10]
+	mi := &file_chain_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -590,7 +645,7 @@ func (x *CommitResponse) String() string {
 func (*CommitResponse) ProtoMessage() {}
 
 func (x *CommitResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_chain_proto_msgTypes[10]
+	mi := &file_chain_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -603,16 +658,19 @@ func (x *CommitResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CommitResponse.ProtoReflect.Descriptor instead.
 func (*CommitResponse) Descriptor() ([]byte, []int) {
-	return file_chain_proto_rawDescGZIP(), []int{10}
+	return file_chain_proto_rawDescGZIP(), []int{11}
 }
 
 var File_chain_proto protoreflect.FileDescriptor
 
 const file_chain_proto_rawDesc = "" +
 	"\n" +
-	"\vchain.proto\x12\x05chain\")\n" +
-	"\rConfiguration\x12\x18\n" +
-	"\amembers\x18\x02 \x03(\tR\amembers\"X\n" +
+	"\vchain.proto\x12\x05chain\"7\n" +
+	"\vChainMember\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x18\n" +
+	"\aaddress\x18\x02 \x01(\tR\aaddress\"=\n" +
+	"\rConfiguration\x12,\n" +
+	"\amembers\x18\x02 \x03(\v2\x12.chain.ChainMemberR\amembers\"X\n" +
 	"\x1aUpdateConfigurationRequest\x12:\n" +
 	"\rconfiguration\x18\x01 \x01(\v2\x14.chain.ConfigurationR\rconfiguration\"\x1d\n" +
 	"\x1bUpdateConfigurationResponse\"P\n" +
@@ -660,39 +718,41 @@ func file_chain_proto_rawDescGZIP() []byte {
 }
 
 var file_chain_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_chain_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
+var file_chain_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
 var file_chain_proto_goTypes = []any{
 	(KeyType)(0),                        // 0: chain.KeyType
-	(*Configuration)(nil),               // 1: chain.Configuration
-	(*UpdateConfigurationRequest)(nil),  // 2: chain.UpdateConfigurationRequest
-	(*UpdateConfigurationResponse)(nil), // 3: chain.UpdateConfigurationResponse
-	(*WriteRequest)(nil),                // 4: chain.WriteRequest
-	(*WriteResponse)(nil),               // 5: chain.WriteResponse
-	(*ReadRequest)(nil),                 // 6: chain.ReadRequest
-	(*ReadResponse)(nil),                // 7: chain.ReadResponse
-	(*PropagateRequest)(nil),            // 8: chain.PropagateRequest
-	(*KeyValuePair)(nil),                // 9: chain.KeyValuePair
-	(*CommitRequest)(nil),               // 10: chain.CommitRequest
-	(*CommitResponse)(nil),              // 11: chain.CommitResponse
+	(*ChainMember)(nil),                 // 1: chain.ChainMember
+	(*Configuration)(nil),               // 2: chain.Configuration
+	(*UpdateConfigurationRequest)(nil),  // 3: chain.UpdateConfigurationRequest
+	(*UpdateConfigurationResponse)(nil), // 4: chain.UpdateConfigurationResponse
+	(*WriteRequest)(nil),                // 5: chain.WriteRequest
+	(*WriteResponse)(nil),               // 6: chain.WriteResponse
+	(*ReadRequest)(nil),                 // 7: chain.ReadRequest
+	(*ReadResponse)(nil),                // 8: chain.ReadResponse
+	(*PropagateRequest)(nil),            // 9: chain.PropagateRequest
+	(*KeyValuePair)(nil),                // 10: chain.KeyValuePair
+	(*CommitRequest)(nil),               // 11: chain.CommitRequest
+	(*CommitResponse)(nil),              // 12: chain.CommitResponse
 }
 var file_chain_proto_depIdxs = []int32{
-	1,  // 0: chain.UpdateConfigurationRequest.configuration:type_name -> chain.Configuration
-	0,  // 1: chain.PropagateRequest.key_type:type_name -> chain.KeyType
-	4,  // 2: chain.ChainService.Write:input_type -> chain.WriteRequest
-	6,  // 3: chain.ChainService.Read:input_type -> chain.ReadRequest
-	10, // 4: chain.ChainService.Commit:input_type -> chain.CommitRequest
-	8,  // 5: chain.ChainService.Propagate:input_type -> chain.PropagateRequest
-	2,  // 6: chain.ChainService.UpdateConfiguration:input_type -> chain.UpdateConfigurationRequest
-	5,  // 7: chain.ChainService.Write:output_type -> chain.WriteResponse
-	7,  // 8: chain.ChainService.Read:output_type -> chain.ReadResponse
-	11, // 9: chain.ChainService.Commit:output_type -> chain.CommitResponse
-	9,  // 10: chain.ChainService.Propagate:output_type -> chain.KeyValuePair
-	3,  // 11: chain.ChainService.UpdateConfiguration:output_type -> chain.UpdateConfigurationResponse
-	7,  // [7:12] is the sub-list for method output_type
-	2,  // [2:7] is the sub-list for method input_type
-	2,  // [2:2] is the sub-list for extension type_name
-	2,  // [2:2] is the sub-list for extension extendee
-	0,  // [0:2] is the sub-list for field type_name
+	1,  // 0: chain.Configuration.members:type_name -> chain.ChainMember
+	2,  // 1: chain.UpdateConfigurationRequest.configuration:type_name -> chain.Configuration
+	0,  // 2: chain.PropagateRequest.key_type:type_name -> chain.KeyType
+	5,  // 3: chain.ChainService.Write:input_type -> chain.WriteRequest
+	7,  // 4: chain.ChainService.Read:input_type -> chain.ReadRequest
+	11, // 5: chain.ChainService.Commit:input_type -> chain.CommitRequest
+	9,  // 6: chain.ChainService.Propagate:input_type -> chain.PropagateRequest
+	3,  // 7: chain.ChainService.UpdateConfiguration:input_type -> chain.UpdateConfigurationRequest
+	6,  // 8: chain.ChainService.Write:output_type -> chain.WriteResponse
+	8,  // 9: chain.ChainService.Read:output_type -> chain.ReadResponse
+	12, // 10: chain.ChainService.Commit:output_type -> chain.CommitResponse
+	10, // 11: chain.ChainService.Propagate:output_type -> chain.KeyValuePair
+	4,  // 12: chain.ChainService.UpdateConfiguration:output_type -> chain.UpdateConfigurationResponse
+	8,  // [8:13] is the sub-list for method output_type
+	3,  // [3:8] is the sub-list for method input_type
+	3,  // [3:3] is the sub-list for extension type_name
+	3,  // [3:3] is the sub-list for extension extendee
+	0,  // [0:3] is the sub-list for field type_name
 }
 
 func init() { file_chain_proto_init() }
@@ -706,7 +766,7 @@ func file_chain_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_chain_proto_rawDesc), len(file_chain_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   11,
+			NumMessages:   12,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

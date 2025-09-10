@@ -16,13 +16,13 @@ const (
 )
 
 type Transport interface {
-	UpdateConfiguration(ctx context.Context, address net.Addr, config *chainnode.Configuration) error
-	Ping(ctx context.Context, address net.Addr) error
+	UpdateConfiguration(ctx context.Context, address string, config *chainnode.Configuration) error
+	Ping(ctx context.Context, address string) error
 }
 
 type Raft interface {
-	AddChainMember(ctx context.Context, member net.Addr) (*chainnode.Configuration, error)
-	RemoveChainMember(ctx context.Context, member net.Addr) (*chainnode.Configuration, error)
+	AddChainMember(ctx context.Context, id, address string) (*chainnode.Configuration, error)
+	RemoveChainMember(ctx context.Context, id string) (*chainnode.Configuration, error)
 	ReadChainConfiguration(ctx context.Context) (*chainnode.Configuration, error)
 	LeaderCh() <-chan bool
 	ChainConfiguration() *chainnode.Configuration
@@ -56,16 +56,16 @@ func (c *Coordinator) Run(ctx context.Context) {
 	go c.leadershipChangeLoop(ctx)
 }
 
-func (c *Coordinator) AddMember(ctx context.Context, member net.Addr) error {
-	config, err := c.raft.AddChainMember(ctx, member)
+func (c *Coordinator) AddMember(ctx context.Context, id, address string) error {
+	config, err := c.raft.AddChainMember(ctx, id, address)
 	if err != nil {
 		return err
 	}
 	return c.updateChainMemberConfigurations(ctx, config)
 }
 
-func (c *Coordinator) RemoveMember(ctx context.Context, member net.Addr) error {
-	config, err := c.raft.RemoveChainMember(ctx, member)
+func (c *Coordinator) RemoveMember(ctx context.Context, id string) error {
+	config, err := c.raft.RemoveChainMember(ctx, id)
 	if err != nil {
 		return err
 	}
@@ -79,8 +79,9 @@ func (c *Coordinator) ReadMembershipConfiguration(ctx context.Context) (*chainno
 func (c *Coordinator) updateChainMemberConfigurations(ctx context.Context, config *chainnode.Configuration) error {
 	g, ctx := errgroup.WithContext(ctx)
 	for _, member := range config.Members() {
+		member := member // capture loop variable
 		g.Go(func() error {
-			return c.tn.UpdateConfiguration(ctx, member, config)
+			return c.tn.UpdateConfiguration(ctx, member.Address, config)
 		})
 	}
 
@@ -128,28 +129,24 @@ func (c *Coordinator) onLeadershipChange(isLeader bool) {
 }
 
 func (c *Coordinator) onFailedChainMember(ctx context.Context) error {
-	var toRemove []net.Addr
+	var toRemove []string
 
 	c.mu.Lock()
 	if !c.isLeader {
 		c.mu.Unlock()
 		return nil
 	}
-	for member, lastContact := range c.lastContacted {
+	for memberID, lastContact := range c.lastContacted {
 		if time.Since(lastContact) > chainFailureTimeout {
-			addr, err := net.ResolveTCPAddr("tcp", member)
-			if err != nil {
-				c.mu.Unlock()
-				return err
-			}
-			toRemove = append(toRemove, addr)
+			toRemove = append(toRemove, memberID)
 		}
 	}
 	c.mu.Unlock()
 
 	g, ctx := errgroup.WithContext(ctx)
-	for _, member := range toRemove {
-		g.Go(func() error { return c.RemoveMember(ctx, member) })
+	for _, memberID := range toRemove {
+		memberID := memberID // capture loop variable
+		g.Go(func() error { return c.RemoveMember(ctx, memberID) })
 	}
 
 	return g.Wait()
@@ -162,20 +159,15 @@ func (c *Coordinator) onHeartbeat(ctx context.Context) error {
 		return nil
 	}
 	config := c.raft.ChainConfiguration()
-	for member := range c.lastContacted {
-		addr, err := net.ResolveTCPAddr("tcp", member)
-		if err != nil {
-			c.mu.Unlock()
-			return err
-		}
-		if !config.IsMember(addr) {
-			delete(c.lastContacted, member)
+	for memberID := range c.lastContacted {
+		if !config.IsMemberByID(memberID) {
+			delete(c.lastContacted, memberID)
 		}
 	}
 	for _, member := range config.Members() {
-		_, ok := c.lastContacted[member.String()]
+		_, ok := c.lastContacted[member.ID]
 		if !ok {
-			c.lastContacted[member.String()] = time.Now()
+			c.lastContacted[member.ID] = time.Now()
 		}
 	}
 	c.mu.Unlock()
@@ -195,11 +187,12 @@ func (c *Coordinator) sendHeartbeats(ctx context.Context, config *chainnode.Conf
 	g, ctx := errgroup.WithContext(ctx)
 
 	for _, member := range config.Members() {
+		member := member // capture loop variable
 		g.Go(func() error {
-			err := c.tn.Ping(ctx, member)
+			err := c.tn.Ping(ctx, member.Address)
 			c.mu.Lock()
 			if err == nil {
-				c.lastContacted[member.String()] = time.Now()
+				c.lastContacted[member.ID] = time.Now()
 			}
 			c.mu.Unlock()
 			return err
