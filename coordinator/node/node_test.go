@@ -226,16 +226,15 @@ func TestOnLeadershipChange(t *testing.T) {
 	raft.AssertExpectations(t)
 
 	memberID := "member-1"
-
 	coordinator.lastContacted = map[string]time.Time{
-		member1ID: time.Now(),
+		memberID: time.Now(),
 	}
 	coordinator.onLeadershipChange(true)
 	require.True(t, coordinator.isLeader)
 	require.Empty(t, coordinator.lastContacted)
 
 	coordinator.lastContacted = map[string]time.Time{
-		member1ID: time.Now(),
+		memberID: time.Now(),
 	}
 	coordinator.onLeadershipChange(false)
 	require.False(t, coordinator.isLeader)
