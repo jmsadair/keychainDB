@@ -45,16 +45,16 @@ type RaftBackend struct {
 	store *storage.PersistentStorage
 }
 
-func NewRaftBackend(nodeID string, address string, storePath string, snapshotStorePath string, bootstrap bool) (*RaftBackend, error) {
+func NewRaftBackend(nodeID string, bindAddr string, storePath string, snapshotStorePath string, bootstrap bool) (*RaftBackend, error) {
 	store, err := storage.NewPersistentStorage(storePath)
 	if err != nil {
 		return nil, err
 	}
-	addr, err := net.ResolveTCPAddr("tcp", address)
+	addr, err := net.ResolveTCPAddr("tcp", bindAddr)
 	if err != nil {
 		return nil, err
 	}
-	tn, err := raft.NewTCPTransport(address, addr, maxPool, transportTimeout, os.Stderr)
+	tn, err := raft.NewTCPTransport(bindAddr, addr, maxPool, transportTimeout, os.Stderr)
 	if err != nil {
 		return nil, err
 	}

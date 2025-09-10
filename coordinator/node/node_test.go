@@ -58,10 +58,10 @@ func TestNewCoordinator(t *testing.T) {
 	tn := new(mockTransport)
 	raft := new(mockRaft)
 	addr := "127.0.0.1:9000"
-
 	raft.On("LeaderCh").Return(make(chan bool)).Once()
 	coordinator := NewCoordinator(addr, tn, raft)
 	raft.AssertExpectations(t)
+
 	require.NotNil(t, coordinator)
 	require.Equal(t, addr, coordinator.address)
 	require.NotNil(t, coordinator.lastContacted)
@@ -225,7 +225,7 @@ func TestOnLeadershipChange(t *testing.T) {
 	coordinator := NewCoordinator(addr, tn, raft)
 	raft.AssertExpectations(t)
 
-	member1ID := "member-1"
+	memberID := "member-1"
 
 	coordinator.lastContacted = map[string]time.Time{
 		member1ID: time.Now(),
