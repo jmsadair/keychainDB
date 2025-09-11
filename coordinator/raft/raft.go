@@ -45,12 +45,16 @@ type RaftBackend struct {
 	store *storage.PersistentStorage
 }
 
-func NewRaftBackend(nodeID string, address net.Addr, storePath string, snapshotStorePath string, bootstrap bool) (*RaftBackend, error) {
+func NewRaftBackend(nodeID string, bindAddr string, storePath string, snapshotStorePath string, bootstrap bool) (*RaftBackend, error) {
 	store, err := storage.NewPersistentStorage(storePath)
 	if err != nil {
 		return nil, err
 	}
-	tn, err := raft.NewTCPTransport(address.String(), address, maxPool, transportTimeout, os.Stderr)
+	addr, err := net.ResolveTCPAddr("tcp", bindAddr)
+	if err != nil {
+		return nil, err
+	}
+	tn, err := raft.NewTCPTransport(bindAddr, addr, maxPool, transportTimeout, os.Stderr)
 	if err != nil {
 		return nil, err
 	}
@@ -85,8 +89,8 @@ func (rb *RaftBackend) Shutdown() error {
 	return future.Error()
 }
 
-func (rb *RaftBackend) AddChainMember(ctx context.Context, member net.Addr) (*chainnode.Configuration, error) {
-	op := &AddMemberOperation{Member: member}
+func (rb *RaftBackend) AddChainMember(ctx context.Context, id, address string) (*chainnode.Configuration, error) {
+	op := &AddMemberOperation{ID: id, Address: address}
 	result, err := rb.apply(ctx, op)
 	if err != nil {
 		return nil, err
@@ -94,8 +98,8 @@ func (rb *RaftBackend) AddChainMember(ctx context.Context, member net.Addr) (*ch
 	return result.(*chainnode.Configuration), nil
 }
 
-func (rb *RaftBackend) RemoveChainMember(ctx context.Context, member net.Addr) (*chainnode.Configuration, error) {
-	op := &RemoveMemberOperation{Member: member}
+func (rb *RaftBackend) RemoveChainMember(ctx context.Context, id string) (*chainnode.Configuration, error) {
+	op := &RemoveMemberOperation{ID: id}
 	result, err := rb.apply(ctx, op)
 	if err != nil {
 		return nil, err
@@ -112,22 +116,22 @@ func (rb *RaftBackend) ReadChainConfiguration(ctx context.Context) (*chainnode.C
 	return result.(*chainnode.Configuration), nil
 }
 
-func (rb *RaftBackend) JoinCluster(ctx context.Context, nodeID string, address net.Addr) error {
+func (rb *RaftBackend) JoinCluster(ctx context.Context, nodeID string, address string) error {
 	configFuture := rb.raft.GetConfiguration()
 	if err := configFuture.Error(); err != nil {
 		return err
 	}
 
 	for _, srv := range configFuture.Configuration().Servers {
-		if srv.ID == raft.ServerID(nodeID) || srv.Address == raft.ServerAddress(address.String()) {
-			if srv.Address == raft.ServerAddress(address.String()) && srv.ID == raft.ServerID(nodeID) {
+		if srv.ID == raft.ServerID(nodeID) || srv.Address == raft.ServerAddress(address) {
+			if srv.Address == raft.ServerAddress(address) && srv.ID == raft.ServerID(nodeID) {
 				return nil
 			}
 			return ErrNodeExists
 		}
 	}
 
-	indexFuture := rb.raft.AddVoter(raft.ServerID(nodeID), raft.ServerAddress(address.String()), 0, timeoutFromContext(ctx, defaultApplyTimeout))
+	indexFuture := rb.raft.AddVoter(raft.ServerID(nodeID), raft.ServerAddress(address), 0, timeoutFromContext(ctx, defaultApplyTimeout))
 	return indexFuture.Error()
 }
 
@@ -163,6 +167,10 @@ func (rb *RaftBackend) ClusterStatus() (*Status, error) {
 }
 
 func (rb *RaftBackend) LeadershipCh() <-chan bool {
+	return rb.raft.LeaderCh()
+}
+
+func (rb *RaftBackend) LeaderCh() <-chan bool {
 	return rb.raft.LeaderCh()
 }
 

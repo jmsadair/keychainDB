@@ -2,7 +2,6 @@ package raft
 
 import (
 	"io"
-	"net"
 	"sync"
 
 	"github.com/hashicorp/raft"
@@ -12,14 +11,16 @@ import (
 )
 
 type AddMemberOperation struct {
-	Member net.Addr
+	ID      string
+	Address string
 }
 
 func (op *AddMemberOperation) Bytes() ([]byte, error) {
 	opProto := &pb.ReplicatedOperation{
 		Operation: &pb.ReplicatedOperation_AddMember{
 			AddMember: &pb.AddMemberOperation{
-				Member: op.Member.String(),
+				Id:      op.ID,
+				Address: op.Address,
 			},
 		},
 	}
@@ -27,14 +28,14 @@ func (op *AddMemberOperation) Bytes() ([]byte, error) {
 }
 
 type RemoveMemberOperation struct {
-	Member net.Addr
+	ID string
 }
 
 func (op *RemoveMemberOperation) Bytes() ([]byte, error) {
 	opProto := &pb.ReplicatedOperation{
 		Operation: &pb.ReplicatedOperation_RemoveMember{
 			RemoveMember: &pb.RemoveMemberOperation{
-				Member: op.Member.String(),
+				Id: op.ID,
 			},
 		},
 	}
@@ -95,17 +96,9 @@ func (f *FSM) Apply(log *raft.Log) any {
 	defer f.mu.Unlock()
 	switch v := op.Operation.(type) {
 	case *pb.ReplicatedOperation_AddMember:
-		member, err := net.ResolveTCPAddr("tcp", v.AddMember.GetMember())
-		if err != nil {
-			panic(err)
-		}
-		f.configuration = f.configuration.AddMember(member)
+		f.configuration = f.configuration.AddMember(v.AddMember.GetId(), v.AddMember.GetAddress())
 	case *pb.ReplicatedOperation_RemoveMember:
-		member, err := net.ResolveTCPAddr("tcp", v.RemoveMember.GetMember())
-		if err != nil {
-			panic(err)
-		}
-		f.configuration = f.configuration.RemoveMember(member)
+		f.configuration = f.configuration.RemoveMember(v.RemoveMember.GetId())
 	}
 
 	return f.configuration.Copy()

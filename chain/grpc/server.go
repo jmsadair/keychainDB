@@ -23,20 +23,24 @@ func (g *gRPCSendStream) Send(kv *storage.KeyValuePair) error {
 // Server is a gRPC-based server implementation for chain nodes.
 type Server struct {
 	pb.ChainServiceServer
-	address net.Addr
+	address string
 	node    *node.ChainNode
 }
 
 // NewServer creates a new Server instance.
-func NewServer(address net.Addr, node *node.ChainNode) *Server {
+func NewServer(address string, node *node.ChainNode) *Server {
 	return &Server{address: address, node: node}
 }
 
 // Run will start and run the server. Run should only be called once and is blocking.
-func (s *Server) Run(ctx context.Context) {
-	listener, err := net.Listen(s.address.Network(), s.address.String())
+func (s *Server) Run(ctx context.Context) error {
+	resolved, err := net.ResolveTCPAddr("tcp", s.address)
 	if err != nil {
-		return
+		return err
+	}
+	listener, err := net.Listen(resolved.Network(), resolved.String())
+	if err != nil {
+		return err
 	}
 
 	grpcServer := grpc.NewServer()
@@ -51,6 +55,8 @@ func (s *Server) Run(ctx context.Context) {
 	<-ctx.Done()
 	grpcServer.GracefulStop()
 	wg.Wait()
+
+	return nil
 }
 
 // Write handles incoming requests from other nodes in the chain to write a particular version of a key-value pair to storage.

@@ -19,10 +19,18 @@ service ChainService {
 	rpc UpdateConfiguration (UpdateConfigurationRequest) returns (UpdateConfigurationResponse) {}
 }
 
+// ChainMember represents a member of the chain with an ID and address.
+message ChainMember {
+	// The unique ID of the chain member.
+	string id = 1;
+	// The address of the chain member.
+	string address = 2;
+}
+
 // Configuration contains the membership configuration of the chain.
 message Configuration {
-	// The addresses of the members of the chain.
-	repeated string members = 2;
+	// The members of the chain with their IDs and addresses.
+	repeated ChainMember members = 2;
 }
 
 // UpdateConfigurationRequest is a request for a node to update its chain membership configuration.

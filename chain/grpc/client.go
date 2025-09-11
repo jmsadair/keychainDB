@@ -2,7 +2,6 @@ package grpc
 
 import (
 	"context"
-	"net"
 	"sync"
 
 	"github.com/jmsadair/keychain/chain/node"
@@ -38,7 +37,7 @@ func NewClient(dialOpts ...grpc.DialOption) (*Client, error) {
 	}, nil
 }
 
-func (g *Client) Write(ctx context.Context, address net.Addr, key string, value []byte, version uint64) error {
+func (g *Client) Write(ctx context.Context, address string, key string, value []byte, version uint64) error {
 	client, err := g.getOrCreateClient(address)
 	if err != nil {
 		return err
@@ -47,7 +46,7 @@ func (g *Client) Write(ctx context.Context, address net.Addr, key string, value 
 	return err
 }
 
-func (g *Client) Read(ctx context.Context, address net.Addr, key string) ([]byte, error) {
+func (g *Client) Read(ctx context.Context, address string, key string) ([]byte, error) {
 	client, err := g.getOrCreateClient(address)
 	if err != nil {
 		return nil, err
@@ -59,7 +58,7 @@ func (g *Client) Read(ctx context.Context, address net.Addr, key string) ([]byte
 	return response.GetValue(), nil
 }
 
-func (g *Client) Commit(ctx context.Context, address net.Addr, key string, version uint64) error {
+func (g *Client) Commit(ctx context.Context, address string, key string, version uint64) error {
 	client, err := g.getOrCreateClient(address)
 	if err != nil {
 		return err
@@ -68,7 +67,7 @@ func (g *Client) Commit(ctx context.Context, address net.Addr, key string, versi
 	return err
 }
 
-func (g *Client) Propagate(ctx context.Context, address net.Addr, keyFilter storage.KeyFilter) (node.KeyValueReceiveStream, error) {
+func (g *Client) Propagate(ctx context.Context, address string, keyFilter storage.KeyFilter) (node.KeyValueReceiveStream, error) {
 	client, err := g.getOrCreateClient(address)
 	if err != nil {
 		return nil, err
@@ -91,18 +90,18 @@ func (g *Client) Propagate(ctx context.Context, address net.Addr, keyFilter stor
 	return &gRPCReceiveStream{stream: stream}, nil
 }
 
-func (g *Client) getOrCreateClient(address net.Addr) (pb.ChainServiceClient, error) {
+func (g *Client) getOrCreateClient(address string) (pb.ChainServiceClient, error) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 
-	client, ok := g.clients[address.String()]
+	client, ok := g.clients[address]
 	if !ok {
-		conn, err := grpc.NewClient(address.String(), g.dialOpts...)
+		conn, err := grpc.NewClient(address, g.dialOpts...)
 		if err != nil {
 			return nil, err
 		}
 		client = pb.NewChainServiceClient(conn)
-		g.clients[address.String()] = client
+		g.clients[address] = client
 	}
 
 	return client, nil
