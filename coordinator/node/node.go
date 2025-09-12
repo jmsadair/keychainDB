@@ -19,18 +19,20 @@ type Transport interface {
 	Ping(ctx context.Context, address string) error
 }
 
-type Raft interface {
+type RaftProtocol interface {
 	AddChainMember(ctx context.Context, id, address string) (*chainnode.Configuration, error)
 	RemoveChainMember(ctx context.Context, id string) (*chainnode.Configuration, error)
 	ReadChainConfiguration(ctx context.Context) (*chainnode.Configuration, error)
 	LeaderCh() <-chan bool
 	ChainConfiguration() *chainnode.Configuration
+	JoinCluster(ctx context.Context, id, address string) error
+	RemoveFromCluster(ctx context.Context, id string) error
 }
 
 type Coordinator struct {
+	Raft                RaftProtocol
 	address             string
 	tn                  Transport
-	raft                Raft
 	lastContacted       map[string]time.Time
 	isLeader            bool
 	leadershipChangeCh  <-chan bool
@@ -38,11 +40,11 @@ type Coordinator struct {
 	mu                  sync.Mutex
 }
 
-func NewCoordinator(address string, tn Transport, raft Raft) *Coordinator {
+func NewCoordinator(address string, tn Transport, raft RaftProtocol) *Coordinator {
 	return &Coordinator{
 		address:             address,
 		tn:                  tn,
-		raft:                raft,
+		Raft:                raft,
 		leadershipChangeCh:  raft.LeaderCh(),
 		lastContacted:       make(map[string]time.Time),
 		failedChainMemberCh: make(chan any),
@@ -56,7 +58,7 @@ func (c *Coordinator) Run(ctx context.Context) {
 }
 
 func (c *Coordinator) AddMember(ctx context.Context, id, address string) error {
-	config, err := c.raft.AddChainMember(ctx, id, address)
+	config, err := c.Raft.AddChainMember(ctx, id, address)
 	if err != nil {
 		return err
 	}
@@ -64,7 +66,7 @@ func (c *Coordinator) AddMember(ctx context.Context, id, address string) error {
 }
 
 func (c *Coordinator) RemoveMember(ctx context.Context, id string) error {
-	config, err := c.raft.RemoveChainMember(ctx, id)
+	config, err := c.Raft.RemoveChainMember(ctx, id)
 	if err != nil {
 		return err
 	}
@@ -72,13 +74,12 @@ func (c *Coordinator) RemoveMember(ctx context.Context, id string) error {
 }
 
 func (c *Coordinator) ReadMembershipConfiguration(ctx context.Context) (*chainnode.Configuration, error) {
-	return c.raft.ReadChainConfiguration(ctx)
+	return c.Raft.ReadChainConfiguration(ctx)
 }
 
 func (c *Coordinator) updateChainMemberConfigurations(ctx context.Context, config *chainnode.Configuration) error {
 	g, ctx := errgroup.WithContext(ctx)
 	for _, member := range config.Members() {
-		member := member // capture loop variable
 		g.Go(func() error {
 			return c.tn.UpdateConfiguration(ctx, member.Address, config)
 		})
@@ -144,7 +145,6 @@ func (c *Coordinator) onFailedChainMember(ctx context.Context) error {
 
 	g, ctx := errgroup.WithContext(ctx)
 	for _, memberID := range toRemove {
-		memberID := memberID // capture loop variable
 		g.Go(func() error { return c.RemoveMember(ctx, memberID) })
 	}
 
@@ -157,7 +157,7 @@ func (c *Coordinator) onHeartbeat(ctx context.Context) error {
 		c.mu.Unlock()
 		return nil
 	}
-	config := c.raft.ChainConfiguration()
+	config := c.Raft.ChainConfiguration()
 	for memberID := range c.lastContacted {
 		if !config.IsMemberByID(memberID) {
 			delete(c.lastContacted, memberID)
@@ -186,7 +186,6 @@ func (c *Coordinator) sendHeartbeats(ctx context.Context, config *chainnode.Conf
 	g, ctx := errgroup.WithContext(ctx)
 
 	for _, member := range config.Members() {
-		member := member // capture loop variable
 		g.Go(func() error {
 			err := c.tn.Ping(ctx, member.Address)
 			c.mu.Lock()
