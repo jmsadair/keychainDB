@@ -17,6 +17,8 @@ service ChainService {
 	rpc Propagate (PropagateRequest) returns (stream KeyValuePair) {}
 	// UpdateConfiguration handles requests to update the chain membership configuration.
 	rpc UpdateConfiguration (UpdateConfigurationRequest) returns (UpdateConfigurationResponse) {}
+	// Ping handles requests to check if the node is alive.
+	rpc Ping (PingRequest) returns (PingResponse) {}
 }
 
 // ChainMember represents a member of the chain with an ID and address.
@@ -104,3 +106,12 @@ message CommitRequest {
 
 // CommitResponse is a response to a CommitRequest.
 message CommitResponse {}
+
+// PingRequest is a request to check if the node is alive and has an up-to-date configuration.
+message PingRequest {}
+
+// PingResponse is a response to a PingRequest.
+message PingResponse {
+	uint64 configuration_version = 1;
+	int64 status = 2;
+}
