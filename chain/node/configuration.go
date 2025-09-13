@@ -10,11 +10,14 @@ var EmptyChain = &Configuration{}
 
 // ChainMember represents a member of the chain with an ID and address.
 type ChainMember struct {
-	ID      string `json:"id"`
+	// The ID of this chain member.
+	ID string `json:"id"`
+	// The address of this chain member.
 	Address string `json:"address"`
 }
 
 // Equal returns true if this ChainMember is equal to another ChainMember.
+// Two chain members are considered equal if and only if they have the same ID and address.
 func (cm *ChainMember) Equal(other *ChainMember) bool {
 	if cm == nil && other == nil {
 		return true
@@ -27,6 +30,8 @@ func (cm *ChainMember) Equal(other *ChainMember) bool {
 
 // Configuration is a membership configuration for a particular chain.
 type Configuration struct {
+	// The current version of the configuration.
+	Version uint64
 	// All members of the chain ordered from head to tail.
 	members []*ChainMember
 	// Maps member ID to its index in the chain.
@@ -37,14 +42,14 @@ type Configuration struct {
 
 // NewConfiguration creates a new Configuration instance.
 // The provided members should include all members that belong to the chain, ordered from head to tail.
-func NewConfiguration(members []*ChainMember) (*Configuration, error) {
+func NewConfiguration(members []*ChainMember, version uint64) (*Configuration, error) {
 	idToMemberIndex := make(map[string]int, len(members))
 	addressToMemberIndex := make(map[string]int, len(members))
 	for i, member := range members {
 		idToMemberIndex[member.ID] = i
 		addressToMemberIndex[member.Address] = i
 	}
-	return &Configuration{members: members, idToMemberIndex: idToMemberIndex, addressToMemberIndex: addressToMemberIndex}, nil
+	return &Configuration{Version: version, members: members, idToMemberIndex: idToMemberIndex, addressToMemberIndex: addressToMemberIndex}, nil
 }
 
 // NewConfigurationFromProto creates a new Configuration instance from a protobuf message.
@@ -56,7 +61,7 @@ func NewConfigurationFromProto(configurationProto *pb.Configuration) (*Configura
 			Address: pbMember.GetAddress(),
 		}
 	}
-	return NewConfiguration(members)
+	return NewConfiguration(members, configurationProto.GetVersion())
 }
 
 // NewConfigurationFromBytes creates a new Configuration instance from bytes.
@@ -77,14 +82,18 @@ func (c *Configuration) Bytes() ([]byte, error) {
 			Address: member.Address,
 		}
 	}
-	configurationProto := &pb.Configuration{Members: members}
+	configurationProto := &pb.Configuration{Members: members, Version: c.Version}
 	return proto.Marshal(configurationProto)
 }
 
 // Equal returns a boolean value indicating whether this configuration is equal to the provided one.
-// Two configurations are considered equal if and only if they have the same members in the same order.
+// Two configurations are considered equal if and only if they have the same members in the same order
+// as well as the same version.
 func (c *Configuration) Equal(config *Configuration) bool {
 	if len(c.members) != len(config.members) {
+		return false
+	}
+	if c.Version != config.Version {
 		return false
 	}
 	for i := range len(c.members) {
@@ -105,7 +114,7 @@ func (c *Configuration) Copy() *Configuration {
 		idToMemberIndex[member.ID] = i
 		addrToMemberIndex[member.Address] = i
 	}
-	return &Configuration{members: members, idToMemberIndex: idToMemberIndex, addressToMemberIndex: addrToMemberIndex}
+	return &Configuration{Version: c.Version, members: members, idToMemberIndex: idToMemberIndex, addressToMemberIndex: addrToMemberIndex}
 }
 
 // AddMember creates a new configuration with the member added at the tail if it is not already present.
@@ -114,6 +123,7 @@ func (c *Configuration) AddMember(id, address string) *Configuration {
 	if newConfig.IsMemberByID(id) {
 		return newConfig
 	}
+	newConfig.Version++
 	member := &ChainMember{ID: id, Address: address}
 	newConfig.members = append(newConfig.members, member)
 	index := len(newConfig.members) - 1
@@ -129,6 +139,7 @@ func (c *Configuration) RemoveMember(id string) *Configuration {
 	if !ok {
 		return newConfig
 	}
+	newConfig.Version++
 	removedMember := newConfig.members[i]
 	members := make([]*ChainMember, 0, len(newConfig.members)-1)
 	members = append(members, newConfig.members[:i]...)

@@ -28,8 +28,10 @@ const (
 type Status int
 
 const (
+	// Unknown indicates the status of the node is not known.
+	Unknown Status = iota
 	// Syncing indicates the node is synchronizing with the chain.
-	Syncing Status = iota
+	Syncing
 	// Active indicates the node is actively participating in the chain.
 	Active
 	// Inactive indicates the node is not participating in any chain.
@@ -285,6 +287,11 @@ func (c *ChainNode) UpdateConfiguration(ctx context.Context, config *Configurati
 	case <-ctx.Done():
 		return ctx.Err()
 	}
+}
+
+func (c *ChainNode) Ping() (Status, uint64) {
+	state := c.state.Load()
+	return state.Status, state.Config.Version
 }
 
 func (c *ChainNode) requestPropagation(ctx context.Context, address string, keyFilter storage.KeyFilter, isTail bool) error {

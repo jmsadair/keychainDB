@@ -96,7 +96,7 @@ func TestAddMember(t *testing.T) {
 	memberID := "member-1"
 	memberAddr := "127.0.0.2:9000"
 	member := &chainnode.ChainMember{ID: memberID, Address: memberAddr}
-	config, err := chainnode.NewConfiguration([]*chainnode.ChainMember{member})
+	config, err := chainnode.NewConfiguration([]*chainnode.ChainMember{member}, 0)
 	require.NoError(t, err)
 
 	raft.On("AddChainMember", memberID, memberAddr).Return(config, nil).Once()
@@ -116,7 +116,7 @@ func TestRemoveMember(t *testing.T) {
 	raft.AssertExpectations(t)
 
 	memberID := "member-1"
-	config, err := chainnode.NewConfiguration([]*chainnode.ChainMember{})
+	config, err := chainnode.NewConfiguration([]*chainnode.ChainMember{}, 0)
 	require.NoError(t, err)
 
 	raft.On("RemoveChainMember", memberID).Return(config, nil).Once()
@@ -136,7 +136,7 @@ func TestReadMembershipConfiguration(t *testing.T) {
 	member1 := &chainnode.ChainMember{ID: "member-1", Address: "127.0.0.1:9000"}
 	member2 := &chainnode.ChainMember{ID: "member-2", Address: "127.0.0.2:9000"}
 
-	expectedConfig, err := chainnode.NewConfiguration([]*chainnode.ChainMember{member1, member2})
+	expectedConfig, err := chainnode.NewConfiguration([]*chainnode.ChainMember{member1, member2}, 0)
 	require.NoError(t, err)
 	raft.On("ReadChainConfiguration").Return(expectedConfig, nil).Once()
 	config, err := coordinator.ReadMembershipConfiguration(context.Background())
@@ -156,7 +156,7 @@ func TestOnHeartbeat(t *testing.T) {
 	member1 := &chainnode.ChainMember{ID: "member-1", Address: "127.0.0.2:9000"}
 	member2 := &chainnode.ChainMember{ID: "member-2", Address: "127.0.0.3:9000"}
 	member3 := &chainnode.ChainMember{ID: "member-3", Address: "127.0.0.4:9000"}
-	config, err := chainnode.NewConfiguration([]*chainnode.ChainMember{member1, member2, member3})
+	config, err := chainnode.NewConfiguration([]*chainnode.ChainMember{member1, member2, member3}, 0)
 	require.NoError(t, err)
 
 	// This coordinator is the leader and all pings to chain members are successful.
@@ -219,7 +219,7 @@ func TestOnFailedChainMember(t *testing.T) {
 		member2.ID: time.Now().Add(-60 * time.Second),
 		member3.ID: time.Now(),
 	}
-	config, err := chainnode.NewConfiguration([]*chainnode.ChainMember{member1, member3})
+	config, err := chainnode.NewConfiguration([]*chainnode.ChainMember{member1, member3}, 0)
 	require.NoError(t, err)
 	raft.On("RemoveChainMember", member2.ID).Return(config, nil)
 	tn.On("UpdateConfiguration", member1.Address).Return(nil)

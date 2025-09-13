@@ -37,8 +37,8 @@ func NewClient(dialOpts ...grpc.DialOption) (*Client, error) {
 	}, nil
 }
 
-func (g *Client) Write(ctx context.Context, address string, key string, value []byte, version uint64) error {
-	client, err := g.getOrCreateClient(address)
+func (c *Client) Write(ctx context.Context, address string, key string, value []byte, version uint64) error {
+	client, err := c.getOrCreateClient(address)
 	if err != nil {
 		return err
 	}
@@ -46,8 +46,8 @@ func (g *Client) Write(ctx context.Context, address string, key string, value []
 	return err
 }
 
-func (g *Client) Read(ctx context.Context, address string, key string) ([]byte, error) {
-	client, err := g.getOrCreateClient(address)
+func (c *Client) Read(ctx context.Context, address string, key string) ([]byte, error) {
+	client, err := c.getOrCreateClient(address)
 	if err != nil {
 		return nil, err
 	}
@@ -58,8 +58,8 @@ func (g *Client) Read(ctx context.Context, address string, key string) ([]byte, 
 	return response.GetValue(), nil
 }
 
-func (g *Client) Commit(ctx context.Context, address string, key string, version uint64) error {
-	client, err := g.getOrCreateClient(address)
+func (c *Client) Commit(ctx context.Context, address string, key string, version uint64) error {
+	client, err := c.getOrCreateClient(address)
 	if err != nil {
 		return err
 	}
@@ -67,8 +67,8 @@ func (g *Client) Commit(ctx context.Context, address string, key string, version
 	return err
 }
 
-func (g *Client) Propagate(ctx context.Context, address string, keyFilter storage.KeyFilter) (node.KeyValueReceiveStream, error) {
-	client, err := g.getOrCreateClient(address)
+func (c *Client) Propagate(ctx context.Context, address string, keyFilter storage.KeyFilter) (node.KeyValueReceiveStream, error) {
+	client, err := c.getOrCreateClient(address)
 	if err != nil {
 		return nil, err
 	}
@@ -90,18 +90,30 @@ func (g *Client) Propagate(ctx context.Context, address string, keyFilter storag
 	return &gRPCReceiveStream{stream: stream}, nil
 }
 
-func (g *Client) getOrCreateClient(address string) (pb.ChainServiceClient, error) {
-	g.mu.Lock()
-	defer g.mu.Unlock()
+func (c *Client) Ping(ctx context.Context, address string) (node.Status, uint64, error) {
+	client, err := c.getOrCreateClient(address)
+	if err != nil {
+		return node.Unknown, 0, err
+	}
+	response, err := client.Ping(ctx, &pb.PingRequest{})
+	if err != nil {
+		return node.Unknown, 0, err
+	}
+	return node.Status(response.Status), response.ConfigurationVersion, nil
+}
 
-	client, ok := g.clients[address]
+func (c *Client) getOrCreateClient(address string) (pb.ChainServiceClient, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	client, ok := c.clients[address]
 	if !ok {
-		conn, err := grpc.NewClient(address, g.dialOpts...)
+		conn, err := grpc.NewClient(address, c.dialOpts...)
 		if err != nil {
 			return nil, err
 		}
 		client = pb.NewChainServiceClient(conn)
-		g.clients[address] = client
+		c.clients[address] = client
 	}
 
 	return client, nil

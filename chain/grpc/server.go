@@ -103,3 +103,9 @@ func (s *Server) Propagate(request *pb.PropagateRequest, stream pb.ChainService_
 
 	return s.node.Propagate(stream.Context(), keyFilter, &gRPCSendStream{stream: stream})
 }
+
+// Ping handles requests from the coordinator for checking if this node is alive.
+func (s *Server) Ping(ctx context.Context, request *pb.PingRequest) (*pb.PingResponse, error) {
+	status, version := s.node.Ping()
+	return &pb.PingResponse{Status: int32(status), ConfigurationVersion: version}, nil
+}

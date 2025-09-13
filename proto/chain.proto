@@ -31,6 +31,8 @@ message ChainMember {
 
 // Configuration contains the membership configuration of the chain.
 message Configuration {
+	// The version of this configuration.
+	uint64 version = 1;
 	// The members of the chain with their IDs and addresses.
 	repeated ChainMember members = 2;
 }
@@ -113,5 +115,5 @@ message PingRequest {}
 // PingResponse is a response to a PingRequest.
 message PingResponse {
 	uint64 configuration_version = 1;
-	int64 status = 2;
+	int32 status = 2;
 }

@@ -132,6 +132,8 @@ func (x *ChainMember) GetAddress() string {
 // Configuration contains the membership configuration of the chain.
 type Configuration struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
+	// The version of this configuration.
+	Version uint64 `protobuf:"varint,1,opt,name=version,proto3" json:"version,omitempty"`
 	// The members of the chain with their IDs and addresses.
 	Members       []*ChainMember `protobuf:"bytes,2,rep,name=members,proto3" json:"members,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -166,6 +168,13 @@ func (x *Configuration) ProtoReflect() protoreflect.Message {
 // Deprecated: Use Configuration.ProtoReflect.Descriptor instead.
 func (*Configuration) Descriptor() ([]byte, []int) {
 	return file_chain_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *Configuration) GetVersion() uint64 {
+	if x != nil {
+		return x.Version
+	}
+	return 0
 }
 
 func (x *Configuration) GetMembers() []*ChainMember {
@@ -702,7 +711,7 @@ func (*PingRequest) Descriptor() ([]byte, []int) {
 type PingResponse struct {
 	state                protoimpl.MessageState `protogen:"open.v1"`
 	ConfigurationVersion uint64                 `protobuf:"varint,1,opt,name=configuration_version,json=configurationVersion,proto3" json:"configuration_version,omitempty"`
-	Status               int64                  `protobuf:"varint,2,opt,name=status,proto3" json:"status,omitempty"`
+	Status               int32                  `protobuf:"varint,2,opt,name=status,proto3" json:"status,omitempty"`
 	unknownFields        protoimpl.UnknownFields
 	sizeCache            protoimpl.SizeCache
 }
@@ -744,7 +753,7 @@ func (x *PingResponse) GetConfigurationVersion() uint64 {
 	return 0
 }
 
-func (x *PingResponse) GetStatus() int64 {
+func (x *PingResponse) GetStatus() int32 {
 	if x != nil {
 		return x.Status
 	}
@@ -758,8 +767,9 @@ const file_chain_proto_rawDesc = "" +
 	"\vchain.proto\x12\x05chain\"7\n" +
 	"\vChainMember\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x18\n" +
-	"\aaddress\x18\x02 \x01(\tR\aaddress\"=\n" +
-	"\rConfiguration\x12,\n" +
+	"\aaddress\x18\x02 \x01(\tR\aaddress\"W\n" +
+	"\rConfiguration\x12\x18\n" +
+	"\aversion\x18\x01 \x01(\x04R\aversion\x12,\n" +
 	"\amembers\x18\x02 \x03(\v2\x12.chain.ChainMemberR\amembers\"X\n" +
 	"\x1aUpdateConfigurationRequest\x12:\n" +
 	"\rconfiguration\x18\x01 \x01(\v2\x14.chain.ConfigurationR\rconfiguration\"\x1d\n" +
@@ -787,7 +797,7 @@ const file_chain_proto_rawDesc = "" +
 	"\vPingRequest\"[\n" +
 	"\fPingResponse\x123\n" +
 	"\x15configuration_version\x18\x01 \x01(\x04R\x14configurationVersion\x12\x16\n" +
-	"\x06status\x18\x02 \x01(\x03R\x06status*D\n" +
+	"\x06status\x18\x02 \x01(\x05R\x06status*D\n" +
 	"\aKeyType\x12\x0f\n" +
 	"\vKEYTYPE_ALL\x10\x00\x12\x15\n" +
 	"\x11KEYTYPE_COMMITTED\x10\x01\x12\x11\n" +
