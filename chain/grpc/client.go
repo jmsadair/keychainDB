@@ -37,69 +37,82 @@ func NewClient(dialOpts ...grpc.DialOption) (*Client, error) {
 	}, nil
 }
 
-func (c *Client) Write(ctx context.Context, address string, key string, value []byte, version uint64) error {
+func (c *Client) Write(ctx context.Context, address string, request *node.WriteRequest, response *node.WriteResponse) error {
 	client, err := c.getOrCreateClient(address)
 	if err != nil {
 		return err
 	}
-	_, err = client.Write(ctx, &pb.WriteRequest{Key: key, Value: value, Version: version})
-	return err
+	pbResp, err := client.Write(ctx, request.Proto())
+	if err != nil {
+		return err
+	}
+	response.FromProto(pbResp)
+	return nil
 }
 
-func (c *Client) Read(ctx context.Context, address string, key string) ([]byte, error) {
-	client, err := c.getOrCreateClient(address)
-	if err != nil {
-		return nil, err
-	}
-	response, err := client.Read(ctx, &pb.ReadRequest{Key: key})
-	if err != nil {
-		return nil, err
-	}
-	return response.GetValue(), nil
-}
-
-func (c *Client) Commit(ctx context.Context, address string, key string, version uint64) error {
+func (c *Client) Read(ctx context.Context, address string, request *node.ReadRequest, response *node.ReadResponse) error {
 	client, err := c.getOrCreateClient(address)
 	if err != nil {
 		return err
 	}
-	_, err = client.Commit(ctx, &pb.CommitRequest{Key: key, Version: version})
-	return err
+	pbResp, err := client.Read(ctx, request.Proto())
+	if err != nil {
+		return err
+	}
+	response.FromProto(pbResp)
+	return nil
 }
 
-func (c *Client) Propagate(ctx context.Context, address string, keyFilter storage.KeyFilter) (node.KeyValueReceiveStream, error) {
+func (c *Client) Commit(ctx context.Context, address string, request *node.CommitRequest, response *node.CommitResponse) error {
+	client, err := c.getOrCreateClient(address)
+	if err != nil {
+		return err
+	}
+	pbResp, err := client.Commit(ctx, request.Proto())
+	if err != nil {
+		return err
+	}
+	response.FromProto(pbResp)
+	return nil
+}
+
+func (c *Client) Propagate(ctx context.Context, address string, request *node.PropagateRequest) (node.KeyValueReceiveStream, error) {
 	client, err := c.getOrCreateClient(address)
 	if err != nil {
 		return nil, err
 	}
 
-	var keyType pb.KeyType
-	switch keyFilter {
-	case storage.AllKeys:
-		keyType = pb.KeyType_KEYTYPE_ALL
-	case storage.CommittedKeys:
-		keyType = pb.KeyType_KEYTYPE_COMMITTED
-	case storage.DirtyKeys:
-		keyType = pb.KeyType_KEYTYPE_DIRTY
-	}
-
-	stream, err := client.Propagate(ctx, &pb.PropagateRequest{KeyType: keyType})
+	stream, err := client.Propagate(ctx, request.Proto())
 	if err != nil {
 		return nil, err
 	}
 	return &gRPCReceiveStream{stream: stream}, nil
 }
 
-func (c *Client) Ping(ctx context.Context, address string) (node.Status, uint64, error) {
+func (c *Client) Ping(ctx context.Context, address string, request *node.PingRequest, response *node.PingResponse) error {
 	client, err := c.getOrCreateClient(address)
 	if err != nil {
-		return node.Unknown, 0, err
+		return err
 	}
-	response, err := client.Ping(ctx, &pb.PingRequest{})
+	pbResp, err := client.Ping(ctx, request.Proto())
 	if err != nil {
-		return node.Unknown, 0, err
+		return err
 	}
-	return node.Status(response.Status), response.ConfigurationVersion, nil
+	response.FromProto(pbResp)
+	return nil
+}
+
+func (c *Client) UpdateConfiguration(ctx context.Context, address string, request *node.UpdateConfigurationRequest, response *node.UpdateConfigurationResponse) error {
+	client, err := c.getOrCreateClient(address)
+	if err != nil {
+		return err
+	}
+	pbResp, err := client.UpdateConfiguration(ctx, request.Proto())
+	if err != nil {
+		return err
+	}
+	response.FromProto(pbResp)
+	return nil
 }
 
 func (c *Client) getOrCreateClient(address string) (pb.ChainServiceClient, error) {

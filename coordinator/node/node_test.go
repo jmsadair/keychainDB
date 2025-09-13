@@ -60,12 +60,12 @@ type mockTransport struct {
 	mock.Mock
 }
 
-func (m *mockTransport) Ping(ctx context.Context, address string) error {
+func (m *mockTransport) Ping(ctx context.Context, address string, request *chainnode.PingRequest, response *chainnode.PingResponse) error {
 	args := m.MethodCalled("Ping", address)
 	return args.Error(0)
 }
 
-func (m *mockTransport) UpdateConfiguration(ctx context.Context, address string, config *chainnode.Configuration) error {
+func (m *mockTransport) UpdateConfiguration(ctx context.Context, address string, request *chainnode.UpdateConfigurationRequest, response *chainnode.UpdateConfigurationResponse) error {
 	args := m.MethodCalled("UpdateConfiguration", address)
 	return args.Error(0)
 }
@@ -80,7 +80,7 @@ func TestNewCoordinator(t *testing.T) {
 
 	require.NotNil(t, coordinator)
 	require.Equal(t, addr, coordinator.address)
-	require.NotNil(t, coordinator.lastContacted)
+	require.NotNil(t, coordinator.memberStates)
 	require.NotNil(t, coordinator.failedChainMemberCh)
 	require.False(t, coordinator.isLeader)
 }
@@ -96,12 +96,11 @@ func TestAddMember(t *testing.T) {
 	memberID := "member-1"
 	memberAddr := "127.0.0.2:9000"
 	member := &chainnode.ChainMember{ID: memberID, Address: memberAddr}
-	config, err := chainnode.NewConfiguration([]*chainnode.ChainMember{member}, 0)
-	require.NoError(t, err)
+	config := chainnode.NewConfiguration([]*chainnode.ChainMember{member}, 0)
 
 	raft.On("AddChainMember", memberID, memberAddr).Return(config, nil).Once()
 	tn.On("UpdateConfiguration", memberAddr).Return(nil).Once()
-	err = coordinator.AddMember(context.Background(), memberID, memberAddr)
+	err := coordinator.AddMember(context.Background(), memberID, memberAddr)
 	require.NoError(t, err)
 	tn.AssertExpectations(t)
 	raft.AssertExpectations(t)
@@ -116,11 +115,10 @@ func TestRemoveMember(t *testing.T) {
 	raft.AssertExpectations(t)
 
 	memberID := "member-1"
-	config, err := chainnode.NewConfiguration([]*chainnode.ChainMember{}, 0)
-	require.NoError(t, err)
+	config := chainnode.NewConfiguration([]*chainnode.ChainMember{}, 0)
 
 	raft.On("RemoveChainMember", memberID).Return(config, nil).Once()
-	err = coordinator.RemoveMember(context.Background(), memberID)
+	err := coordinator.RemoveMember(context.Background(), memberID)
 	require.NoError(t, err)
 	raft.AssertExpectations(t)
 }
@@ -136,8 +134,7 @@ func TestReadMembershipConfiguration(t *testing.T) {
 	member1 := &chainnode.ChainMember{ID: "member-1", Address: "127.0.0.1:9000"}
 	member2 := &chainnode.ChainMember{ID: "member-2", Address: "127.0.0.2:9000"}
 
-	expectedConfig, err := chainnode.NewConfiguration([]*chainnode.ChainMember{member1, member2}, 0)
-	require.NoError(t, err)
+	expectedConfig := chainnode.NewConfiguration([]*chainnode.ChainMember{member1, member2}, 0)
 	raft.On("ReadChainConfiguration").Return(expectedConfig, nil).Once()
 	config, err := coordinator.ReadMembershipConfiguration(context.Background())
 	require.NoError(t, err)
@@ -156,8 +153,7 @@ func TestOnHeartbeat(t *testing.T) {
 	member1 := &chainnode.ChainMember{ID: "member-1", Address: "127.0.0.2:9000"}
 	member2 := &chainnode.ChainMember{ID: "member-2", Address: "127.0.0.3:9000"}
 	member3 := &chainnode.ChainMember{ID: "member-3", Address: "127.0.0.4:9000"}
-	config, err := chainnode.NewConfiguration([]*chainnode.ChainMember{member1, member2, member3}, 0)
-	require.NoError(t, err)
+	config := chainnode.NewConfiguration([]*chainnode.ChainMember{member1, member2, member3}, 0)
 
 	// This coordinator is the leader and all pings to chain members are successful.
 	coordinator.isLeader = true
@@ -166,9 +162,9 @@ func TestOnHeartbeat(t *testing.T) {
 	tn.On("Ping", member2.Address).Return(nil).Once()
 	tn.On("Ping", member3.Address).Return(nil).Once()
 	require.NoError(t, coordinator.onHeartbeat(context.Background()))
-	require.Contains(t, coordinator.lastContacted, member1.ID)
-	require.Contains(t, coordinator.lastContacted, member2.ID)
-	require.Contains(t, coordinator.lastContacted, member3.ID)
+	require.Contains(t, coordinator.memberStates, member1.ID)
+	require.Contains(t, coordinator.memberStates, member2.ID)
+	require.Contains(t, coordinator.memberStates, member3.ID)
 	raft.AssertExpectations(t)
 	tn.AssertExpectations(t)
 
@@ -185,9 +181,9 @@ func TestOnHeartbeat(t *testing.T) {
 
 	// This coordinator is not the leader. It should not send heartbeats.
 	coordinator.isLeader = false
-	coordinator.lastContacted = make(map[string]time.Time)
+	coordinator.memberStates = make(map[string]*memberState)
 	require.NoError(t, coordinator.onHeartbeat(context.Background()))
-	require.Empty(t, coordinator.lastContacted)
+	require.Empty(t, coordinator.memberStates)
 }
 
 func TestOnFailedChainMember(t *testing.T) {
@@ -205,22 +201,21 @@ func TestOnFailedChainMember(t *testing.T) {
 	// This coordinator is the leader and all chain members have been recently contacted.
 	// It should not attempt to remove any of them.
 	coordinator.isLeader = true
-	coordinator.lastContacted = map[string]time.Time{
-		member1.ID: time.Now(),
-		member2.ID: time.Now(),
-		member3.ID: time.Now(),
+	coordinator.memberStates = map[string]*memberState{
+		member1.ID: &memberState{lastContact: time.Now()},
+		member2.ID: &memberState{lastContact: time.Now()},
+		member3.ID: &memberState{lastContact: time.Now()},
 	}
 	require.NoError(t, coordinator.onFailedChainMember(context.Background()))
 
 	// This coordinator is the leader and one of the chain members has not been contacted in a while.
 	// It should attempt to remove the failed member.
-	coordinator.lastContacted = map[string]time.Time{
-		member1.ID: time.Now(),
-		member2.ID: time.Now().Add(-60 * time.Second),
-		member3.ID: time.Now(),
+	coordinator.memberStates = map[string]*memberState{
+		member1.ID: &memberState{lastContact: time.Now()},
+		member2.ID: &memberState{lastContact: time.Now().Add(-60 * time.Second)},
+		member3.ID: &memberState{lastContact: time.Now()},
 	}
-	config, err := chainnode.NewConfiguration([]*chainnode.ChainMember{member1, member3}, 0)
-	require.NoError(t, err)
+	config := chainnode.NewConfiguration([]*chainnode.ChainMember{member1, member3}, 0)
 	raft.On("RemoveChainMember", member2.ID).Return(config, nil)
 	tn.On("UpdateConfiguration", member1.Address).Return(nil)
 	tn.On("UpdateConfiguration", member3.Address).Return(nil)
@@ -242,17 +237,17 @@ func TestOnLeadershipChange(t *testing.T) {
 	raft.AssertExpectations(t)
 
 	memberID := "member-1"
-	coordinator.lastContacted = map[string]time.Time{
-		memberID: time.Now(),
+	coordinator.memberStates = map[string]*memberState{
+		memberID: &memberState{lastContact: time.Now()},
 	}
 	coordinator.onLeadershipChange(true)
 	require.True(t, coordinator.isLeader)
-	require.Empty(t, coordinator.lastContacted)
+	require.Empty(t, coordinator.memberStates)
 
-	coordinator.lastContacted = map[string]time.Time{
-		memberID: time.Now(),
+	coordinator.memberStates = map[string]*memberState{
+		memberID: &memberState{lastContact: time.Now()},
 	}
 	coordinator.onLeadershipChange(false)
 	require.False(t, coordinator.isLeader)
-	require.Empty(t, coordinator.lastContacted)
+	require.Empty(t, coordinator.memberStates)
 }

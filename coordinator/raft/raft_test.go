@@ -145,8 +145,7 @@ func TestAddRemoveChainMember(t *testing.T) {
 	member1 := &chainnode.ChainMember{ID: memberID1, Address: memberAddr1}
 	member2 := &chainnode.ChainMember{ID: memberID2, Address: memberAddr2}
 	member3 := &chainnode.ChainMember{ID: memberID3, Address: memberAddr3}
-	expectedConfig, err := chainnode.NewConfiguration([]*chainnode.ChainMember{member1, member2, member3}, 3)
-	require.NoError(t, err)
+	expectedConfig := chainnode.NewConfiguration([]*chainnode.ChainMember{member1, member2, member3}, 3)
 	require.True(t, expectedConfig.Equal(readConfig))
 
 	// Remove two of the chain members that were added.
@@ -159,7 +158,6 @@ func TestAddRemoveChainMember(t *testing.T) {
 
 	readConfig, err = leader.ReadChainConfiguration(context.TODO())
 	require.NoError(t, err)
-	expectedConfig, err = chainnode.NewConfiguration([]*chainnode.ChainMember{member2}, 5)
-	require.NoError(t, err)
+	expectedConfig = chainnode.NewConfiguration([]*chainnode.ChainMember{member2}, 5)
 	require.True(t, expectedConfig.Equal(readConfig))
 }

@@ -42,18 +42,23 @@ type Configuration struct {
 
 // NewConfiguration creates a new Configuration instance.
 // The provided members should include all members that belong to the chain, ordered from head to tail.
-func NewConfiguration(members []*ChainMember, version uint64) (*Configuration, error) {
+func NewConfiguration(members []*ChainMember, version uint64) *Configuration {
 	idToMemberIndex := make(map[string]int, len(members))
 	addressToMemberIndex := make(map[string]int, len(members))
 	for i, member := range members {
 		idToMemberIndex[member.ID] = i
 		addressToMemberIndex[member.Address] = i
 	}
-	return &Configuration{Version: version, members: members, idToMemberIndex: idToMemberIndex, addressToMemberIndex: addressToMemberIndex}, nil
+	return &Configuration{
+		Version:              version,
+		members:              members,
+		idToMemberIndex:      idToMemberIndex,
+		addressToMemberIndex: addressToMemberIndex,
+	}
 }
 
 // NewConfigurationFromProto creates a new Configuration instance from a protobuf message.
-func NewConfigurationFromProto(configurationProto *pb.Configuration) (*Configuration, error) {
+func NewConfigurationFromProto(configurationProto *pb.Configuration) *Configuration {
 	members := make([]*ChainMember, len(configurationProto.GetMembers()))
 	for i, pbMember := range configurationProto.GetMembers() {
 		members[i] = &ChainMember{
@@ -70,7 +75,7 @@ func NewConfigurationFromBytes(b []byte) (*Configuration, error) {
 	if err := proto.Unmarshal(b, configurationProto); err != nil {
 		return nil, err
 	}
-	return NewConfigurationFromProto(configurationProto)
+	return NewConfigurationFromProto(configurationProto), nil
 }
 
 // Bytes converts the Configuration instance into bytes.
@@ -167,6 +172,15 @@ func (c *Configuration) Members() []*ChainMember {
 	return membersCopy
 }
 
+// Member gets the member by the member ID. If the member does not exist, nil is returned.
+func (c *Configuration) Member(id string) *ChainMember {
+	i, ok := c.idToMemberIndex[id]
+	if !ok {
+		return nil
+	}
+	return c.members[i]
+}
+
 // Head returns the head member of the chain.
 // If the chain has no members, nil is returned.
 func (c *Configuration) Head() *ChainMember {
@@ -240,4 +254,13 @@ func (c *Configuration) IsMemberByID(id string) bool {
 func (c *Configuration) IsMemberByAddress(address string) bool {
 	_, ok := c.addressToMemberIndex[address]
 	return ok
+}
+
+// Proto converts Configuration to protobuf Configuration.
+func (c *Configuration) Proto() *pb.Configuration {
+	members := make([]*pb.ChainMember, len(c.members))
+	for i, member := range c.members {
+		members[i] = &pb.ChainMember{Id: member.ID, Address: member.Address}
+	}
+	return &pb.Configuration{Version: c.Version, Members: members}
 }

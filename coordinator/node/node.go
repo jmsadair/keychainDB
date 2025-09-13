@@ -16,8 +16,8 @@ const (
 )
 
 type Transport interface {
-	UpdateConfiguration(ctx context.Context, address string, config *chainnode.Configuration) error
-	Ping(ctx context.Context, address string) error
+	UpdateConfiguration(ctx context.Context, address string, request *chainnode.UpdateConfigurationRequest, response *chainnode.UpdateConfigurationResponse) error
+	Ping(ctx context.Context, address string, request *chainnode.PingRequest, response *chainnode.PingResponse) error
 }
 
 type RaftProtocol interface {
@@ -31,14 +31,21 @@ type RaftProtocol interface {
 	ClusterStatus() (*raft.Status, error)
 }
 
+type memberState struct {
+	lastContact   time.Time
+	status        chainnode.Status
+	configVersion uint64
+}
+
 type Coordinator struct {
 	Raft                RaftProtocol
 	address             string
 	tn                  Transport
-	lastContacted       map[string]time.Time
+	memberStates        map[string]*memberState
 	isLeader            bool
 	leadershipChangeCh  <-chan bool
 	failedChainMemberCh chan any
+	configSyncCh        chan any
 	mu                  sync.Mutex
 }
 
@@ -48,8 +55,9 @@ func NewCoordinator(address string, tn Transport, raft RaftProtocol) *Coordinato
 		tn:                  tn,
 		Raft:                raft,
 		leadershipChangeCh:  raft.LeaderCh(),
-		lastContacted:       make(map[string]time.Time),
+		memberStates:        make(map[string]*memberState),
 		failedChainMemberCh: make(chan any),
+		configSyncCh:        make(chan any),
 	}
 }
 
@@ -57,6 +65,7 @@ func (c *Coordinator) Run(ctx context.Context) {
 	go c.heartbeatLoop(ctx)
 	go c.failedChainMemberLoop(ctx)
 	go c.leadershipChangeLoop(ctx)
+	go c.configSyncLoop(ctx)
 }
 
 func (c *Coordinator) AddMember(ctx context.Context, id, address string) error {
@@ -83,7 +92,9 @@ func (c *Coordinator) updateChainMemberConfigurations(ctx context.Context, confi
 	g, ctx := errgroup.WithContext(ctx)
 	for _, member := range config.Members() {
 		g.Go(func() error {
-			return c.tn.UpdateConfiguration(ctx, member.Address, config)
+			req := &chainnode.UpdateConfigurationRequest{Configuration: config}
+			var resp chainnode.UpdateConfigurationResponse
+			return c.tn.UpdateConfiguration(ctx, member.Address, req, &resp)
 		})
 	}
 
@@ -123,11 +134,58 @@ func (c *Coordinator) leadershipChangeLoop(ctx context.Context) {
 	}
 }
 
+func (c *Coordinator) configSyncLoop(ctx context.Context) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-c.configSyncCh:
+			c.onConfigSync(ctx)
+		}
+	}
+}
+
+func (c *Coordinator) onConfigSync(ctx context.Context) error {
+	c.mu.Lock()
+	if !c.isLeader {
+		c.mu.Unlock()
+		return nil
+	}
+	c.mu.Unlock()
+
+	config, err := c.ReadMembershipConfiguration(ctx)
+	if err != nil {
+		return err
+	}
+
+	c.mu.Lock()
+	needSync := []string{}
+	for memberID, state := range c.memberStates {
+		if state.configVersion != config.Version {
+			needSync = append(needSync, memberID)
+		}
+	}
+	c.mu.Unlock()
+
+	g, ctx := errgroup.WithContext(ctx)
+	for _, memberID := range needSync {
+		member := config.Member(memberID)
+		if member == nil {
+			continue
+		}
+		req := chainnode.UpdateConfigurationRequest{Configuration: config}
+		var resp chainnode.UpdateConfigurationResponse
+		g.Go(func() error { return c.tn.UpdateConfiguration(ctx, member.Address, &req, &resp) })
+	}
+
+	return g.Wait()
+}
+
 func (c *Coordinator) onLeadershipChange(isLeader bool) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.isLeader = isLeader
-	c.lastContacted = map[string]time.Time{}
+	c.memberStates = map[string]*memberState{}
 }
 
 func (c *Coordinator) onFailedChainMember(ctx context.Context) error {
@@ -138,8 +196,8 @@ func (c *Coordinator) onFailedChainMember(ctx context.Context) error {
 		c.mu.Unlock()
 		return nil
 	}
-	for memberID, lastContact := range c.lastContacted {
-		if time.Since(lastContact) > chainFailureTimeout {
+	for memberID, state := range c.memberStates {
+		if time.Since(state.lastContact) > chainFailureTimeout {
 			toRemove = append(toRemove, memberID)
 		}
 	}
@@ -160,15 +218,15 @@ func (c *Coordinator) onHeartbeat(ctx context.Context) error {
 		return nil
 	}
 	config := c.Raft.ChainConfiguration()
-	for memberID := range c.lastContacted {
+	for memberID := range c.memberStates {
 		if !config.IsMemberByID(memberID) {
-			delete(c.lastContacted, memberID)
+			delete(c.memberStates, memberID)
 		}
 	}
 	for _, member := range config.Members() {
-		_, ok := c.lastContacted[member.ID]
+		_, ok := c.memberStates[member.ID]
 		if !ok {
-			c.lastContacted[member.ID] = time.Now()
+			c.memberStates[member.ID] = &memberState{lastContact: time.Now()}
 		}
 	}
 	c.mu.Unlock()
@@ -189,12 +247,26 @@ func (c *Coordinator) sendHeartbeats(ctx context.Context, config *chainnode.Conf
 
 	for _, member := range config.Members() {
 		g.Go(func() error {
-			err := c.tn.Ping(ctx, member.Address)
-			c.mu.Lock()
+			req := &chainnode.PingRequest{}
+			var resp chainnode.PingResponse
+			err := c.tn.Ping(ctx, member.Address, req, &resp)
 			if err == nil {
-				c.lastContacted[member.ID] = time.Now()
+				c.mu.Lock()
+				state, ok := c.memberStates[member.ID]
+				if ok {
+					state.lastContact = time.Now()
+					state.configVersion = resp.Version
+					state.status = resp.Status
+				}
+				c.mu.Unlock()
+				if resp.Version != config.Version {
+					select {
+					case c.configSyncCh <- struct{}{}:
+					default:
+					}
+				}
+
 			}
-			c.mu.Unlock()
 			return err
 		})
 	}
