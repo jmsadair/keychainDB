@@ -18,8 +18,10 @@ type Server struct {
 func (s *Server) Run(ctx context.Context) error {
 	http.HandleFunc("/cluster/join", s.handleJoinCluster)
 	http.HandleFunc("/cluster/remove", s.handleRemoveFromCluster)
+	http.HandleFunc("/cluster/status", s.handleClusterStatus)
 	http.HandleFunc("/chain/add", s.handleAddChainMember)
 	http.HandleFunc("/chain/remove", s.handleRemoveChainMember)
+	http.HandleFunc("/chain/configuration", s.handleChainConfiguration)
 	httpServer := &http.Server{Addr: s.Address}
 
 	errCh := make(chan error)

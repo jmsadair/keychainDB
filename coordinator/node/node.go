@@ -6,6 +6,7 @@ import (
 	"time"
 
 	chainnode "github.com/jmsadair/keychain/chain/node"
+	"github.com/jmsadair/keychain/coordinator/raft"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -27,6 +28,7 @@ type RaftProtocol interface {
 	ChainConfiguration() *chainnode.Configuration
 	JoinCluster(ctx context.Context, id, address string) error
 	RemoveFromCluster(ctx context.Context, id string) error
+	ClusterStatus() (*raft.Status, error)
 }
 
 type Coordinator struct {

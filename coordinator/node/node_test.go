@@ -7,12 +7,23 @@ import (
 	"time"
 
 	chainnode "github.com/jmsadair/keychain/chain/node"
+	"github.com/jmsadair/keychain/coordinator/raft"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
 
 type mockRaft struct {
 	mock.Mock
+}
+
+func (m *mockRaft) JoinCluster(ctx context.Context, id, address string) error {
+	args := m.MethodCalled("JoinCluster", id, address)
+	return args.Error(0)
+}
+
+func (m *mockRaft) RemoveFromCluster(ctx context.Context, id string) error {
+	args := m.MethodCalled("RemoveFromCluster", id)
+	return args.Error(0)
 }
 
 func (m *mockRaft) AddChainMember(ctx context.Context, id, address string) (*chainnode.Configuration, error) {
@@ -38,6 +49,11 @@ func (m *mockRaft) LeaderCh() <-chan bool {
 func (m *mockRaft) ChainConfiguration() *chainnode.Configuration {
 	args := m.MethodCalled("ChainConfiguration")
 	return args.Get(0).(*chainnode.Configuration)
+}
+
+func (m *mockRaft) ClusterStatus() (*raft.Status, error) {
+	args := m.MethodCalled("ClusterStatus")
+	return args.Get(0).(*raft.Status), args.Error(1)
 }
 
 type mockTransport struct {

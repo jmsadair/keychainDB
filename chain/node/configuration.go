@@ -10,8 +10,8 @@ var EmptyChain = &Configuration{}
 
 // ChainMember represents a member of the chain with an ID and address.
 type ChainMember struct {
-	ID      string
-	Address string
+	ID      string `json:"id"`
+	Address string `json:"address"`
 }
 
 // Equal returns true if this ChainMember is equal to another ChainMember.
