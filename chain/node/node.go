@@ -28,8 +28,10 @@ const (
 type Status int
 
 const (
+	// Unknown indicates the status of the node is not known.
+	Unknown Status = iota
 	// Syncing indicates the node is synchronizing with the chain.
-	Syncing Status = iota
+	Syncing
 	// Active indicates the node is actively participating in the chain.
 	Active
 	// Inactive indicates the node is not participating in any chain.
@@ -84,13 +86,13 @@ type Storage interface {
 // Transport defines the interface for chain node communication.
 type Transport interface {
 	// Write will write a versioned key-value pair.
-	Write(ctx context.Context, address string, key string, value []byte, version uint64) error
+	Write(ctx context.Context, address string, request *WriteRequest, response *WriteResponse) error
 	// Read will read the committed version of the key.
-	Read(ctx context.Context, address string, key string) ([]byte, error)
-	// Commit will commit the provided version of th key.
-	Commit(ctx context.Context, address string, key string, version uint64) error
+	Read(ctx context.Context, address string, request *ReadRequest, response *ReadResponse) error
+	// Commit will commit the provided version of the key.
+	Commit(ctx context.Context, address string, request *CommitRequest, response *CommitResponse) error
 	// Propagate will initiate a stream of key-value pairs from another node.
-	Propagate(ctx context.Context, address string, keyFilter storage.KeyFilter) (KeyValueReceiveStream, error)
+	Propagate(ctx context.Context, address string, request *PropagateRequest) (KeyValueReceiveStream, error)
 }
 
 type onConfigChangeMessage struct {
@@ -164,7 +166,7 @@ func (c *ChainNode) Run(ctx context.Context) {
 
 // WriteWithVersion performs a write operation with a specific version number.
 // This is used for replicated writes that are part of the chain replication protocol.
-func (c *ChainNode) WriteWithVersion(ctx context.Context, key string, value []byte, version uint64) error {
+func (c *ChainNode) WriteWithVersion(ctx context.Context, request *WriteRequest, response *WriteResponse) error {
 	state := c.state.Load()
 	if !state.Config.IsMemberByID(c.id) {
 		return ErrNotMemberOfChain
@@ -172,18 +174,19 @@ func (c *ChainNode) WriteWithVersion(ctx context.Context, key string, value []by
 
 	succ := state.Config.Successor(c.id)
 	if succ == nil {
-		err := c.store.CommittedWrite(key, value, version)
+		err := c.store.CommittedWrite(request.Key, request.Value, request.Version)
 		if err != nil {
 			return err
 		}
-		c.onCommitCh <- onCommitMessage{key: key, version: version}
+		c.onCommitCh <- onCommitMessage{key: request.Key, version: request.Version}
 		return nil
 	}
-	if err := c.store.UncommittedWrite(key, value, version); err != nil {
+	if err := c.store.UncommittedWrite(request.Key, request.Value, request.Version); err != nil {
 		return err
 	}
 
-	return c.tn.Write(ctx, succ.Address, key, value, version)
+	var resp WriteResponse
+	return c.tn.Write(ctx, succ.Address, request, &resp)
 }
 
 // InitiateReplicatedWrite starts a new replicated write operation from the head of the chain.
@@ -207,48 +210,60 @@ func (c *ChainNode) InitiateReplicatedWrite(ctx context.Context, key string, val
 		return err
 	}
 
-	return c.tn.Write(ctx, succ.Address, key, value, version)
+	req := &WriteRequest{Key: key, Value: value, Version: version}
+	var resp WriteResponse
+	return c.tn.Write(ctx, succ.Address, req, &resp)
 }
 
 // Commit commits a previously written version, making it visible for reads.
 // This is part of the two-phase commit protocol used in chain replication.
-func (c *ChainNode) Commit(ctx context.Context, key string, version uint64) error {
+func (c *ChainNode) Commit(ctx context.Context, request *CommitRequest, response *CommitResponse) error {
 	state := c.state.Load()
 	if !state.Config.IsMemberByID(c.id) {
 		return ErrNotMemberOfChain
 	}
 
-	if err := c.store.CommitVersion(key, version); err != nil {
+	if err := c.store.CommitVersion(request.Key, request.Version); err != nil {
 		return err
 	}
-	c.onCommitCh <- onCommitMessage{key: key, version: version}
+	c.onCommitCh <- onCommitMessage{key: request.Key, version: request.Version}
 
 	return nil
 }
 
 // Read retrieves the committed value for the given key.
 // If the local store has uncommitted data, it forwards the read to the tail node.
-func (c *ChainNode) Read(ctx context.Context, key string) ([]byte, error) {
+func (c *ChainNode) Read(ctx context.Context, request *ReadRequest, response *ReadResponse) error {
 	state := c.state.Load()
 	if !state.Config.IsMemberByID(c.id) {
-		return nil, ErrNotMemberOfChain
+		return ErrNotMemberOfChain
 	}
 
 	if state.Status == Syncing {
-		return nil, ErrSyncing
+		return ErrSyncing
 	}
 
-	value, err := c.store.CommittedRead(key)
+	value, err := c.store.CommittedRead(request.Key)
 	if err != nil && errors.Is(err, storage.ErrDirtyRead) {
 		tail := state.Config.Tail()
-		return c.tn.Read(ctx, tail.Address, key)
+		req := &ReadRequest{Key: request.Key}
+		var resp ReadResponse
+		if err := c.tn.Read(ctx, tail.Address, req, &resp); err != nil {
+			return err
+		}
+		response.Value = resp.Value
+		return nil
 	}
 
-	return value, err
+	if err != nil {
+		return err
+	}
+	response.Value = value
+	return nil
 }
 
 // Propagate sends key-value pairs to a requesting node through the provided stream.
-func (c *ChainNode) Propagate(ctx context.Context, keyFilter storage.KeyFilter, stream KeyValueSendStream) error {
+func (c *ChainNode) Propagate(ctx context.Context, request *PropagateRequest, stream KeyValueSendStream) error {
 	state := c.state.Load()
 	if !state.Config.IsMemberByID(c.id) {
 		return ErrNotMemberOfChain
@@ -266,12 +281,12 @@ func (c *ChainNode) Propagate(ctx context.Context, keyFilter storage.KeyFilter, 
 		return nil
 	}
 
-	return c.store.SendKeyValuePairs(ctx, sendFunc, keyFilter)
+	return c.store.SendKeyValuePairs(ctx, sendFunc, request.KeyFilter)
 }
 
 // UpdateConfiguration updates the chain configuration for this node.
-func (c *ChainNode) UpdateConfiguration(ctx context.Context, config *Configuration) error {
-	msg := onConfigChangeMessage{config: config, doneCh: make(chan bool)}
+func (c *ChainNode) UpdateConfiguration(ctx context.Context, request *UpdateConfigurationRequest, response *UpdateConfigurationResponse) error {
+	msg := onConfigChangeMessage{config: request.Configuration, doneCh: make(chan bool)}
 
 	select {
 	case c.onConfigChangeCh <- msg:
@@ -287,8 +302,15 @@ func (c *ChainNode) UpdateConfiguration(ctx context.Context, config *Configurati
 	}
 }
 
+func (c *ChainNode) Ping(request *PingRequest, response *PingResponse) {
+	state := c.state.Load()
+	response.Status = state.Status
+	response.Version = state.Config.Version
+}
+
 func (c *ChainNode) requestPropagation(ctx context.Context, address string, keyFilter storage.KeyFilter, isTail bool) error {
-	stream, err := c.tn.Propagate(ctx, address, keyFilter)
+	req := &PropagateRequest{KeyFilter: keyFilter}
+	stream, err := c.tn.Propagate(ctx, address, req)
 	if err != nil {
 		return err
 	}
@@ -340,7 +362,9 @@ func (c *ChainNode) onCommit(ctx context.Context, key string, version uint64) er
 		return nil
 	}
 
-	return c.tn.Commit(ctx, pred.Address, key, version)
+	req := &CommitRequest{Key: key, Version: version}
+	var resp CommitResponse
+	return c.tn.Commit(ctx, pred.Address, req, &resp)
 }
 
 func (c *ChainNode) onCommitRoutine(ctx context.Context) {

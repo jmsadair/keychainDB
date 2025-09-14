@@ -11,28 +11,27 @@ func TestEqual(t *testing.T) {
 	member2 := &ChainMember{ID: "member-2", Address: "127.0.0.2:8080"}
 	member3 := &ChainMember{ID: "member-3", Address: "127.0.0.3:8080"}
 
-	config1, err := NewConfiguration([]*ChainMember{member1, member2, member3})
-	require.NoError(t, err)
-	config2, err := NewConfiguration([]*ChainMember{member2, member1, member3})
-	require.NoError(t, err)
-	config3, err := NewConfiguration([]*ChainMember{member1, member2})
-	require.NoError(t, err)
-	config4, err := NewConfiguration([]*ChainMember{member1, member2, member3})
-	require.NoError(t, err)
+	config1 := NewConfiguration([]*ChainMember{member1, member2, member3}, 0)
+	config2 := NewConfiguration([]*ChainMember{member2, member1, member3}, 0)
+	config3 := NewConfiguration([]*ChainMember{member1, member2}, 0)
+	config4 := NewConfiguration([]*ChainMember{member1, member2, member3}, 1)
+	config5 := NewConfiguration([]*ChainMember{member1, member2, member3}, 0)
 
 	// Same members of the chain but different order.
 	require.False(t, config1.Equal(config2))
 	// Same order but missing the last member of the chain.
 	require.False(t, config1.Equal(config3))
+	// Same members of the chain in the same order but different version.
+	require.False(t, config1.Equal(config4))
 	// Same members of the chain in the same order.
-	require.True(t, config1.Equal(config4))
+	require.True(t, config1.Equal(config5))
 }
 
 func TestCopy(t *testing.T) {
 	member1 := &ChainMember{ID: "member-1", Address: "127.0.0.1:8080"}
+	version := uint64(1)
 
-	config, err := NewConfiguration([]*ChainMember{member1})
-	require.NoError(t, err)
+	config := NewConfiguration([]*ChainMember{member1}, version)
 	require.Len(t, config.members, 1)
 	require.Len(t, config.addressToMemberIndex, 1)
 	require.Contains(t, config.addressToMemberIndex, member1.Address)
@@ -45,6 +44,7 @@ func TestCopy(t *testing.T) {
 	configCopy.members = nil
 
 	// Ensure the original configuration as not been modified.
+	require.Equal(t, version, config.Version)
 	require.Len(t, config.members, 1)
 	require.Len(t, config.addressToMemberIndex, 1)
 	require.Contains(t, config.addressToMemberIndex, member1.Address)
@@ -53,19 +53,20 @@ func TestCopy(t *testing.T) {
 }
 
 func TestAddMemberRemoveMember(t *testing.T) {
-	config, err := NewConfiguration([]*ChainMember{})
-	require.NoError(t, err)
+	config := NewConfiguration([]*ChainMember{}, 0)
 	config = config.AddMember("member-1", "127.0.0.1:8080")
 	require.True(t, config.IsMemberByID("member-1"))
 	require.True(t, config.IsMemberByAddress("127.0.0.1:8080"))
 	require.True(t, config.IsHead("member-1"))
 	require.True(t, config.IsTail("member-1"))
+	require.Equal(t, uint64(1), config.Version)
 
 	config = config.AddMember("member-2", "127.0.0.2:8080")
 	require.True(t, config.IsMemberByID("member-1"))
 	require.True(t, config.IsMemberByID("member-2"))
 	require.True(t, config.IsHead("member-1"))
 	require.True(t, config.IsTail("member-2"))
+	require.Equal(t, uint64(2), config.Version)
 
 	config = config.AddMember("member-3", "127.0.0.3:8080")
 	require.True(t, config.IsMemberByID("member-1"))
@@ -73,6 +74,7 @@ func TestAddMemberRemoveMember(t *testing.T) {
 	require.True(t, config.IsMemberByID("member-3"))
 	require.True(t, config.IsHead("member-1"))
 	require.True(t, config.IsTail("member-3"))
+	require.Equal(t, uint64(3), config.Version)
 
 	config = config.RemoveMember("member-2")
 	require.True(t, config.IsMemberByID("member-1"))
@@ -80,6 +82,7 @@ func TestAddMemberRemoveMember(t *testing.T) {
 	require.True(t, config.IsMemberByID("member-3"))
 	require.True(t, config.IsHead("member-1"))
 	require.True(t, config.IsTail("member-3"))
+	require.Equal(t, uint64(4), config.Version)
 
 	config = config.RemoveMember("member-1")
 	require.False(t, config.IsMemberByID("member-1"))
@@ -87,11 +90,13 @@ func TestAddMemberRemoveMember(t *testing.T) {
 	require.True(t, config.IsMemberByID("member-3"))
 	require.True(t, config.IsHead("member-3"))
 	require.True(t, config.IsTail("member-3"))
+	require.Equal(t, uint64(5), config.Version)
 
 	config = config.RemoveMember("member-3")
 	require.False(t, config.IsMemberByID("member-1"))
 	require.False(t, config.IsMemberByID("member-2"))
 	require.False(t, config.IsMemberByID("member-3"))
+	require.Equal(t, uint64(6), config.Version)
 }
 
 func TestPredecessorSuccessor(t *testing.T) {
@@ -99,8 +104,7 @@ func TestPredecessorSuccessor(t *testing.T) {
 	middle := &ChainMember{ID: "member-2", Address: "127.0.0.2:8080"}
 	tail := &ChainMember{ID: "member-3", Address: "127.0.0.3:8080"}
 
-	config, err := NewConfiguration([]*ChainMember{head, middle, tail})
-	require.NoError(t, err)
+	config := NewConfiguration([]*ChainMember{head, middle, tail}, 0)
 
 	pred := config.Predecessor(head.ID)
 	require.Nil(t, pred)
@@ -127,8 +131,7 @@ func TestChainBytes(t *testing.T) {
 	middle := &ChainMember{ID: "member-2", Address: "127.0.0.2:8080"}
 	tail := &ChainMember{ID: "member-3", Address: "127.0.0.3:8080"}
 
-	config, err := NewConfiguration([]*ChainMember{head, middle, tail})
-	require.NoError(t, err)
+	config := NewConfiguration([]*ChainMember{head, middle, tail}, 10)
 
 	b, err := config.Bytes()
 	require.NoError(t, err)
@@ -142,8 +145,7 @@ func TestIsHeadIsTail(t *testing.T) {
 	middle := &ChainMember{ID: "member-2", Address: "127.0.0.2:8080"}
 	tail := &ChainMember{ID: "member-3", Address: "127.0.0.3:8080"}
 
-	config, err := NewConfiguration([]*ChainMember{head, middle, tail})
-	require.NoError(t, err)
+	config := NewConfiguration([]*ChainMember{head, middle, tail}, 0)
 
 	require.True(t, config.IsHead(head.ID))
 	require.False(t, config.IsHead(middle.ID))

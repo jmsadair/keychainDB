@@ -82,14 +82,13 @@ func TestApply(t *testing.T) {
 	log = raft.Log{Data: removeOpBytes}
 	result, ok = fsm.Apply(&log).(*chainnode.Configuration)
 	require.True(t, ok)
-	require.True(t, chainnode.EmptyChain.Equal(result))
+	require.True(t, result.Equal(&chainnode.Configuration{Version: 2}))
 }
 
 func TestSnapshotRestore(t *testing.T) {
 	fsm := NewFSM()
 	member := &chainnode.ChainMember{ID: "member-1", Address: "127.0.0.1:8080"}
-	config, err := chainnode.NewConfiguration([]*chainnode.ChainMember{member})
-	require.NoError(t, err)
+	config := chainnode.NewConfiguration([]*chainnode.ChainMember{member}, 0)
 
 	// Create a snapshot from the FSM state and ensure its encoded state is correct.
 	fsm.configuration = config
