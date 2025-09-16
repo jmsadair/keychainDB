@@ -46,17 +46,26 @@ func (s *Server) Run(ctx context.Context) error {
 	grpcServer := grpc.NewServer()
 	pb.RegisterChainServiceServer(grpcServer, s)
 
+	errCh := make(chan error, 1)
 	var wg sync.WaitGroup
+	wg.Add(1)
+
 	go func() {
-		wg.Done()
-		grpcServer.Serve(listener)
+		defer wg.Done()
+		err := grpcServer.Serve(listener)
+		if err != nil && err != grpc.ErrServerStopped {
+			errCh <- err
+		}
 	}()
 
-	<-ctx.Done()
-	grpcServer.GracefulStop()
-	wg.Wait()
-
-	return nil
+	select {
+	case err := <-errCh:
+		return err
+	case <-ctx.Done():
+		grpcServer.GracefulStop()
+		wg.Wait()
+		return nil
+	}
 }
 
 // Write handles incoming requests from other nodes in the chain to write a particular version of a key-value pair to storage.
