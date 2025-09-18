@@ -2,7 +2,6 @@ package coordinator
 
 import (
 	"context"
-	"sync"
 
 	coordinatorhttp "github.com/jmsadair/keychain/coordinator/http"
 	"github.com/jmsadair/keychain/coordinator/node"
@@ -37,20 +36,17 @@ func NewServer(
 }
 
 func (s *Server) Run(ctx context.Context) error {
-	var wg sync.WaitGroup
-	errCh := make(chan error)
-	wg.Add(2)
-
+	coordinatorErrCh := make(chan error)
 	go func() {
-		s.Coordinator.Run(ctx)
-		wg.Done()
+		coordinatorErrCh <- s.Coordinator.Run(ctx)
 	}()
+	httpServerErrCh := make(chan error)
 	go func() {
-		errCh <- s.HTTP.Run(ctx)
-		wg.Done()
+		httpServerErrCh <- s.HTTP.Run(ctx)
 	}()
 
-	err := <-errCh
-	wg.Wait()
-	return err
+	if err := <-httpServerErrCh; err != nil {
+		return err
+	}
+	return <-coordinatorErrCh
 }
