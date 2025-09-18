@@ -1,0 +1,37 @@
+package http
+
+import (
+	"context"
+	"net/http"
+	"time"
+
+	"github.com/jmsadair/keychain/chain/node"
+)
+
+const defaultShutdownTimeout = 500 * time.Millisecond
+
+type Server struct {
+	Address string
+	Node    *node.ChainNode
+}
+
+func (s *Server) Run(ctx context.Context) error {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/get", s.handleGet)
+	mux.HandleFunc("/set", s.handleSet)
+	httpServer := &http.Server{Addr: s.Address, Handler: mux}
+
+	errCh := make(chan error)
+	go func() {
+		<-ctx.Done()
+		ctx, cancel := context.WithTimeout(context.Background(), defaultShutdownTimeout)
+		defer cancel()
+		errCh <- httpServer.Shutdown(ctx)
+	}()
+
+	if err := httpServer.ListenAndServe(); err != http.ErrServerClosed {
+		return err
+	}
+
+	return <-errCh
+}
