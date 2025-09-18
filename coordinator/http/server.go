@@ -16,13 +16,14 @@ type Server struct {
 }
 
 func (s *Server) Run(ctx context.Context) error {
-	http.HandleFunc("/cluster/join", s.handleJoinCluster)
-	http.HandleFunc("/cluster/remove", s.handleRemoveFromCluster)
-	http.HandleFunc("/cluster/status", s.handleClusterStatus)
-	http.HandleFunc("/chain/add", s.handleAddChainMember)
-	http.HandleFunc("/chain/remove", s.handleRemoveChainMember)
-	http.HandleFunc("/chain/configuration", s.handleChainConfiguration)
-	httpServer := &http.Server{Addr: s.Address}
+	mux := http.NewServeMux()
+	mux.HandleFunc("/cluster/join", s.handleJoinCluster)
+	mux.HandleFunc("/cluster/remove", s.handleRemoveFromCluster)
+	mux.HandleFunc("/cluster/status", s.handleClusterStatus)
+	mux.HandleFunc("/chain/add", s.handleAddChainMember)
+	mux.HandleFunc("/chain/remove", s.handleRemoveChainMember)
+	mux.HandleFunc("/chain/configuration", s.handleChainConfiguration)
+	httpServer := &http.Server{Addr: s.Address, Handler: mux}
 
 	errCh := make(chan error)
 	go func() {
@@ -32,7 +33,7 @@ func (s *Server) Run(ctx context.Context) error {
 		errCh <- httpServer.Shutdown(ctx)
 	}()
 
-	if err := http.ListenAndServe(s.Address, nil); err != http.ErrServerClosed {
+	if err := httpServer.ListenAndServe(); err != http.ErrServerClosed {
 		return err
 	}
 
