@@ -52,6 +52,11 @@ func (m *mockRaft) ClusterStatus() (*raft.Status, error) {
 	return args.Get(0).(*raft.Status), args.Error(1)
 }
 
+func (m *mockRaft) Shutdown() error {
+	args := m.MethodCalled("Shutdown")
+	return args.Error(0)
+}
+
 type mockTransport struct {
 	mock.Mock
 }

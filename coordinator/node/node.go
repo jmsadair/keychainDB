@@ -29,6 +29,7 @@ type RaftProtocol interface {
 	JoinCluster(ctx context.Context, id, address string) error
 	RemoveFromCluster(ctx context.Context, id string) error
 	ClusterStatus() (*raft.Status, error)
+	Shutdown() error
 }
 
 type memberState struct {
@@ -61,11 +62,29 @@ func NewCoordinator(address string, tn Transport, raft RaftProtocol) *Coordinato
 	}
 }
 
-func (c *Coordinator) Run(ctx context.Context) {
-	go c.heartbeatLoop(ctx)
-	go c.failedChainMemberLoop(ctx)
-	go c.leadershipChangeLoop(ctx)
-	go c.configSyncLoop(ctx)
+func (c *Coordinator) Run(ctx context.Context) error {
+	var wg sync.WaitGroup
+	wg.Add(4)
+	go func() {
+		defer wg.Done()
+		c.heartbeatLoop(ctx)
+	}()
+	go func() {
+		defer wg.Done()
+		c.failedChainMemberLoop(ctx)
+	}()
+	go func() {
+		defer wg.Done()
+		c.leadershipChangeLoop(ctx)
+	}()
+	go func() {
+		defer wg.Done()
+		c.configSyncLoop(ctx)
+	}()
+
+	<-ctx.Done()
+	wg.Wait()
+	return c.Raft.Shutdown()
 }
 
 func (c *Coordinator) AddMember(ctx context.Context, id, address string) error {
