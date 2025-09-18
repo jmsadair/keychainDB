@@ -160,8 +160,18 @@ func NewChainNode(id, address string, store Storage, tn Transport) *ChainNode {
 
 // Run will start this node.
 func (c *ChainNode) Run(ctx context.Context) {
-	go c.onCommitRoutine(ctx)
-	go c.onConfigChangeRoutine(ctx)
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		c.onCommitRoutine(ctx)
+	}()
+	go func() {
+		defer wg.Done()
+		c.onConfigChangeRoutine(ctx)
+	}()
+	<-ctx.Done()
+	wg.Wait()
 }
 
 // WriteWithVersion performs a write operation with a specific version number.
