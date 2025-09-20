@@ -40,21 +40,23 @@ type Status struct {
 }
 
 type RaftBackend struct {
-	raft  *raft.Raft
-	fsm   *FSM
-	store *storage.PersistentStorage
+	ID      string
+	Address string
+	raft    *raft.Raft
+	fsm     *FSM
+	store   *storage.PersistentStorage
 }
 
-func NewRaftBackend(nodeID string, bindAddr string, storePath string, snapshotStorePath string, bootstrap bool) (*RaftBackend, error) {
+func NewRaftBackend(id string, address string, storePath string, snapshotStorePath string, bootstrap bool) (*RaftBackend, error) {
 	store, err := storage.NewPersistentStorage(storePath)
 	if err != nil {
 		return nil, err
 	}
-	addr, err := net.ResolveTCPAddr("tcp", bindAddr)
+	resolved, err := net.ResolveTCPAddr("tcp", address)
 	if err != nil {
 		return nil, err
 	}
-	tn, err := raft.NewTCPTransport(bindAddr, addr, maxPool, transportTimeout, os.Stderr)
+	tn, err := raft.NewTCPTransport(address, resolved, maxPool, transportTimeout, os.Stderr)
 	if err != nil {
 		return nil, err
 	}
@@ -65,7 +67,7 @@ func NewRaftBackend(nodeID string, bindAddr string, storePath string, snapshotSt
 	}
 
 	config := raft.DefaultConfig()
-	config.LocalID = raft.ServerID(nodeID)
+	config.LocalID = raft.ServerID(id)
 	fsm := NewFSM()
 	r, err := raft.NewRaft(config, fsm, store, store, snapshotStore, tn)
 	if err != nil {
@@ -80,7 +82,7 @@ func NewRaftBackend(nodeID string, bindAddr string, storePath string, snapshotSt
 		}
 	}
 
-	return &RaftBackend{raft: r, fsm: fsm, store: store}, nil
+	return &RaftBackend{ID: id, Address: address, raft: r, fsm: fsm, store: store}, nil
 }
 
 func (rb *RaftBackend) Shutdown() error {

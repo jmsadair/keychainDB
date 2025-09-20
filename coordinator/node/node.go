@@ -40,7 +40,7 @@ type memberState struct {
 
 type Coordinator struct {
 	Raft                RaftProtocol
-	address             string
+	Address             string
 	tn                  Transport
 	memberStates        map[string]*memberState
 	isLeader            bool
@@ -52,7 +52,7 @@ type Coordinator struct {
 
 func NewCoordinator(address string, tn Transport, raft RaftProtocol) *Coordinator {
 	return &Coordinator{
-		address:             address,
+		Address:             address,
 		tn:                  tn,
 		Raft:                raft,
 		leadershipChangeCh:  raft.LeaderCh(),
@@ -63,27 +63,25 @@ func NewCoordinator(address string, tn Transport, raft RaftProtocol) *Coordinato
 }
 
 func (c *Coordinator) Run(ctx context.Context) error {
-	var wg sync.WaitGroup
-	wg.Add(4)
-	go func() {
-		defer wg.Done()
+	g, ctx := errgroup.WithContext(ctx)
+	g.Go(func() error {
 		c.heartbeatLoop(ctx)
-	}()
-	go func() {
-		defer wg.Done()
+		return nil
+	})
+	g.Go(func() error {
 		c.failedChainMemberLoop(ctx)
-	}()
-	go func() {
-		defer wg.Done()
+		return nil
+	})
+	g.Go(func() error {
 		c.leadershipChangeLoop(ctx)
-	}()
-	go func() {
-		defer wg.Done()
+		return nil
+	})
+	g.Go(func() error {
 		c.configSyncLoop(ctx)
-	}()
+		return nil
+	})
 
-	<-ctx.Done()
-	wg.Wait()
+	g.Wait()
 	return c.Raft.Shutdown()
 }
 

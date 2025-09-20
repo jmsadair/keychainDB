@@ -5,11 +5,17 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/raft"
 	chainnode "github.com/jmsadair/keychain/chain/node"
 	"github.com/stretchr/testify/require"
 )
 
-const leaderTimeout = 5 * time.Second
+func waitForLeader(t *testing.T, expectedLeader *RaftBackend) {
+	require.Eventually(t, func() bool {
+		_, leader := expectedLeader.raft.LeaderWithID()
+		return leader == raft.ServerID(expectedLeader.ID)
+	}, 5*time.Second, 100*time.Millisecond)
+}
 
 func newTestRaftBackend(t *testing.T, nodeID string, address string, bootstrap bool) *RaftBackend {
 	storeDir := t.TempDir()
@@ -43,13 +49,7 @@ func TestJoinCluster(t *testing.T) {
 		require.NoError(t, follower2.Shutdown())
 	}()
 
-	leaderCh := leader.LeadershipCh()
-	select {
-	case isLeader := <-leaderCh:
-		require.True(t, isLeader)
-	case <-time.After(leaderTimeout):
-		t.Fatal("failed to elect leader")
-	}
+	waitForLeader(t, leader)
 
 	status, err := leader.ClusterStatus()
 	require.NoError(t, err)
@@ -110,13 +110,7 @@ func TestAddRemoveChainMember(t *testing.T) {
 		require.NoError(t, leader.Shutdown())
 	}()
 
-	leaderCh := leader.LeadershipCh()
-	select {
-	case isLeader := <-leaderCh:
-		require.True(t, isLeader)
-	case <-time.After(leaderTimeout):
-		t.Fatal("failed to elect leader")
-	}
+	waitForLeader(t, leader)
 
 	// Chain configuration should initially not contain any members.
 	readConfig, err := leader.ReadChainConfiguration(context.TODO())

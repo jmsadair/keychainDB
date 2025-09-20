@@ -16,6 +16,13 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func waitForLeader(t *testing.T, srv *Server) {
+	require.Eventually(t, func() bool {
+		status, err := srv.Raft.ClusterStatus()
+		return err == nil && status.Leader == srv.Raft.ID
+	}, 5*time.Second, 100*time.Millisecond)
+}
+
 func makeServer(t *testing.T, id string, httpAddr string, raftAddr string, bootstrap bool) *Server {
 	tn, err := chaingrpc.NewClient()
 	require.NoError(t, err)
@@ -56,41 +63,26 @@ func startCluster(ctx context.Context, idToServer map[string]*Server) func() {
 	}
 }
 
-func waitForLeadership(t *testing.T, expectedLeader *Server, timeout time.Duration) {
-	status, err := expectedLeader.Raft.ClusterStatus()
-	require.NoError(t, err)
-	if status.Leader == expectedLeader.ID {
-		return
-	}
-	leaderCh := expectedLeader.Raft.LeadershipCh()
-	select {
-	case isLeader := <-leaderCh:
-		require.True(t, isLeader)
-	case <-time.After(timeout):
-		t.Fatal("failed to elect leader")
-	}
-}
-
 func TestJoinClusterThenRemove(t *testing.T) {
 	idToServer, bootstrapped := makeCluster(t)
 	cancel := startCluster(context.Background(), idToServer)
 	defer cancel()
-	waitForLeadership(t, idToServer[bootstrapped], 3*time.Second)
+	waitForLeader(t, idToServer[bootstrapped])
 
-	statusURL := fmt.Sprintf("http://%s/cluster/status", idToServer[bootstrapped].HTTPAddr)
+	statusURL := fmt.Sprintf("http://%s/cluster/status", idToServer[bootstrapped].HTTPServer.Address)
 	resp, err := http.Get(statusURL)
 	require.NoError(t, err)
 	var status raft.Status
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&status))
 	require.Len(t, status.Members, 1)
-	require.Equal(t, status.Members[bootstrapped], idToServer[bootstrapped].RaftAddr)
+	require.Equal(t, status.Members[bootstrapped], idToServer[bootstrapped].Raft.Address)
 
-	joinURL := fmt.Sprintf("http://%s/cluster/join", idToServer[bootstrapped].HTTPAddr)
+	joinURL := fmt.Sprintf("http://%s/cluster/join", idToServer[bootstrapped].HTTPServer.Address)
 	for id, srv := range idToServer {
 		if id == bootstrapped {
 			continue
 		}
-		req := coordinatorhttp.JoinClusterRequest{ID: id, Address: srv.RaftAddr}
+		req := coordinatorhttp.JoinClusterRequest{ID: id, Address: srv.Raft.Address}
 		b, err := json.Marshal(req)
 		require.NoError(t, err)
 		_, err = http.Post(joinURL, "application/json", bytes.NewReader(b))
@@ -103,10 +95,10 @@ func TestJoinClusterThenRemove(t *testing.T) {
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&status))
 	require.Len(t, status.Members, 3)
 	for id, srv := range idToServer {
-		require.Equal(t, status.Members[id], srv.RaftAddr)
+		require.Equal(t, status.Members[id], srv.Raft.Address)
 	}
 
-	removeURL := fmt.Sprintf("http://%s/cluster/remove", idToServer[bootstrapped].HTTPAddr)
+	removeURL := fmt.Sprintf("http://%s/cluster/remove", idToServer[bootstrapped].HTTPServer.Address)
 	for id := range idToServer {
 		if id == bootstrapped {
 			continue
@@ -123,5 +115,5 @@ func TestJoinClusterThenRemove(t *testing.T) {
 	status = raft.Status{}
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&status))
 	require.Len(t, status.Members, 1)
-	require.Equal(t, status.Members[bootstrapped], idToServer[bootstrapped].RaftAddr)
+	require.Equal(t, status.Members[bootstrapped], idToServer[bootstrapped].Raft.Address)
 }
