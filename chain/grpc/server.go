@@ -3,11 +3,11 @@ package grpc
 import (
 	"context"
 	"net"
-	"sync"
 
 	"github.com/jmsadair/keychain/chain/node"
 	"github.com/jmsadair/keychain/chain/storage"
 	pb "github.com/jmsadair/keychain/proto/pbchain"
+	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 )
 
@@ -23,18 +23,18 @@ func (g *gRPCSendStream) Send(kv *storage.KeyValuePair) error {
 // Server is a gRPC-based server implementation for chain nodes.
 type Server struct {
 	pb.ChainServiceServer
-	address string
-	node    *node.ChainNode
+	Address string
+	Node    *node.ChainNode
 }
 
 // NewServer creates a new Server instance.
 func NewServer(address string, node *node.ChainNode) *Server {
-	return &Server{address: address, node: node}
+	return &Server{Address: address, Node: node}
 }
 
 // Run will start and run the server. Run should only be called once and is blocking.
 func (s *Server) Run(ctx context.Context) error {
-	resolved, err := net.ResolveTCPAddr("tcp", s.address)
+	resolved, err := net.ResolveTCPAddr("tcp", s.Address)
 	if err != nil {
 		return err
 	}
@@ -46,26 +46,21 @@ func (s *Server) Run(ctx context.Context) error {
 	grpcServer := grpc.NewServer()
 	pb.RegisterChainServiceServer(grpcServer, s)
 
-	errCh := make(chan error, 1)
-	var wg sync.WaitGroup
-	wg.Add(1)
-
-	go func() {
-		defer wg.Done()
+	g, ctx := errgroup.WithContext(ctx)
+	g.Go(func() error {
 		err := grpcServer.Serve(listener)
 		if err != nil && err != grpc.ErrServerStopped {
-			errCh <- err
+			return err
 		}
-	}()
-
-	select {
-	case err := <-errCh:
-		return err
-	case <-ctx.Done():
-		grpcServer.GracefulStop()
-		wg.Wait()
 		return nil
-	}
+	})
+	g.Go(func() error {
+		<-ctx.Done()
+		grpcServer.GracefulStop()
+		return nil
+	})
+
+	return g.Wait()
 }
 
 // Write handles incoming requests from other nodes in the chain to write a particular version of a key-value pair to storage.
@@ -73,7 +68,7 @@ func (s *Server) Write(ctx context.Context, pbRequest *pb.WriteRequest) (*pb.Wri
 	var request node.WriteRequest
 	request.FromProto(pbRequest)
 	var response node.WriteResponse
-	if err := s.node.WriteWithVersion(ctx, &request, &response); err != nil {
+	if err := s.Node.WriteWithVersion(ctx, &request, &response); err != nil {
 		return nil, err
 	}
 	return response.Proto(), nil
@@ -84,7 +79,7 @@ func (s *Server) Read(ctx context.Context, pbRequest *pb.ReadRequest) (*pb.ReadR
 	var request node.ReadRequest
 	request.FromProto(pbRequest)
 	var response node.ReadResponse
-	if err := s.node.Read(ctx, &request, &response); err != nil {
+	if err := s.Node.Read(ctx, &request, &response); err != nil {
 		return nil, err
 	}
 	return response.Proto(), nil
@@ -95,7 +90,7 @@ func (s *Server) Commit(ctx context.Context, pbRequest *pb.CommitRequest) (*pb.C
 	var request node.CommitRequest
 	request.FromProto(pbRequest)
 	var response node.CommitResponse
-	if err := s.node.Commit(ctx, &request, &response); err != nil {
+	if err := s.Node.Commit(ctx, &request, &response); err != nil {
 		return nil, err
 	}
 	return response.Proto(), nil
@@ -106,7 +101,7 @@ func (s *Server) UpdateConfiguration(ctx context.Context, pbRequest *pb.UpdateCo
 	var request node.UpdateConfigurationRequest
 	request.FromProto(pbRequest)
 	var response node.UpdateConfigurationResponse
-	if err := s.node.UpdateConfiguration(ctx, &request, &response); err != nil {
+	if err := s.Node.UpdateConfiguration(ctx, &request, &response); err != nil {
 		return nil, err
 	}
 	return response.Proto(), nil
@@ -116,7 +111,7 @@ func (s *Server) UpdateConfiguration(ctx context.Context, pbRequest *pb.UpdateCo
 func (s *Server) Propagate(pbRequest *pb.PropagateRequest, stream pb.ChainService_PropagateServer) error {
 	var request node.PropagateRequest
 	request.FromProto(pbRequest)
-	return s.node.Propagate(stream.Context(), &request, &gRPCSendStream{stream: stream})
+	return s.Node.Propagate(stream.Context(), &request, &gRPCSendStream{stream: stream})
 }
 
 // Ping handles requests from the coordinator for checking if this node is alive.
@@ -124,6 +119,6 @@ func (s *Server) Ping(ctx context.Context, pbRequest *pb.PingRequest) (*pb.PingR
 	var request node.PingRequest
 	request.FromProto(pbRequest)
 	var response node.PingResponse
-	s.node.Ping(&request, &response)
+	s.Node.Ping(&request, &response)
 	return response.Proto(), nil
 }

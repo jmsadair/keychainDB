@@ -8,8 +8,12 @@ import (
 	"github.com/dgraph-io/ristretto/v2/z"
 )
 
-// ErrDirtyRead is returned when a committed read is performed and there are one or more uncommitted writes.
-var ErrDirtyRead = errors.New("latest object version is dirty")
+var (
+	// ErrDirtyRead is returned when a committed read is performed and there are one or more uncommitted writes.
+	ErrDirtyRead = errors.New("latest object version is dirty")
+	// ErrKeyDoesNotExist is returned when there is an attempt to read a non-existent key.
+	ErrKeyDoesNotExist = errors.New("key does not exist")
+)
 
 // KeyFilter is a filter for selecting specific keys when listing keys from storage.
 type KeyFilter int
@@ -246,7 +250,10 @@ func commit(txn *badger.Txn, key string, version uint64) error {
 }
 
 func read(txn *badger.Txn, key string) ([]byte, error) {
-	md, err := getOrCreateMetadata(txn, key)
+	md, err := getMetadata(txn, key)
+	if err == badger.ErrKeyNotFound {
+		return nil, ErrKeyDoesNotExist
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -302,6 +309,19 @@ func write(txn *badger.Txn, key string, value []byte, version uint64, shouldComm
 	}
 
 	return version, nil
+}
+
+func getMetadata(txn *badger.Txn, key string) (*objectMetadata, error) {
+	mdKey := newMetadataKey(key)
+	item, err := txn.Get(mdKey)
+	if err != nil {
+		return nil, err
+	}
+	mdBytes, err := item.ValueCopy(nil)
+	if err != nil {
+		return nil, err
+	}
+	return newObjectMetadataFromBytes(mdBytes)
 }
 
 func getOrCreateMetadata(txn *badger.Txn, key string) (*objectMetadata, error) {
