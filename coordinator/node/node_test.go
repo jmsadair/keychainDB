@@ -86,7 +86,7 @@ func TestNewCoordinator(t *testing.T) {
 	raft.AssertExpectations(t)
 
 	require.NotNil(t, coordinator)
-	require.Equal(t, addr, coordinator.address)
+	require.Equal(t, addr, coordinator.Address)
 	require.NotNil(t, coordinator.memberStates)
 	require.NotNil(t, coordinator.failedChainMemberCh)
 	require.False(t, coordinator.isLeader)

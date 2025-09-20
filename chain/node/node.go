@@ -132,8 +132,11 @@ func (ct *cancellableTask) run(ctx context.Context, fn func(ctx context.Context)
 
 // ChainNode represents a node in a chain replication system.
 type ChainNode struct {
-	ID               string
-	Address          string
+	// The ID for this node.
+	ID string
+	// The address for this node.
+	Address string
+
 	store            Storage
 	tn               Transport
 	onCommitCh       chan onCommitMessage
@@ -440,6 +443,7 @@ func (c *ChainNode) onConfigChangeRoutine(ctx context.Context) {
 			hasNewPred := !state.Config.Predecessor(c.ID).Equal(msg.config.Predecessor(c.ID))
 			hasNewSucc := !state.Config.Successor(c.ID).Equal(msg.config.Successor(c.ID))
 
+			// Node has lost chain membership. Cancel any ongoing syncing and become inactive.
 			if lostMembership {
 				onNewPredTask.cancelAndWait()
 				onNewSuccTask.cancelAndWait()
@@ -448,6 +452,8 @@ func (c *ChainNode) onConfigChangeRoutine(ctx context.Context) {
 				c.state.Store(newState)
 				continue
 			}
+			// Node is a new member of a chain. Cancel any ongoing syncing. Enter the active state
+			// if this node is the sole member of the chain.
 			if isNewMember {
 				onNewPredTask.cancelAndWait()
 				onNewSuccTask.cancelAndWait()
@@ -456,10 +462,14 @@ func (c *ChainNode) onConfigChangeRoutine(ctx context.Context) {
 					newState.Status = Active
 				}
 			}
+			// Node has a new predecessor. Cancel any syncing that was taking place with the prior
+			// predecessor and begin syncing with the new one.
 			if hasNewPred {
 				onNewPredTask.cancelAndWait()
 				runNewPredecessorTask(msg.config, newState.Status == Syncing)
 			}
+			// Node has a new successor. Cancel any syncing that was taking place with the prior
+			// successor and begin syncing with the new one.
 			if hasNewSucc {
 				onNewSuccTask.cancelAndWait()
 				runNewSuccessorTask(msg.config, newState.Status == Syncing)
