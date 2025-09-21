@@ -19,8 +19,14 @@ func keyIsValid(key string) bool {
 }
 
 type SetRequest struct {
-	Key   string `json:"key"`
-	Value []byte `json:"value"`
+	Key           string `json:"key"`
+	Value         []byte `json:"value"`
+	ConfigVersion uint64 `json:"config_version"`
+}
+
+type GetRequest struct {
+	Key           string `json:"key"`
+	ConfigVersion uint64 `json:"config_version"`
 }
 
 func (s *Server) handleSet(w http.ResponseWriter, r *http.Request) {
@@ -42,10 +48,11 @@ func (s *Server) handleSet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = s.Node.InitiateReplicatedWrite(r.Context(), req.Key, req.Value)
+	err = s.Node.InitiateReplicatedWrite(r.Context(), req.Key, req.Value, req.ConfigVersion)
 	switch err {
 	case nil:
 		w.WriteHeader(http.StatusNoContent)
+	case node.ErrInvalidConfigVersion:
 	case node.ErrNotHead:
 		http.Error(w, err.Error(), http.StatusConflict)
 	default:
@@ -59,18 +66,26 @@ func (s *Server) handleGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	key := r.URL.Query().Get("key")
-	if !keyIsValid(key) {
+	var req GetRequest
+	defer r.Body.Close()
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if !keyIsValid(req.Key) {
 		http.Error(w, ErrInvalidKey.Error(), http.StatusBadRequest)
 		return
 	}
 
 	var resp node.ReadResponse
-	err := s.Node.Read(r.Context(), &node.ReadRequest{Key: key}, &resp)
+	err = s.Node.Read(r.Context(), &node.ReadRequest{Key: req.Key, ConfigVersion: req.ConfigVersion}, &resp)
 	switch err {
 	case nil:
 		w.Header().Set("Content-Type", "application/octet-stream")
 		w.Write(resp.Value)
+	case node.ErrInvalidConfigVersion:
+		http.Error(w, err.Error(), http.StatusConflict)
 	case storage.ErrKeyDoesNotExist:
 		http.Error(w, err.Error(), http.StatusNotFound)
 	default:

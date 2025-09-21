@@ -18,6 +18,10 @@ var (
 	ErrSyncing = errors.New("syncing and cannot serve reads at this time")
 	// Indicates that a node is not a member of any chain.
 	ErrNotMemberOfChain = errors.New("not a member of the chain")
+	// Indicates that the client provided configuration version does not match the configuration
+	// that this node has. This could mean that the client has an out-of-date configuration or
+	// that this node does.
+	ErrInvalidConfigVersion = errors.New("configuration versions not match")
 )
 
 const (
@@ -183,6 +187,9 @@ func (c *ChainNode) WriteWithVersion(ctx context.Context, request *WriteRequest,
 	if !state.Config.IsMemberByID(c.ID) {
 		return ErrNotMemberOfChain
 	}
+	if request.ConfigVersion != state.Config.Version {
+		return ErrInvalidConfigVersion
+	}
 
 	succ := state.Config.Successor(c.ID)
 	if succ == nil {
@@ -203,13 +210,16 @@ func (c *ChainNode) WriteWithVersion(ctx context.Context, request *WriteRequest,
 
 // InitiateReplicatedWrite starts a new replicated write operation from the head of the chain.
 // This method can only be called on the head node and will generate a new version number.
-func (c *ChainNode) InitiateReplicatedWrite(ctx context.Context, key string, value []byte) error {
+func (c *ChainNode) InitiateReplicatedWrite(ctx context.Context, key string, value []byte, configVersion uint64) error {
 	state := c.state.Load()
 	if !state.Config.IsMemberByID(c.ID) {
 		return ErrNotMemberOfChain
 	}
 	if !state.Config.IsHead(c.ID) {
 		return ErrNotHead
+	}
+	if configVersion != state.Config.Version {
+		return ErrInvalidConfigVersion
 	}
 
 	succ := state.Config.Successor(c.ID)
@@ -234,6 +244,9 @@ func (c *ChainNode) Commit(ctx context.Context, request *CommitRequest, response
 	if !state.Config.IsMemberByID(c.ID) {
 		return ErrNotMemberOfChain
 	}
+	if request.ConfigVersion != state.Config.Version {
+		return ErrInvalidConfigVersion
+	}
 
 	if err := c.store.CommitVersion(request.Key, request.Version); err != nil {
 		return err
@@ -250,7 +263,9 @@ func (c *ChainNode) Read(ctx context.Context, request *ReadRequest, response *Re
 	if !state.Config.IsMemberByID(c.ID) {
 		return ErrNotMemberOfChain
 	}
-
+	if request.ConfigVersion != state.Config.Version {
+		return ErrInvalidConfigVersion
+	}
 	if state.Status == Syncing {
 		return ErrSyncing
 	}
@@ -279,6 +294,9 @@ func (c *ChainNode) Propagate(ctx context.Context, request *PropagateRequest, st
 	state := c.state.Load()
 	if !state.Config.IsMemberByID(c.ID) {
 		return ErrNotMemberOfChain
+	}
+	if request.ConfigVersion != state.Config.Version {
+		return ErrInvalidConfigVersion
 	}
 	if state.Status == Syncing {
 		return ErrSyncing
@@ -437,6 +455,11 @@ func (c *ChainNode) onConfigChangeRoutine(ctx context.Context) {
 			}
 
 			state := c.state.Load()
+			if state.Config.Version >= msg.config.Version {
+				close(msg.doneCh)
+				continue
+			}
+
 			newState := &State{Config: msg.config, Status: state.Status}
 			lostMembership := state.Config.IsMemberByID(c.ID) && !msg.config.IsMemberByID(c.ID)
 			isNewMember := !state.Config.IsMemberByID(c.ID) && msg.config.IsMemberByID(c.ID)

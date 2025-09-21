@@ -274,7 +274,9 @@ type WriteRequest struct {
 	// The value for the key.
 	Value []byte `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
 	// The version of the key.
-	Version       uint64 `protobuf:"varint,3,opt,name=version,proto3" json:"version,omitempty"`
+	Version uint64 `protobuf:"varint,3,opt,name=version,proto3" json:"version,omitempty"`
+	// The configuration version.
+	ConfigVersion uint64 `protobuf:"varint,4,opt,name=configVersion,proto3" json:"configVersion,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -330,6 +332,13 @@ func (x *WriteRequest) GetVersion() uint64 {
 	return 0
 }
 
+func (x *WriteRequest) GetConfigVersion() uint64 {
+	if x != nil {
+		return x.ConfigVersion
+	}
+	return 0
+}
+
 // WriteResponse is the response to a WriteRequest.
 type WriteResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -371,7 +380,9 @@ func (*WriteResponse) Descriptor() ([]byte, []int) {
 type ReadRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The key being read.
-	Key           string `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	Key string `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	// The configuration version.
+	ConfigVersion uint64 `protobuf:"varint,4,opt,name=configVersion,proto3" json:"configVersion,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -411,6 +422,13 @@ func (x *ReadRequest) GetKey() string {
 		return x.Key
 	}
 	return ""
+}
+
+func (x *ReadRequest) GetConfigVersion() uint64 {
+	if x != nil {
+		return x.ConfigVersion
+	}
+	return 0
 }
 
 // ReadResponse is the response to a ReadRequest and contains the value of the key read.
@@ -463,7 +481,9 @@ func (x *ReadResponse) GetValue() []byte {
 type PropagateRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Which type of key should be listed.
-	KeyType       KeyType `protobuf:"varint,1,opt,name=key_type,json=keyType,proto3,enum=chain.KeyType" json:"key_type,omitempty"`
+	KeyType KeyType `protobuf:"varint,1,opt,name=key_type,json=keyType,proto3,enum=chain.KeyType" json:"key_type,omitempty"`
+	// The configuration version.
+	ConfigVersion uint64 `protobuf:"varint,4,opt,name=configVersion,proto3" json:"configVersion,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -503,6 +523,13 @@ func (x *PropagateRequest) GetKeyType() KeyType {
 		return x.KeyType
 	}
 	return KeyType_KEYTYPE_ALL
+}
+
+func (x *PropagateRequest) GetConfigVersion() uint64 {
+	if x != nil {
+		return x.ConfigVersion
+	}
+	return 0
 }
 
 // KeyValuePair is a key-value pair stored by a node of a chain.
@@ -584,7 +611,9 @@ type CommitRequest struct {
 	// The key being committed.
 	Key string `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
 	// The version of the key being committed.
-	Version       uint64 `protobuf:"varint,2,opt,name=version,proto3" json:"version,omitempty"`
+	Version uint64 `protobuf:"varint,2,opt,name=version,proto3" json:"version,omitempty"`
+	// The configuration version.
+	ConfigVersion uint64 `protobuf:"varint,4,opt,name=configVersion,proto3" json:"configVersion,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -629,6 +658,13 @@ func (x *CommitRequest) GetKey() string {
 func (x *CommitRequest) GetVersion() uint64 {
 	if x != nil {
 		return x.Version
+	}
+	return 0
+}
+
+func (x *CommitRequest) GetConfigVersion() uint64 {
+	if x != nil {
+		return x.ConfigVersion
 	}
 	return 0
 }
@@ -773,26 +809,30 @@ const file_chain_proto_rawDesc = "" +
 	"\amembers\x18\x02 \x03(\v2\x12.chain.ChainMemberR\amembers\"X\n" +
 	"\x1aUpdateConfigurationRequest\x12:\n" +
 	"\rconfiguration\x18\x01 \x01(\v2\x14.chain.ConfigurationR\rconfiguration\"\x1d\n" +
-	"\x1bUpdateConfigurationResponse\"P\n" +
+	"\x1bUpdateConfigurationResponse\"v\n" +
 	"\fWriteRequest\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\fR\x05value\x12\x18\n" +
-	"\aversion\x18\x03 \x01(\x04R\aversion\"\x0f\n" +
-	"\rWriteResponse\"\x1f\n" +
+	"\aversion\x18\x03 \x01(\x04R\aversion\x12$\n" +
+	"\rconfigVersion\x18\x04 \x01(\x04R\rconfigVersion\"\x0f\n" +
+	"\rWriteResponse\"E\n" +
 	"\vReadRequest\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\"$\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12$\n" +
+	"\rconfigVersion\x18\x04 \x01(\x04R\rconfigVersion\"$\n" +
 	"\fReadResponse\x12\x14\n" +
-	"\x05value\x18\x01 \x01(\fR\x05value\"=\n" +
+	"\x05value\x18\x01 \x01(\fR\x05value\"c\n" +
 	"\x10PropagateRequest\x12)\n" +
-	"\bkey_type\x18\x01 \x01(\x0e2\x0e.chain.KeyTypeR\akeyType\"r\n" +
+	"\bkey_type\x18\x01 \x01(\x0e2\x0e.chain.KeyTypeR\akeyType\x12$\n" +
+	"\rconfigVersion\x18\x04 \x01(\x04R\rconfigVersion\"r\n" +
 	"\fKeyValuePair\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\fR\x05value\x12\x18\n" +
 	"\aversion\x18\x03 \x01(\x04R\aversion\x12 \n" +
-	"\visCommitted\x18\x04 \x01(\bR\visCommitted\";\n" +
+	"\visCommitted\x18\x04 \x01(\bR\visCommitted\"a\n" +
 	"\rCommitRequest\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x18\n" +
-	"\aversion\x18\x02 \x01(\x04R\aversion\"\x10\n" +
+	"\aversion\x18\x02 \x01(\x04R\aversion\x12$\n" +
+	"\rconfigVersion\x18\x04 \x01(\x04R\rconfigVersion\"\x10\n" +
 	"\x0eCommitResponse\"\r\n" +
 	"\vPingRequest\"[\n" +
 	"\fPingResponse\x123\n" +
