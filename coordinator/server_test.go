@@ -47,16 +47,38 @@ func makeCluster(t *testing.T) (map[string]*Server, string) {
 	return idToServer, bootstrapped
 }
 
-func startCluster(ctx context.Context, idToServer map[string]*Server) func() {
+func startCluster(t *testing.T, idToServer map[string]*Server, bootstrapped string) func() {
 	var wg sync.WaitGroup
 	wg.Add(len(idToServer))
-	ctx, cancel := context.WithCancel(ctx)
+	ctx, cancel := context.WithCancel(context.Background())
 	for _, srv := range idToServer {
 		go func() {
 			srv.Run(ctx)
 			wg.Done()
 		}()
 	}
+
+	var wgHealth sync.WaitGroup
+	wgHealth.Add(len(idToServer))
+	for _, srv := range idToServer {
+		go func() {
+			defer wgHealth.Done()
+			waitForHealthy := func() bool {
+				healthURL := fmt.Sprintf("http://%s/healthz", srv.HTTPServer.Address)
+				resp, err := http.Get(healthURL)
+				if err != nil {
+					return false
+				}
+				defer resp.Body.Close()
+				return resp.StatusCode == http.StatusOK
+			}
+			require.Eventually(t, waitForHealthy, 3*time.Second, 100*time.Millisecond)
+		}()
+	}
+	wgHealth.Wait()
+
+	waitForLeader(t, idToServer[bootstrapped])
+
 	return func() {
 		cancel()
 		wg.Wait()
@@ -65,9 +87,8 @@ func startCluster(ctx context.Context, idToServer map[string]*Server) func() {
 
 func TestJoinClusterThenRemove(t *testing.T) {
 	idToServer, bootstrapped := makeCluster(t)
-	cancel := startCluster(context.Background(), idToServer)
+	cancel := startCluster(t, idToServer, bootstrapped)
 	defer cancel()
-	waitForLeader(t, idToServer[bootstrapped])
 
 	statusURL := fmt.Sprintf("http://%s/cluster/status", idToServer[bootstrapped].HTTPServer.Address)
 	resp, err := http.Get(statusURL)

@@ -110,3 +110,8 @@ func (s *Server) handleChainConfiguration(w http.ResponseWriter, r *http.Request
 		return
 	}
 }
+
+func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("ok"))
+}

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/jmsadair/keychain/coordinator/node"
+	"golang.org/x/sync/errgroup"
 )
 
 const defaultShutdownTimeout = 500 * time.Millisecond
@@ -23,19 +24,22 @@ func (s *Server) Run(ctx context.Context) error {
 	mux.HandleFunc("/chain/add", s.handleAddChainMember)
 	mux.HandleFunc("/chain/remove", s.handleRemoveChainMember)
 	mux.HandleFunc("/chain/configuration", s.handleChainConfiguration)
+	mux.HandleFunc("/healthz", s.handleHealth)
 	httpServer := &http.Server{Addr: s.Address, Handler: mux}
 
-	errCh := make(chan error)
-	go func() {
+	g, ctx := errgroup.WithContext(ctx)
+	g.Go(func() error {
 		<-ctx.Done()
 		ctx, cancel := context.WithTimeout(context.Background(), defaultShutdownTimeout)
 		defer cancel()
-		errCh <- httpServer.Shutdown(ctx)
-	}()
+		return httpServer.Shutdown(ctx)
+	})
+	g.Go(func() error {
+		if err := httpServer.ListenAndServe(); err != http.ErrServerClosed {
+			return err
+		}
+		return nil
+	})
 
-	if err := httpServer.ListenAndServe(); err != http.ErrServerClosed {
-		return err
-	}
-
-	return <-errCh
+	return g.Wait()
 }
