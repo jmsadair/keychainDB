@@ -276,7 +276,7 @@ type WriteRequest struct {
 	// The version of the key.
 	Version uint64 `protobuf:"varint,3,opt,name=version,proto3" json:"version,omitempty"`
 	// The configuration version.
-	ConfigVersion uint64 `protobuf:"varint,4,opt,name=configVersion,proto3" json:"configVersion,omitempty"`
+	ConfigVersion uint64 `protobuf:"varint,4,opt,name=config_version,json=configVersion,proto3" json:"config_version,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -382,7 +382,7 @@ type ReadRequest struct {
 	// The key being read.
 	Key string `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
 	// The configuration version.
-	ConfigVersion uint64 `protobuf:"varint,4,opt,name=configVersion,proto3" json:"configVersion,omitempty"`
+	ConfigVersion uint64 `protobuf:"varint,4,opt,name=config_version,json=configVersion,proto3" json:"config_version,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -483,7 +483,7 @@ type PropagateRequest struct {
 	// Which type of key should be listed.
 	KeyType KeyType `protobuf:"varint,1,opt,name=key_type,json=keyType,proto3,enum=chain.KeyType" json:"key_type,omitempty"`
 	// The configuration version.
-	ConfigVersion uint64 `protobuf:"varint,4,opt,name=configVersion,proto3" json:"configVersion,omitempty"`
+	ConfigVersion uint64 `protobuf:"varint,4,opt,name=config_version,json=configVersion,proto3" json:"config_version,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -542,7 +542,7 @@ type KeyValuePair struct {
 	// The version of the key.
 	Version uint64 `protobuf:"varint,3,opt,name=version,proto3" json:"version,omitempty"`
 	// Whether or not this version of the key has been committed.
-	IsCommitted   bool `protobuf:"varint,4,opt,name=isCommitted,proto3" json:"isCommitted,omitempty"`
+	IsCommitted   bool `protobuf:"varint,4,opt,name=is_committed,json=isCommitted,proto3" json:"is_committed,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -613,7 +613,7 @@ type CommitRequest struct {
 	// The version of the key being committed.
 	Version uint64 `protobuf:"varint,2,opt,name=version,proto3" json:"version,omitempty"`
 	// The configuration version.
-	ConfigVersion uint64 `protobuf:"varint,4,opt,name=configVersion,proto3" json:"configVersion,omitempty"`
+	ConfigVersion uint64 `protobuf:"varint,4,opt,name=config_version,json=configVersion,proto3" json:"config_version,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -745,11 +745,11 @@ func (*PingRequest) Descriptor() ([]byte, []int) {
 
 // PingResponse is a response to a PingRequest.
 type PingResponse struct {
-	state                protoimpl.MessageState `protogen:"open.v1"`
-	ConfigurationVersion uint64                 `protobuf:"varint,1,opt,name=configuration_version,json=configurationVersion,proto3" json:"configuration_version,omitempty"`
-	Status               int32                  `protobuf:"varint,2,opt,name=status,proto3" json:"status,omitempty"`
-	unknownFields        protoimpl.UnknownFields
-	sizeCache            protoimpl.SizeCache
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ConfigVersion uint64                 `protobuf:"varint,1,opt,name=config_version,json=configVersion,proto3" json:"config_version,omitempty"`
+	Status        int32                  `protobuf:"varint,2,opt,name=status,proto3" json:"status,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *PingResponse) Reset() {
@@ -782,9 +782,9 @@ func (*PingResponse) Descriptor() ([]byte, []int) {
 	return file_chain_proto_rawDescGZIP(), []int{13}
 }
 
-func (x *PingResponse) GetConfigurationVersion() uint64 {
+func (x *PingResponse) GetConfigVersion() uint64 {
 	if x != nil {
-		return x.ConfigurationVersion
+		return x.ConfigVersion
 	}
 	return 0
 }
@@ -809,34 +809,34 @@ const file_chain_proto_rawDesc = "" +
 	"\amembers\x18\x02 \x03(\v2\x12.chain.ChainMemberR\amembers\"X\n" +
 	"\x1aUpdateConfigurationRequest\x12:\n" +
 	"\rconfiguration\x18\x01 \x01(\v2\x14.chain.ConfigurationR\rconfiguration\"\x1d\n" +
-	"\x1bUpdateConfigurationResponse\"v\n" +
+	"\x1bUpdateConfigurationResponse\"w\n" +
 	"\fWriteRequest\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\fR\x05value\x12\x18\n" +
-	"\aversion\x18\x03 \x01(\x04R\aversion\x12$\n" +
-	"\rconfigVersion\x18\x04 \x01(\x04R\rconfigVersion\"\x0f\n" +
-	"\rWriteResponse\"E\n" +
+	"\aversion\x18\x03 \x01(\x04R\aversion\x12%\n" +
+	"\x0econfig_version\x18\x04 \x01(\x04R\rconfigVersion\"\x0f\n" +
+	"\rWriteResponse\"F\n" +
 	"\vReadRequest\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\x12$\n" +
-	"\rconfigVersion\x18\x04 \x01(\x04R\rconfigVersion\"$\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12%\n" +
+	"\x0econfig_version\x18\x04 \x01(\x04R\rconfigVersion\"$\n" +
 	"\fReadResponse\x12\x14\n" +
-	"\x05value\x18\x01 \x01(\fR\x05value\"c\n" +
+	"\x05value\x18\x01 \x01(\fR\x05value\"d\n" +
 	"\x10PropagateRequest\x12)\n" +
-	"\bkey_type\x18\x01 \x01(\x0e2\x0e.chain.KeyTypeR\akeyType\x12$\n" +
-	"\rconfigVersion\x18\x04 \x01(\x04R\rconfigVersion\"r\n" +
+	"\bkey_type\x18\x01 \x01(\x0e2\x0e.chain.KeyTypeR\akeyType\x12%\n" +
+	"\x0econfig_version\x18\x04 \x01(\x04R\rconfigVersion\"s\n" +
 	"\fKeyValuePair\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\fR\x05value\x12\x18\n" +
-	"\aversion\x18\x03 \x01(\x04R\aversion\x12 \n" +
-	"\visCommitted\x18\x04 \x01(\bR\visCommitted\"a\n" +
+	"\aversion\x18\x03 \x01(\x04R\aversion\x12!\n" +
+	"\fis_committed\x18\x04 \x01(\bR\visCommitted\"b\n" +
 	"\rCommitRequest\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x18\n" +
-	"\aversion\x18\x02 \x01(\x04R\aversion\x12$\n" +
-	"\rconfigVersion\x18\x04 \x01(\x04R\rconfigVersion\"\x10\n" +
+	"\aversion\x18\x02 \x01(\x04R\aversion\x12%\n" +
+	"\x0econfig_version\x18\x04 \x01(\x04R\rconfigVersion\"\x10\n" +
 	"\x0eCommitResponse\"\r\n" +
-	"\vPingRequest\"[\n" +
-	"\fPingResponse\x123\n" +
-	"\x15configuration_version\x18\x01 \x01(\x04R\x14configurationVersion\x12\x16\n" +
+	"\vPingRequest\"M\n" +
+	"\fPingResponse\x12%\n" +
+	"\x0econfig_version\x18\x01 \x01(\x04R\rconfigVersion\x12\x16\n" +
 	"\x06status\x18\x02 \x01(\x05R\x06status*D\n" +
 	"\aKeyType\x12\x0f\n" +
 	"\vKEYTYPE_ALL\x10\x00\x12\x15\n" +

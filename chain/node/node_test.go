@@ -138,7 +138,7 @@ func TestInitiateReplicatedWrite(t *testing.T) {
 	config = NewConfiguration([]*ChainMember{member2, member1}, 0)
 	node.state.Load().Config = config
 	err = node.InitiateReplicatedWrite(context.Background(), key, value, 0)
-	require.ErrorIs(t, err, ErrNotHead)
+	require.ErrorAs(t, err, new(ErrNotHead))
 
 	// There is a mismatch between the node configuration version and the request configuration version.
 	config = NewConfiguration([]*ChainMember{member1}, 1)

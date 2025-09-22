@@ -214,13 +214,13 @@ type PingResponse struct {
 // Proto converts a PingResponse to its protobuf message equivalent.
 func (r *PingResponse) Proto() *pb.PingResponse {
 	return &pb.PingResponse{
-		Status:               int32(r.Status),
-		ConfigurationVersion: r.Version,
+		Status:        int32(r.Status),
+		ConfigVersion: r.Version,
 	}
 }
 
 // FromProto converts a PingResponse protobuf message to a PingResponse.
 func (r *PingResponse) FromProto(pbResp *pb.PingResponse) {
 	r.Status = Status(pbResp.GetStatus())
-	r.Version = pbResp.GetConfigurationVersion()
+	r.Version = pbResp.GetConfigVersion()
 }
