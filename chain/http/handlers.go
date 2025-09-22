@@ -19,7 +19,7 @@ const (
 	CodeInvalidConfigVersion ErrorCode = "invalid_config_version"
 	CodeInvalidJSON          ErrorCode = "invalid_json"
 	CodeInternalError        ErrorCode = "internal_error"
-	CodeNodeNotInChain       ErrorCode = "node_not_in_chain"
+	CodeNotChainMember       ErrorCode = "not_chain_member"
 	CodeNotHeadNode          ErrorCode = "not_head_node"
 )
 
@@ -59,6 +59,11 @@ var (
 		Status:  http.StatusConflict,
 		Code:    CodeInvalidConfigVersion,
 		Message: "Invalid config version",
+	}
+	ErrNotChainMember = &APIError{
+		Status:  http.StatusNotFound,
+		Code:    CodeNotChainMember,
+		Message: "Not member of chain",
 	}
 )
 
@@ -109,6 +114,8 @@ func (s *Server) handleSet(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, fmt.Sprintf("http://%s/set", errNotHead.HeadAddr), http.StatusTemporaryRedirect)
 	case errors.Is(err, node.ErrInvalidConfigVersion):
 		writeAPIError(w, ErrInvalidConfigVersion)
+	case errors.Is(err, node.ErrNotMemberOfChain):
+		writeAPIError(w, ErrNotChainMember)
 	default:
 		writeAPIError(w, &APIError{
 			Status:  http.StatusInternalServerError,
@@ -154,6 +161,8 @@ func (s *Server) handleGet(w http.ResponseWriter, r *http.Request) {
 		writeAPIError(w, ErrInvalidConfigVersion)
 	case errors.Is(err, storage.ErrKeyDoesNotExist):
 		writeAPIError(w, ErrKeyNotFound)
+	case errors.Is(err, node.ErrNotMemberOfChain):
+		writeAPIError(w, ErrNotChainMember)
 	default:
 		writeAPIError(w, &APIError{
 			Status:  http.StatusInternalServerError,
