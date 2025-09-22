@@ -13,14 +13,17 @@ type WriteRequest struct {
 	Value []byte
 	// The version of this key-value pair.
 	Version uint64
+	// The configuration version of the client.
+	ConfigVersion uint64
 }
 
 // Proto converts a WriteRequest to its protobuf message equivalent.
 func (r *WriteRequest) Proto() *pb.WriteRequest {
 	return &pb.WriteRequest{
-		Key:     r.Key,
-		Value:   r.Value,
-		Version: r.Version,
+		Key:           r.Key,
+		Value:         r.Value,
+		Version:       r.Version,
+		ConfigVersion: r.ConfigVersion,
 	}
 }
 
@@ -29,6 +32,7 @@ func (r *WriteRequest) FromProto(pbReq *pb.WriteRequest) {
 	r.Key = pbReq.GetKey()
 	r.Value = pbReq.GetValue()
 	r.Version = pbReq.GetVersion()
+	r.ConfigVersion = pbReq.GetConfigVersion()
 }
 
 // WriteResponse represents a response to a write request.
@@ -46,18 +50,22 @@ func (r *WriteResponse) FromProto(pbReq *pb.WriteResponse) {}
 type ReadRequest struct {
 	// The key to read.
 	Key string
+	// The configuration version of the client.
+	ConfigVersion uint64
 }
 
 // Proto converts a ReadRequest to its protobuf message equivalent.
 func (r *ReadRequest) Proto() *pb.ReadRequest {
 	return &pb.ReadRequest{
-		Key: r.Key,
+		Key:           r.Key,
+		ConfigVersion: r.ConfigVersion,
 	}
 }
 
 // FromProto converts a ReadRequest protobuf message to a WriteRequest.
 func (r *ReadRequest) FromProto(pbReq *pb.ReadRequest) {
 	r.Key = pbReq.GetKey()
+	r.ConfigVersion = pbReq.ConfigVersion
 }
 
 // ReadResponse is a response to a ReadRequest and contains the read value.
@@ -84,13 +92,16 @@ type CommitRequest struct {
 	Key string
 	// The version of the key to commit.
 	Version uint64
+	// The configuration version of the client.
+	ConfigVersion uint64
 }
 
 // Proto converts a CommitRequest to its protobuf message equivalent.
 func (r *CommitRequest) Proto() *pb.CommitRequest {
 	return &pb.CommitRequest{
-		Key:     r.Key,
-		Version: r.Version,
+		Key:           r.Key,
+		Version:       r.Version,
+		ConfigVersion: r.ConfigVersion,
 	}
 }
 
@@ -98,6 +109,7 @@ func (r *CommitRequest) Proto() *pb.CommitRequest {
 func (r *CommitRequest) FromProto(pbReq *pb.CommitRequest) {
 	r.Key = pbReq.GetKey()
 	r.Version = pbReq.GetVersion()
+	r.ConfigVersion = pbReq.GetConfigVersion()
 }
 
 // CommitResponse is a response to a CommitRequest
@@ -116,6 +128,8 @@ func (r *CommitResponse) FromProto(pbReq *pb.CommitResponse) {}
 type PropagateRequest struct {
 	// A filter that specifies which keys should be propagated.
 	KeyFilter storage.KeyFilter
+	// The configuration version of the client.
+	ConfigVersion uint64
 }
 
 // Proto converts a PropagateRequest to its protobuf message equivalent.
@@ -130,7 +144,8 @@ func (r *PropagateRequest) Proto() *pb.PropagateRequest {
 		keyType = pb.KeyType_KEYTYPE_DIRTY
 	}
 	return &pb.PropagateRequest{
-		KeyType: keyType,
+		KeyType:       keyType,
+		ConfigVersion: r.ConfigVersion,
 	}
 }
 
@@ -144,6 +159,7 @@ func (r *PropagateRequest) FromProto(pbReq *pb.PropagateRequest) {
 	case pb.KeyType_KEYTYPE_DIRTY:
 		r.KeyFilter = storage.DirtyKeys
 	}
+	r.ConfigVersion = pbReq.GetConfigVersion()
 }
 
 // UpdateConfigurationRequest is a request to update the chain configuration.
@@ -198,13 +214,13 @@ type PingResponse struct {
 // Proto converts a PingResponse to its protobuf message equivalent.
 func (r *PingResponse) Proto() *pb.PingResponse {
 	return &pb.PingResponse{
-		Status:               int32(r.Status),
-		ConfigurationVersion: r.Version,
+		Status:        int32(r.Status),
+		ConfigVersion: r.Version,
 	}
 }
 
 // FromProto converts a PingResponse protobuf message to a PingResponse.
 func (r *PingResponse) FromProto(pbResp *pb.PingResponse) {
 	r.Status = Status(pbResp.GetStatus())
-	r.Version = pbResp.GetConfigurationVersion()
+	r.Version = pbResp.GetConfigVersion()
 }

@@ -53,6 +53,8 @@ message WriteRequest {
 	bytes value = 2;
 	// The version of the key.
 	uint64 version = 3;
+	// The configuration version.
+	uint64 config_version = 4;
 }
 
 // WriteResponse is the response to a WriteRequest.
@@ -62,6 +64,8 @@ message WriteResponse {}
 message ReadRequest {
 	// The key being read.
 	string key = 1;
+	// The configuration version.
+	uint64 config_version = 4;
 }
 
 // ReadResponse is the response to a ReadRequest and contains the value of the key read.
@@ -74,6 +78,8 @@ message ReadResponse {
 message PropagateRequest {
 	// Which type of key should be listed.
 	KeyType key_type = 1;
+	// The configuration version.
+	uint64 config_version = 4;
 }
 
 // KeyType contains all key types that can be propagated.
@@ -95,7 +101,7 @@ message KeyValuePair {
 	// The version of the key.
 	uint64 version = 3;
 	// Whether or not this version of the key has been committed.
-	bool isCommitted = 4;
+	bool is_committed = 4;
 }
 
 // CommitRequest is a request to commit a version of a key.
@@ -104,6 +110,8 @@ message CommitRequest {
 	string key = 1;
 	// The version of the key being committed.
 	uint64 version = 2;
+	// The configuration version.
+	uint64 config_version = 4;
 }
 
 // CommitResponse is a response to a CommitRequest.
@@ -114,6 +122,6 @@ message PingRequest {}
 
 // PingResponse is a response to a PingRequest.
 message PingResponse {
-	uint64 configuration_version = 1;
+	uint64 config_version = 1;
 	int32 status = 2;
 }
