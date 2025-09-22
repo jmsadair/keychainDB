@@ -12,8 +12,6 @@ import (
 )
 
 var (
-	// Indicates that a node is not a head of a chain.
-	ErrNotHead = errors.New("writes must be initiated from the head of the chain")
 	// Indicates a node is in the syncing state.
 	ErrSyncing = errors.New("syncing and cannot serve reads at this time")
 	// Indicates that a node is not a member of any chain.
@@ -23,6 +21,16 @@ var (
 	// that this node does.
 	ErrInvalidConfigVersion = errors.New("configuration versions not match")
 )
+
+// Indicates that a node is not a head of a chain.
+type ErrNotHead struct {
+	// The address of the node that this node recognizes as the head.
+	HeadAddr string
+}
+
+func (e ErrNotHead) Error() string {
+	return "writes must be initiated from the head of the chain"
+}
 
 const (
 	defaultBufferedChSize = 256
@@ -184,11 +192,11 @@ func (c *ChainNode) Run(ctx context.Context) {
 // This is used for replicated writes that are part of the chain replication protocol.
 func (c *ChainNode) WriteWithVersion(ctx context.Context, request *WriteRequest, response *WriteResponse) error {
 	state := c.state.Load()
-	if !state.Config.IsMemberByID(c.ID) {
-		return ErrNotMemberOfChain
-	}
 	if request.ConfigVersion != state.Config.Version {
 		return ErrInvalidConfigVersion
+	}
+	if !state.Config.IsMemberByID(c.ID) {
+		return ErrNotMemberOfChain
 	}
 
 	succ := state.Config.Successor(c.ID)
@@ -212,14 +220,14 @@ func (c *ChainNode) WriteWithVersion(ctx context.Context, request *WriteRequest,
 // This method can only be called on the head node and will generate a new version number.
 func (c *ChainNode) InitiateReplicatedWrite(ctx context.Context, key string, value []byte, configVersion uint64) error {
 	state := c.state.Load()
+	if configVersion != state.Config.Version {
+		return ErrInvalidConfigVersion
+	}
 	if !state.Config.IsMemberByID(c.ID) {
 		return ErrNotMemberOfChain
 	}
 	if !state.Config.IsHead(c.ID) {
-		return ErrNotHead
-	}
-	if configVersion != state.Config.Version {
-		return ErrInvalidConfigVersion
+		return ErrNotHead{HeadAddr: state.Config.Head().Address}
 	}
 
 	succ := state.Config.Successor(c.ID)
@@ -241,11 +249,14 @@ func (c *ChainNode) InitiateReplicatedWrite(ctx context.Context, key string, val
 // This is part of the two-phase commit protocol used in chain replication.
 func (c *ChainNode) Commit(ctx context.Context, request *CommitRequest, response *CommitResponse) error {
 	state := c.state.Load()
+	if request.ConfigVersion != state.Config.Version {
+		return ErrInvalidConfigVersion
+	}
 	if !state.Config.IsMemberByID(c.ID) {
 		return ErrNotMemberOfChain
 	}
-	if request.ConfigVersion != state.Config.Version {
-		return ErrInvalidConfigVersion
+	if !state.Config.IsHead(c.ID) {
+		return ErrNotHead{HeadAddr: state.Config.Head().Address}
 	}
 
 	if err := c.store.CommitVersion(request.Key, request.Version); err != nil {
@@ -260,11 +271,11 @@ func (c *ChainNode) Commit(ctx context.Context, request *CommitRequest, response
 // If the local store has uncommitted data, it forwards the read to the tail node.
 func (c *ChainNode) Read(ctx context.Context, request *ReadRequest, response *ReadResponse) error {
 	state := c.state.Load()
-	if !state.Config.IsMemberByID(c.ID) {
-		return ErrNotMemberOfChain
-	}
 	if request.ConfigVersion != state.Config.Version {
 		return ErrInvalidConfigVersion
+	}
+	if !state.Config.IsMemberByID(c.ID) {
+		return ErrNotMemberOfChain
 	}
 	if state.Status == Syncing {
 		return ErrSyncing
@@ -292,11 +303,11 @@ func (c *ChainNode) Read(ctx context.Context, request *ReadRequest, response *Re
 // Propagate sends key-value pairs to a requesting node through the provided stream.
 func (c *ChainNode) Propagate(ctx context.Context, request *PropagateRequest, stream KeyValueSendStream) error {
 	state := c.state.Load()
-	if !state.Config.IsMemberByID(c.ID) {
-		return ErrNotMemberOfChain
-	}
 	if request.ConfigVersion != state.Config.Version {
 		return ErrInvalidConfigVersion
+	}
+	if !state.Config.IsMemberByID(c.ID) {
+		return ErrNotMemberOfChain
 	}
 	if state.Status == Syncing {
 		return ErrSyncing
