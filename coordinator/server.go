@@ -40,6 +40,9 @@ func NewServer(
 		return nil, err
 	}
 	tn, err := chaingrpc.NewClient(dialOpts...)
+	if err != nil {
+		return nil, err
+	}
 	coordinator := node.NewCoordinator(httpAddr, tn, rb)
 	httpSrv := &coordinatorhttp.Server{Address: httpAddr, Coordinator: coordinator}
 	grpcSrv := coordinatorgrpc.NewServer(grpcAddr, coordinator)
