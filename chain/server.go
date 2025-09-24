@@ -8,6 +8,7 @@ import (
 	"github.com/jmsadair/keychain/chain/node"
 	"github.com/jmsadair/keychain/chain/storage"
 	"golang.org/x/sync/errgroup"
+	"google.golang.org/grpc"
 )
 
 type Server struct {
@@ -16,8 +17,8 @@ type Server struct {
 	Node       *node.ChainNode
 }
 
-func NewServer(ID string, HTTPAddr string, gRPCAddr string, storePath string) (*Server, error) {
-	tn, err := chaingrpc.NewClient()
+func NewServer(id string, httpAddr string, gRPCAddr string, storePath string, dialOpts ...grpc.DialOption) (*Server, error) {
+	tn, err := chaingrpc.NewClient(dialOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -25,9 +26,9 @@ func NewServer(ID string, HTTPAddr string, gRPCAddr string, storePath string) (*
 	if err != nil {
 		return nil, err
 	}
-	node := node.NewChainNode(ID, gRPCAddr, store, tn)
+	node := node.NewChainNode(id, gRPCAddr, store, tn)
 	grpcServer := chaingrpc.NewServer(gRPCAddr, node)
-	httpServer := &chainhttp.Server{Address: HTTPAddr, Node: node}
+	httpServer := &chainhttp.Server{Address: httpAddr, Node: node}
 	return &Server{HTTPServer: httpServer, GRPCServer: grpcServer, Node: node}, nil
 }
 

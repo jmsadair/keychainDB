@@ -2,13 +2,11 @@ package grpc
 
 import (
 	"context"
-	"net"
 
 	"github.com/jmsadair/keychain/chain/node"
 	"github.com/jmsadair/keychain/chain/storage"
 	pb "github.com/jmsadair/keychain/proto/pbchain"
 	"github.com/jmsadair/keychain/transport"
-	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 )
 
