@@ -22,12 +22,12 @@ func (g *gRPCReceiveStream) Receive() (*storage.KeyValuePair, error) {
 	return &storage.KeyValuePair{Key: msg.GetKey(), Value: msg.GetValue(), Version: msg.GetVersion(), Committed: msg.GetIsCommitted()}, nil
 }
 
-// Client is a grpc-based transport for used to communicate with chain nodes.
+// Client is a gRPC client for the chain service.
 type Client struct {
 	cache *transport.ClientCache[pb.ChainServiceClient]
 }
 
-// NewClient creates a new gRPC-based chain client with the provided dial options.
+// NewClient creates a new client.
 func NewClient(dialOpts ...grpc.DialOption) (*Client, error) {
 	return &Client{cache: transport.NewClientCache(pb.NewChainServiceClient, dialOpts...)}, nil
 }

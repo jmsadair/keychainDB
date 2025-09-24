@@ -9,17 +9,23 @@ import (
 	"google.golang.org/grpc"
 )
 
-// Client is a grpc-based transport used to communicate with coordinator nodes.
+// Client is a gRPC client for the coordinator service.
 type Client struct {
 	cache *transport.ClientCache[pb.CoordinatorServiceClient]
 }
 
-// NewClient creates a new gRPC-based chain client with the provided dial options.
+// NewClient creates a new client.
 func NewClient(dialOpts ...grpc.DialOption) (*Client, error) {
 	return &Client{cache: transport.NewClientCache(pb.NewCoordinatorServiceClient, dialOpts...)}, nil
 }
 
-func (c *Client) ReadChainConfiguration(ctx context.Context, address string, request *node.ReadChainConfigurationRequest, response *node.ReadChainConfigurationResponse) error {
+// ReadChainConfiguration reads the chain configuration.
+func (c *Client) ReadChainConfiguration(
+	ctx context.Context,
+	address string,
+	request *node.ReadChainConfigurationRequest,
+	response *node.ReadChainConfigurationResponse,
+) error {
 	client, err := c.cache.GetOrCreate(address)
 	if err != nil {
 		return err

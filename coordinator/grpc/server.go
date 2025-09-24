@@ -9,7 +9,7 @@ import (
 	"google.golang.org/grpc"
 )
 
-// Server is a gRPC-based server implementation for coordinator nodes.
+// Server is the gRPC coordinator service.
 type Server struct {
 	pb.CoordinatorServiceServer
 	*transport.Server
