@@ -2,11 +2,11 @@ package grpc
 
 import (
 	"context"
-	"sync"
 
 	"github.com/jmsadair/keychain/chain/node"
 	"github.com/jmsadair/keychain/chain/storage"
 	pb "github.com/jmsadair/keychain/proto/pbchain"
+	"github.com/jmsadair/keychain/transport"
 	"google.golang.org/grpc"
 )
 
@@ -24,21 +24,16 @@ func (g *gRPCReceiveStream) Receive() (*storage.KeyValuePair, error) {
 
 // Client is a grpc-based transport for used to communicate with chain nodes.
 type Client struct {
-	mu       sync.Mutex
-	clients  map[string]pb.ChainServiceClient
-	dialOpts []grpc.DialOption
+	cache *transport.ClientCache[pb.ChainServiceClient]
 }
 
 // NewClient creates a new gRPC-based chain client with the provided dial options.
 func NewClient(dialOpts ...grpc.DialOption) (*Client, error) {
-	return &Client{
-		clients:  make(map[string]pb.ChainServiceClient),
-		dialOpts: dialOpts,
-	}, nil
+	return &Client{cache: transport.NewClientCache(pb.NewChainServiceClient, dialOpts...)}, nil
 }
 
 func (c *Client) Replicate(ctx context.Context, address string, request *node.ReplicateRequest, response *node.ReplicateResponse) error {
-	client, err := c.getOrCreateClient(address)
+	client, err := c.cache.GetOrCreate(address)
 	if err != nil {
 		return err
 	}
@@ -51,7 +46,7 @@ func (c *Client) Replicate(ctx context.Context, address string, request *node.Re
 }
 
 func (c *Client) Write(ctx context.Context, address string, request *node.WriteRequest, response *node.WriteResponse) error {
-	client, err := c.getOrCreateClient(address)
+	client, err := c.cache.GetOrCreate(address)
 	if err != nil {
 		return err
 	}
@@ -64,7 +59,7 @@ func (c *Client) Write(ctx context.Context, address string, request *node.WriteR
 }
 
 func (c *Client) Read(ctx context.Context, address string, request *node.ReadRequest, response *node.ReadResponse) error {
-	client, err := c.getOrCreateClient(address)
+	client, err := c.cache.GetOrCreate(address)
 	if err != nil {
 		return err
 	}
@@ -77,7 +72,7 @@ func (c *Client) Read(ctx context.Context, address string, request *node.ReadReq
 }
 
 func (c *Client) Commit(ctx context.Context, address string, request *node.CommitRequest, response *node.CommitResponse) error {
-	client, err := c.getOrCreateClient(address)
+	client, err := c.cache.GetOrCreate(address)
 	if err != nil {
 		return err
 	}
@@ -90,7 +85,7 @@ func (c *Client) Commit(ctx context.Context, address string, request *node.Commi
 }
 
 func (c *Client) Propagate(ctx context.Context, address string, request *node.PropagateRequest) (node.KeyValueReceiveStream, error) {
-	client, err := c.getOrCreateClient(address)
+	client, err := c.cache.GetOrCreate(address)
 	if err != nil {
 		return nil, err
 	}
@@ -103,7 +98,7 @@ func (c *Client) Propagate(ctx context.Context, address string, request *node.Pr
 }
 
 func (c *Client) Ping(ctx context.Context, address string, request *node.PingRequest, response *node.PingResponse) error {
-	client, err := c.getOrCreateClient(address)
+	client, err := c.cache.GetOrCreate(address)
 	if err != nil {
 		return err
 	}
@@ -116,7 +111,7 @@ func (c *Client) Ping(ctx context.Context, address string, request *node.PingReq
 }
 
 func (c *Client) UpdateConfiguration(ctx context.Context, address string, request *node.UpdateConfigurationRequest, response *node.UpdateConfigurationResponse) error {
-	client, err := c.getOrCreateClient(address)
+	client, err := c.cache.GetOrCreate(address)
 	if err != nil {
 		return err
 	}
@@ -126,21 +121,4 @@ func (c *Client) UpdateConfiguration(ctx context.Context, address string, reques
 	}
 	response.FromProto(pbResp)
 	return nil
-}
-
-func (c *Client) getOrCreateClient(address string) (pb.ChainServiceClient, error) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	client, ok := c.clients[address]
-	if !ok {
-		conn, err := grpc.NewClient(address, c.dialOpts...)
-		if err != nil {
-			return nil, err
-		}
-		client = pb.NewChainServiceClient(conn)
-		c.clients[address] = client
-	}
-
-	return client, nil
 }
