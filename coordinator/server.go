@@ -3,42 +3,53 @@ package coordinator
 import (
 	"context"
 
+	chaingrpc "github.com/jmsadair/keychain/chain/grpc"
+	coordinatorgrpc "github.com/jmsadair/keychain/coordinator/grpc"
 	coordinatorhttp "github.com/jmsadair/keychain/coordinator/http"
 	"github.com/jmsadair/keychain/coordinator/node"
 	"github.com/jmsadair/keychain/coordinator/raft"
 	"golang.org/x/sync/errgroup"
+	"google.golang.org/grpc"
 )
 
-// Server represents the coordinator service. It exposes a public HTTP API for managing cluster and chain membership.
+// Server is the coordinator service.
 type Server struct {
-	// HTTP server that exposes the API for the coordinator.
+	// HTTP server that exposes public API.
 	HTTPServer *coordinatorhttp.Server
-	// Raft implementation for maintaining chain configuration.
+	// gRPC server used by internal clients.
+	GRPCServer *coordinatorgrpc.Server
+	// The raft consensus protocol implementation.
 	Raft *raft.RaftBackend
-	// The implementation of the chain coordinator.
+	// The coordinator implementation.
 	Coordinator *node.Coordinator
 }
 
-// NewServer will creates a new coordinator server.
+// NewServer creates a new server.
 func NewServer(
 	id string,
 	httpAddr string,
+	grpcAddr string,
 	raftAddr string,
-	tn node.Transport,
 	storePath string,
 	snapshotStorePath string,
 	bootstrap bool,
+	dialOpts ...grpc.DialOption,
 ) (*Server, error) {
 	rb, err := raft.NewRaftBackend(id, raftAddr, storePath, snapshotStorePath, bootstrap)
 	if err != nil {
 		return nil, err
 	}
+	tn, err := chaingrpc.NewClient(dialOpts...)
+	if err != nil {
+		return nil, err
+	}
 	coordinator := node.NewCoordinator(httpAddr, tn, rb)
-	srv := &coordinatorhttp.Server{Address: httpAddr, Coordinator: coordinator}
-	return &Server{HTTPServer: srv, Coordinator: coordinator, Raft: rb}, nil
+	httpSrv := &coordinatorhttp.Server{Address: httpAddr, Coordinator: coordinator}
+	grpcSrv := coordinatorgrpc.NewServer(grpcAddr, coordinator)
+	return &Server{HTTPServer: httpSrv, GRPCServer: grpcSrv, Coordinator: coordinator, Raft: rb}, nil
 }
 
-// Run runs this server. This is a blocking call.
+// Run runs the server.
 func (s *Server) Run(ctx context.Context) error {
 	g, ctx := errgroup.WithContext(ctx)
 	g.Go(func() error {
@@ -46,6 +57,9 @@ func (s *Server) Run(ctx context.Context) error {
 	})
 	g.Go(func() error {
 		return s.HTTPServer.Run(ctx)
+	})
+	g.Go(func() error {
+		return s.GRPCServer.Run(ctx)
 	})
 	return g.Wait()
 }

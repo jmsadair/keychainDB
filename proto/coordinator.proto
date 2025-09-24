@@ -5,6 +5,22 @@ package coordinator;
 option go_package = "github.com/jmsadair/keychain/proto/pbcoordinator";
 
 import "google/protobuf/timestamp.proto";
+import "chain.proto";
+
+// CoordinatorService is used to communicate with the coordinator cluster.
+service CoordinatorService {
+	// ReadChainConfiguration handles requests to read the chain configuration.
+	rpc ReadChainConfiguration(ReadChainConfigurationRequest) returns (ReadChainConfigurationResponse) {}
+}
+
+// ReadChainConfigurationRequest is a request to read the chain configuration.
+message ReadChainConfigurationRequest {}
+
+// ReadChainConfigurationResponse is a response to a ReadChainConfigurationRequest.
+message ReadChainConfigurationResponse {
+	// A chain configuration.
+	chain.Configuration configuration = 1;
+}
 
 // An operation that adds a member to a chain.
 message AddMemberOperation {

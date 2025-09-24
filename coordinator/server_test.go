@@ -10,7 +10,6 @@ import (
 	"testing"
 	"time"
 
-	chaingrpc "github.com/jmsadair/keychain/chain/grpc"
 	coordinatorhttp "github.com/jmsadair/keychain/coordinator/http"
 	"github.com/jmsadair/keychain/coordinator/raft"
 	"github.com/stretchr/testify/require"
@@ -23,10 +22,8 @@ func waitForLeader(t *testing.T, srv *Server) {
 	}, 5*time.Second, 100*time.Millisecond)
 }
 
-func makeServer(t *testing.T, id string, httpAddr string, raftAddr string, bootstrap bool) *Server {
-	tn, err := chaingrpc.NewClient()
-	require.NoError(t, err)
-	srv, err := NewServer(id, httpAddr, raftAddr, tn, t.TempDir(), t.TempDir(), bootstrap)
+func makeServer(t *testing.T, id string, httpAddr string, grpcAddr string, raftAddr string, bootstrap bool) *Server {
+	srv, err := NewServer(id, httpAddr, grpcAddr, raftAddr, t.TempDir(), t.TempDir(), bootstrap)
 	require.NoError(t, err)
 	return srv
 }
@@ -37,8 +34,9 @@ func makeCluster(t *testing.T) (map[string]*Server, string) {
 	for i := range 3 {
 		id := fmt.Sprintf("coordinator-%d", i)
 		httpAddr := fmt.Sprintf("127.0.0.%d:8080", i)
-		raftAddr := fmt.Sprintf("127.0.0.%d:8081", i)
-		idToServer[id] = makeServer(t, id, httpAddr, raftAddr, i == 0)
+		grpcAddr := fmt.Sprintf("127.0.0.%d:8081", i)
+		raftAddr := fmt.Sprintf("127.0.0.%d:8082", i)
+		idToServer[id] = makeServer(t, id, httpAddr, grpcAddr, raftAddr, i == 0)
 		if i == 0 {
 			bootstrapped = id
 		}

@@ -2,12 +2,11 @@ package grpc
 
 import (
 	"context"
-	"net"
 
 	"github.com/jmsadair/keychain/chain/node"
 	"github.com/jmsadair/keychain/chain/storage"
 	pb "github.com/jmsadair/keychain/proto/pbchain"
-	"golang.org/x/sync/errgroup"
+	"github.com/jmsadair/keychain/transport"
 	"google.golang.org/grpc"
 )
 
@@ -22,45 +21,22 @@ func (g *gRPCSendStream) Send(kv *storage.KeyValuePair) error {
 
 // Server is a gRPC-based server implementation for chain nodes.
 type Server struct {
-	pb.ChainServiceServer
+	pb.UnimplementedChainServiceServer
+	*transport.Server
 	Address string
 	Node    *node.ChainNode
 }
 
 // NewServer creates a new Server instance.
 func NewServer(address string, node *node.ChainNode) *Server {
-	return &Server{Address: address, Node: node}
-}
-
-// Run will start and run the server. Run should only be called once and is blocking.
-func (s *Server) Run(ctx context.Context) error {
-	resolved, err := net.ResolveTCPAddr("tcp", s.Address)
-	if err != nil {
-		return err
+	s := &Server{
+		Address: address,
+		Node:    node,
 	}
-	listener, err := net.Listen(resolved.Network(), resolved.String())
-	if err != nil {
-		return err
-	}
-
-	grpcServer := grpc.NewServer()
-	pb.RegisterChainServiceServer(grpcServer, s)
-
-	g, ctx := errgroup.WithContext(ctx)
-	g.Go(func() error {
-		err := grpcServer.Serve(listener)
-		if err != nil && err != grpc.ErrServerStopped {
-			return err
-		}
-		return nil
+	s.Server = transport.NewServer(address, func(grpcServer *grpc.Server) {
+		pb.RegisterChainServiceServer(grpcServer, s)
 	})
-	g.Go(func() error {
-		<-ctx.Done()
-		grpcServer.GracefulStop()
-		return nil
-	})
-
-	return g.Wait()
+	return s
 }
 
 // Replicate handles incoming requests from clients to replicate a key-value pair.
