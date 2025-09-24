@@ -104,7 +104,8 @@ func (s *Server) handleSet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := s.Node.InitiateReplicatedWrite(r.Context(), req.Key, req.Value, req.ConfigVersion)
+	var resp node.ReplicateResponse
+	err := s.Node.Replicate(r.Context(), &node.ReplicateRequest{Key: req.Key, Value: req.Value, ConfigVersion: req.ConfigVersion}, &resp)
 
 	var errNotHead *node.ErrNotHead
 	switch {

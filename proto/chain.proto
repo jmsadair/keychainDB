@@ -6,6 +6,8 @@ option go_package = "github.com/jmsadair/keychain/proto/pbchain";
 
 // ChainService is used by nodes within a chain to communicate with one another.
 service ChainService {
+	// Replicate handles requests to replicate a key-value pair.
+	rpc Replicate (ReplicateRequest) returns (ReplicateResponse) {}
 	// Write handles requests to write a particular version of a key.
 	rpc Write (WriteRequest) returns (WriteResponse) {}
 	// Read handles requests to read a particular version of a key.
@@ -43,7 +45,21 @@ message UpdateConfigurationRequest {
 	Configuration configuration = 1;
 }
 
+// UpdateConfigurationResponse is a response to a UpdateConfigurationRequest.
 message UpdateConfigurationResponse {}
+
+// ReplicateRequest is a request sent to the head of a chain to initiate replication of a key-value pair.
+message ReplicateRequest {
+	// The key being written.
+	string key = 1;
+	// The value for the key.
+	bytes value = 2;
+	// The configuration version.
+	uint64 config_version = 3;
+}
+
+// ReplicateResponse is a response to a ReplicateRequest.
+message ReplicateResponse {}
 
 // WriteRequest is a request sent from one node of a chain to another to write a new version of a key.
 message WriteRequest {

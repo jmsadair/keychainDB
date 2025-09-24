@@ -63,6 +63,17 @@ func (s *Server) Run(ctx context.Context) error {
 	return g.Wait()
 }
 
+// Replicate handles incoming requests from clients to replicate a key-value pair.
+func (s *Server) Replicate(ctx context.Context, pbRequest *pb.ReplicateRequest) (*pb.ReplicateResponse, error) {
+	var request node.ReplicateRequest
+	request.FromProto(pbRequest)
+	var response node.ReplicateResponse
+	if err := s.Node.Replicate(ctx, &request, &response); err != nil {
+		return nil, err
+	}
+	return response.Proto(), nil
+}
+
 // Write handles incoming requests from other nodes in the chain to write a particular version of a key-value pair to storage.
 func (s *Server) Write(ctx context.Context, pbRequest *pb.WriteRequest) (*pb.WriteResponse, error) {
 	var request node.WriteRequest

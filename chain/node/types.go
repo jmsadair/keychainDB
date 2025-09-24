@@ -5,6 +5,43 @@ import (
 	pb "github.com/jmsadair/keychain/proto/pbchain"
 )
 
+// ReplicateRequest represents a request to write a versioned key-value pair.
+type ReplicateRequest struct {
+	// The key being written.
+	Key string
+	// The value being written.
+	Value []byte
+	// The configuration version of the client.
+	ConfigVersion uint64
+}
+
+// Proto converts a ReplicateRequest to its protobuf message equivalent.
+func (r *ReplicateRequest) Proto() *pb.ReplicateRequest {
+	return &pb.ReplicateRequest{
+		Key:           r.Key,
+		Value:         r.Value,
+		ConfigVersion: r.ConfigVersion,
+	}
+}
+
+// FromProto converts a ReplicateRequest protobuf message to a ReplicateRequest.
+func (r *ReplicateRequest) FromProto(pbReq *pb.ReplicateRequest) {
+	r.Key = pbReq.GetKey()
+	r.Value = pbReq.GetValue()
+	r.ConfigVersion = pbReq.GetConfigVersion()
+}
+
+// ReplicateResponse represents a response to a write request.
+type ReplicateResponse struct{}
+
+// Proto converts a ReplicateResponse to its protobuf message equivalent.
+func (r *ReplicateResponse) Proto() *pb.ReplicateResponse {
+	return &pb.ReplicateResponse{}
+}
+
+// FromProto converts a ReplicateResponse protobuf message to a ReplicateResponse.
+func (r *ReplicateResponse) FromProto(pbReq *pb.ReplicateResponse) {}
+
 // WriteRequest represents a request to write a versioned key-value pair.
 type WriteRequest struct {
 	// The key being written.
