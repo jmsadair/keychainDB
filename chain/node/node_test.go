@@ -97,7 +97,7 @@ func (m *mockStorage) CommitAll(ctx context.Context, onCommit func(ctx context.C
 	return m.MethodCalled("CommitAll", ctx, onCommit).Error(0)
 }
 
-func TestInitiateReplicatedWrite(t *testing.T) {
+func TestReplicate(t *testing.T) {
 	member1 := &ChainMember{ID: "member-1", Address: "127.0.0.1:8080"}
 	member2 := &ChainMember{ID: "member-2", Address: "127.0.0.2:8080"}
 
@@ -106,30 +106,30 @@ func TestInitiateReplicatedWrite(t *testing.T) {
 	node := NewChainNode(member1.ID, member1.Address, store, transport)
 
 	// Node is not a member of a chain.
-	key := "key"
-	value := []byte("value")
+	request := &ReplicateRequest{Key: "key", Value: []byte("value")}
+	var response ReplicateResponse
 	version := uint64(1)
-	err := node.InitiateReplicatedWrite(context.Background(), key, value, 0)
+	err := node.Replicate(context.Background(), request, &response)
 	require.ErrorIs(t, err, ErrNotMemberOfChain)
 
 	// Node is the the sole member of the chain - no forwarding is necessary.
 	config := NewConfiguration([]*ChainMember{member1}, 0)
 	node.state.Load().Config = config
-	store.On("CommittedWriteNewVersion", key, value).Return(version, nil).Once()
-	err = node.InitiateReplicatedWrite(context.Background(), key, value, 0)
+	store.On("CommittedWriteNewVersion", request.Key, request.Value).Return(version, nil).Once()
+	err = node.Replicate(context.Background(), request, &response)
 	require.NoError(t, err)
 	store.AssertExpectations(t)
 
 	// Node is head of a chain with multiple members - forwarding is necessary.
 	config = NewConfiguration([]*ChainMember{member1, member2}, 0)
 	node.state.Load().Config = config
-	store.On("UncommittedWriteNewVersion", key, value).Return(version, nil).Once()
+	store.On("UncommittedWriteNewVersion", request.Key, request.Value).Return(version, nil).Once()
 	transport.On("Write", mock.Anything, member2.Address, &WriteRequest{
-		Key:     key,
-		Value:   value,
+		Key:     request.Key,
+		Value:   request.Value,
 		Version: version,
 	}).Return(&WriteResponse{}, nil).Once()
-	err = node.InitiateReplicatedWrite(context.Background(), key, value, 0)
+	err = node.Replicate(context.Background(), request, &response)
 	require.NoError(t, err)
 	store.AssertExpectations(t)
 	transport.AssertExpectations(t)
@@ -137,13 +137,13 @@ func TestInitiateReplicatedWrite(t *testing.T) {
 	// Node is not the head.
 	config = NewConfiguration([]*ChainMember{member2, member1}, 0)
 	node.state.Load().Config = config
-	err = node.InitiateReplicatedWrite(context.Background(), key, value, 0)
+	err = node.Replicate(context.Background(), request, &response)
 	require.ErrorAs(t, err, new(ErrNotHead))
 
 	// There is a mismatch between the node configuration version and the request configuration version.
 	config = NewConfiguration([]*ChainMember{member1}, 1)
 	node.state.Load().Config = config
-	err = node.InitiateReplicatedWrite(context.Background(), key, value, 0)
+	err = node.Replicate(context.Background(), request, &response)
 	require.ErrorIs(t, err, ErrInvalidConfigVersion)
 }
 

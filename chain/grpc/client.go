@@ -37,6 +37,19 @@ func NewClient(dialOpts ...grpc.DialOption) (*Client, error) {
 	}, nil
 }
 
+func (c *Client) Replicate(ctx context.Context, address string, request *node.ReplicateRequest, response *node.ReplicateResponse) error {
+	client, err := c.getOrCreateClient(address)
+	if err != nil {
+		return err
+	}
+	pbResp, err := client.Replicate(ctx, request.Proto())
+	if err != nil {
+		return err
+	}
+	response.FromProto(pbResp)
+	return nil
+}
+
 func (c *Client) Write(ctx context.Context, address string, request *node.WriteRequest, response *node.WriteResponse) error {
 	client, err := c.getOrCreateClient(address)
 	if err != nil {

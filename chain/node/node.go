@@ -216,11 +216,11 @@ func (c *ChainNode) WriteWithVersion(ctx context.Context, request *WriteRequest,
 	return c.tn.Write(ctx, succ.Address, request, &resp)
 }
 
-// InitiateReplicatedWrite starts a new replicated write operation from the head of the chain.
-// This method can only be called on the head node and will generate a new version number.
-func (c *ChainNode) InitiateReplicatedWrite(ctx context.Context, key string, value []byte, configVersion uint64) error {
+// Replicate starts a new replicated write operation from the head of the chain.
+// This method can only be invoked from the head of the chain and will generate a new version number for the key-value pair.
+func (c *ChainNode) Replicate(ctx context.Context, request *ReplicateRequest, response *ReplicateResponse) error {
 	state := c.state.Load()
-	if configVersion != state.Config.Version {
+	if request.ConfigVersion != state.Config.Version {
 		return ErrInvalidConfigVersion
 	}
 	if !state.Config.IsMemberByID(c.ID) {
@@ -232,15 +232,15 @@ func (c *ChainNode) InitiateReplicatedWrite(ctx context.Context, key string, val
 
 	succ := state.Config.Successor(c.ID)
 	if succ == nil {
-		_, err := c.store.CommittedWriteNewVersion(key, value)
+		_, err := c.store.CommittedWriteNewVersion(request.Key, request.Value)
 		return err
 	}
-	version, err := c.store.UncommittedWriteNewVersion(key, value)
+	version, err := c.store.UncommittedWriteNewVersion(request.Key, request.Value)
 	if err != nil {
 		return err
 	}
 
-	req := &WriteRequest{Key: key, Value: value, Version: version}
+	req := &WriteRequest{Key: request.Key, Value: request.Value, Version: version}
 	var resp WriteResponse
 	return c.tn.Write(ctx, succ.Address, req, &resp)
 }

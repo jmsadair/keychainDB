@@ -19,6 +19,7 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
+	ChainService_Replicate_FullMethodName           = "/chain.ChainService/Replicate"
 	ChainService_Write_FullMethodName               = "/chain.ChainService/Write"
 	ChainService_Read_FullMethodName                = "/chain.ChainService/Read"
 	ChainService_Commit_FullMethodName              = "/chain.ChainService/Commit"
@@ -33,6 +34,8 @@ const (
 //
 // ChainService is used by nodes within a chain to communicate with one another.
 type ChainServiceClient interface {
+	// Replicate handles requests to replicate a key-value pair.
+	Replicate(ctx context.Context, in *ReplicateRequest, opts ...grpc.CallOption) (*ReplicateResponse, error)
 	// Write handles requests to write a particular version of a key.
 	Write(ctx context.Context, in *WriteRequest, opts ...grpc.CallOption) (*WriteResponse, error)
 	// Read handles requests to read a particular version of a key.
@@ -54,6 +57,16 @@ type chainServiceClient struct {
 
 func NewChainServiceClient(cc grpc.ClientConnInterface) ChainServiceClient {
 	return &chainServiceClient{cc}
+}
+
+func (c *chainServiceClient) Replicate(ctx context.Context, in *ReplicateRequest, opts ...grpc.CallOption) (*ReplicateResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ReplicateResponse)
+	err := c.cc.Invoke(ctx, ChainService_Replicate_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func (c *chainServiceClient) Write(ctx context.Context, in *WriteRequest, opts ...grpc.CallOption) (*WriteResponse, error) {
@@ -131,6 +144,8 @@ func (c *chainServiceClient) Ping(ctx context.Context, in *PingRequest, opts ...
 //
 // ChainService is used by nodes within a chain to communicate with one another.
 type ChainServiceServer interface {
+	// Replicate handles requests to replicate a key-value pair.
+	Replicate(context.Context, *ReplicateRequest) (*ReplicateResponse, error)
 	// Write handles requests to write a particular version of a key.
 	Write(context.Context, *WriteRequest) (*WriteResponse, error)
 	// Read handles requests to read a particular version of a key.
@@ -154,6 +169,9 @@ type ChainServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedChainServiceServer struct{}
 
+func (UnimplementedChainServiceServer) Replicate(context.Context, *ReplicateRequest) (*ReplicateResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Replicate not implemented")
+}
 func (UnimplementedChainServiceServer) Write(context.Context, *WriteRequest) (*WriteResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Write not implemented")
 }
@@ -191,6 +209,24 @@ func RegisterChainServiceServer(s grpc.ServiceRegistrar, srv ChainServiceServer)
 		t.testEmbeddedByValue()
 	}
 	s.RegisterService(&ChainService_ServiceDesc, srv)
+}
+
+func _ChainService_Replicate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ReplicateRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChainServiceServer).Replicate(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChainService_Replicate_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChainServiceServer).Replicate(ctx, req.(*ReplicateRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _ChainService_Write_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -301,6 +337,10 @@ var ChainService_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "chain.ChainService",
 	HandlerType: (*ChainServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "Replicate",
+			Handler:    _ChainService_Replicate_Handler,
+		},
 		{
 			MethodName: "Write",
 			Handler:    _ChainService_Write_Handler,
