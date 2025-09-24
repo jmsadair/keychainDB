@@ -7,6 +7,7 @@
 package pbcoordinator
 
 import (
+	pbchain "github.com/jmsadair/keychain/proto/pbchain"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
@@ -22,6 +23,89 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// ReadChainConfigurationRequest is a request to read the chain configuration.
+type ReadChainConfigurationRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ReadChainConfigurationRequest) Reset() {
+	*x = ReadChainConfigurationRequest{}
+	mi := &file_coordinator_proto_msgTypes[0]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ReadChainConfigurationRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ReadChainConfigurationRequest) ProtoMessage() {}
+
+func (x *ReadChainConfigurationRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_coordinator_proto_msgTypes[0]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ReadChainConfigurationRequest.ProtoReflect.Descriptor instead.
+func (*ReadChainConfigurationRequest) Descriptor() ([]byte, []int) {
+	return file_coordinator_proto_rawDescGZIP(), []int{0}
+}
+
+// ReadChainConfigurationResponse is a response to a ReadChainConfigurationRequest.
+type ReadChainConfigurationResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// A chain configuration.
+	Configuration *pbchain.Configuration `protobuf:"bytes,1,opt,name=configuration,proto3" json:"configuration,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ReadChainConfigurationResponse) Reset() {
+	*x = ReadChainConfigurationResponse{}
+	mi := &file_coordinator_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ReadChainConfigurationResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ReadChainConfigurationResponse) ProtoMessage() {}
+
+func (x *ReadChainConfigurationResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_coordinator_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ReadChainConfigurationResponse.ProtoReflect.Descriptor instead.
+func (*ReadChainConfigurationResponse) Descriptor() ([]byte, []int) {
+	return file_coordinator_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *ReadChainConfigurationResponse) GetConfiguration() *pbchain.Configuration {
+	if x != nil {
+		return x.Configuration
+	}
+	return nil
+}
+
 // An operation that adds a member to a chain.
 type AddMemberOperation struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -35,7 +119,7 @@ type AddMemberOperation struct {
 
 func (x *AddMemberOperation) Reset() {
 	*x = AddMemberOperation{}
-	mi := &file_coordinator_proto_msgTypes[0]
+	mi := &file_coordinator_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -47,7 +131,7 @@ func (x *AddMemberOperation) String() string {
 func (*AddMemberOperation) ProtoMessage() {}
 
 func (x *AddMemberOperation) ProtoReflect() protoreflect.Message {
-	mi := &file_coordinator_proto_msgTypes[0]
+	mi := &file_coordinator_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -60,7 +144,7 @@ func (x *AddMemberOperation) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AddMemberOperation.ProtoReflect.Descriptor instead.
 func (*AddMemberOperation) Descriptor() ([]byte, []int) {
-	return file_coordinator_proto_rawDescGZIP(), []int{0}
+	return file_coordinator_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *AddMemberOperation) GetId() string {
@@ -88,7 +172,7 @@ type RemoveMemberOperation struct {
 
 func (x *RemoveMemberOperation) Reset() {
 	*x = RemoveMemberOperation{}
-	mi := &file_coordinator_proto_msgTypes[1]
+	mi := &file_coordinator_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -100,7 +184,7 @@ func (x *RemoveMemberOperation) String() string {
 func (*RemoveMemberOperation) ProtoMessage() {}
 
 func (x *RemoveMemberOperation) ProtoReflect() protoreflect.Message {
-	mi := &file_coordinator_proto_msgTypes[1]
+	mi := &file_coordinator_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -113,7 +197,7 @@ func (x *RemoveMemberOperation) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RemoveMemberOperation.ProtoReflect.Descriptor instead.
 func (*RemoveMemberOperation) Descriptor() ([]byte, []int) {
-	return file_coordinator_proto_rawDescGZIP(), []int{1}
+	return file_coordinator_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *RemoveMemberOperation) GetId() string {
@@ -132,7 +216,7 @@ type ReadMembershipOperation struct {
 
 func (x *ReadMembershipOperation) Reset() {
 	*x = ReadMembershipOperation{}
-	mi := &file_coordinator_proto_msgTypes[2]
+	mi := &file_coordinator_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -144,7 +228,7 @@ func (x *ReadMembershipOperation) String() string {
 func (*ReadMembershipOperation) ProtoMessage() {}
 
 func (x *ReadMembershipOperation) ProtoReflect() protoreflect.Message {
-	mi := &file_coordinator_proto_msgTypes[2]
+	mi := &file_coordinator_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -157,7 +241,7 @@ func (x *ReadMembershipOperation) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReadMembershipOperation.ProtoReflect.Descriptor instead.
 func (*ReadMembershipOperation) Descriptor() ([]byte, []int) {
-	return file_coordinator_proto_rawDescGZIP(), []int{2}
+	return file_coordinator_proto_rawDescGZIP(), []int{4}
 }
 
 // An operation that will be replicated across a raft cluster.
@@ -175,7 +259,7 @@ type ReplicatedOperation struct {
 
 func (x *ReplicatedOperation) Reset() {
 	*x = ReplicatedOperation{}
-	mi := &file_coordinator_proto_msgTypes[3]
+	mi := &file_coordinator_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -187,7 +271,7 @@ func (x *ReplicatedOperation) String() string {
 func (*ReplicatedOperation) ProtoMessage() {}
 
 func (x *ReplicatedOperation) ProtoReflect() protoreflect.Message {
-	mi := &file_coordinator_proto_msgTypes[3]
+	mi := &file_coordinator_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -200,7 +284,7 @@ func (x *ReplicatedOperation) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReplicatedOperation.ProtoReflect.Descriptor instead.
 func (*ReplicatedOperation) Descriptor() ([]byte, []int) {
-	return file_coordinator_proto_rawDescGZIP(), []int{3}
+	return file_coordinator_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *ReplicatedOperation) GetOperation() isReplicatedOperation_Operation {
@@ -280,7 +364,7 @@ type Log struct {
 
 func (x *Log) Reset() {
 	*x = Log{}
-	mi := &file_coordinator_proto_msgTypes[4]
+	mi := &file_coordinator_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -292,7 +376,7 @@ func (x *Log) String() string {
 func (*Log) ProtoMessage() {}
 
 func (x *Log) ProtoReflect() protoreflect.Message {
-	mi := &file_coordinator_proto_msgTypes[4]
+	mi := &file_coordinator_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -305,7 +389,7 @@ func (x *Log) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Log.ProtoReflect.Descriptor instead.
 func (*Log) Descriptor() ([]byte, []int) {
-	return file_coordinator_proto_rawDescGZIP(), []int{4}
+	return file_coordinator_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *Log) GetIndex() uint64 {
@@ -354,7 +438,10 @@ var File_coordinator_proto protoreflect.FileDescriptor
 
 const file_coordinator_proto_rawDesc = "" +
 	"\n" +
-	"\x11coordinator.proto\x12\vcoordinator\x1a\x1fgoogle/protobuf/timestamp.proto\">\n" +
+	"\x11coordinator.proto\x12\vcoordinator\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\vchain.proto\"\x1f\n" +
+	"\x1dReadChainConfigurationRequest\"\\\n" +
+	"\x1eReadChainConfigurationResponse\x12:\n" +
+	"\rconfiguration\x18\x01 \x01(\v2\x14.chain.ConfigurationR\rconfiguration\">\n" +
 	"\x12AddMemberOperation\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x18\n" +
 	"\aaddress\x18\x02 \x01(\tR\aaddress\"'\n" +
@@ -376,7 +463,9 @@ const file_coordinator_proto_rawDesc = "" +
 	"extensions\x18\x05 \x01(\fR\n" +
 	"extensions\x12;\n" +
 	"\vappended_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
-	"appendedAtB2Z0github.com/jmsadair/keychain/proto/pbcoordinatorb\x06proto3"
+	"appendedAt2\x89\x01\n" +
+	"\x12CoordinatorService\x12s\n" +
+	"\x16ReadChainConfiguration\x12*.coordinator.ReadChainConfigurationRequest\x1a+.coordinator.ReadChainConfigurationResponse\"\x00B2Z0github.com/jmsadair/keychain/proto/pbcoordinatorb\x06proto3"
 
 var (
 	file_coordinator_proto_rawDescOnce sync.Once
@@ -390,25 +479,31 @@ func file_coordinator_proto_rawDescGZIP() []byte {
 	return file_coordinator_proto_rawDescData
 }
 
-var file_coordinator_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_coordinator_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
 var file_coordinator_proto_goTypes = []any{
-	(*AddMemberOperation)(nil),      // 0: coordinator.AddMemberOperation
-	(*RemoveMemberOperation)(nil),   // 1: coordinator.RemoveMemberOperation
-	(*ReadMembershipOperation)(nil), // 2: coordinator.ReadMembershipOperation
-	(*ReplicatedOperation)(nil),     // 3: coordinator.ReplicatedOperation
-	(*Log)(nil),                     // 4: coordinator.Log
-	(*timestamppb.Timestamp)(nil),   // 5: google.protobuf.Timestamp
+	(*ReadChainConfigurationRequest)(nil),  // 0: coordinator.ReadChainConfigurationRequest
+	(*ReadChainConfigurationResponse)(nil), // 1: coordinator.ReadChainConfigurationResponse
+	(*AddMemberOperation)(nil),             // 2: coordinator.AddMemberOperation
+	(*RemoveMemberOperation)(nil),          // 3: coordinator.RemoveMemberOperation
+	(*ReadMembershipOperation)(nil),        // 4: coordinator.ReadMembershipOperation
+	(*ReplicatedOperation)(nil),            // 5: coordinator.ReplicatedOperation
+	(*Log)(nil),                            // 6: coordinator.Log
+	(*pbchain.Configuration)(nil),          // 7: chain.Configuration
+	(*timestamppb.Timestamp)(nil),          // 8: google.protobuf.Timestamp
 }
 var file_coordinator_proto_depIdxs = []int32{
-	0, // 0: coordinator.ReplicatedOperation.add_member:type_name -> coordinator.AddMemberOperation
-	1, // 1: coordinator.ReplicatedOperation.remove_member:type_name -> coordinator.RemoveMemberOperation
-	2, // 2: coordinator.ReplicatedOperation.read_membership:type_name -> coordinator.ReadMembershipOperation
-	5, // 3: coordinator.Log.appended_at:type_name -> google.protobuf.Timestamp
-	4, // [4:4] is the sub-list for method output_type
-	4, // [4:4] is the sub-list for method input_type
-	4, // [4:4] is the sub-list for extension type_name
-	4, // [4:4] is the sub-list for extension extendee
-	0, // [0:4] is the sub-list for field type_name
+	7, // 0: coordinator.ReadChainConfigurationResponse.configuration:type_name -> chain.Configuration
+	2, // 1: coordinator.ReplicatedOperation.add_member:type_name -> coordinator.AddMemberOperation
+	3, // 2: coordinator.ReplicatedOperation.remove_member:type_name -> coordinator.RemoveMemberOperation
+	4, // 3: coordinator.ReplicatedOperation.read_membership:type_name -> coordinator.ReadMembershipOperation
+	8, // 4: coordinator.Log.appended_at:type_name -> google.protobuf.Timestamp
+	0, // 5: coordinator.CoordinatorService.ReadChainConfiguration:input_type -> coordinator.ReadChainConfigurationRequest
+	1, // 6: coordinator.CoordinatorService.ReadChainConfiguration:output_type -> coordinator.ReadChainConfigurationResponse
+	6, // [6:7] is the sub-list for method output_type
+	5, // [5:6] is the sub-list for method input_type
+	5, // [5:5] is the sub-list for extension type_name
+	5, // [5:5] is the sub-list for extension extendee
+	0, // [0:5] is the sub-list for field type_name
 }
 
 func init() { file_coordinator_proto_init() }
@@ -416,7 +511,7 @@ func file_coordinator_proto_init() {
 	if File_coordinator_proto != nil {
 		return
 	}
-	file_coordinator_proto_msgTypes[3].OneofWrappers = []any{
+	file_coordinator_proto_msgTypes[5].OneofWrappers = []any{
 		(*ReplicatedOperation_AddMember)(nil),
 		(*ReplicatedOperation_RemoveMember)(nil),
 		(*ReplicatedOperation_ReadMembership)(nil),
@@ -427,9 +522,9 @@ func file_coordinator_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_coordinator_proto_rawDesc), len(file_coordinator_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   5,
+			NumMessages:   7,
 			NumExtensions: 0,
-			NumServices:   0,
+			NumServices:   1,
 		},
 		GoTypes:           file_coordinator_proto_goTypes,
 		DependencyIndexes: file_coordinator_proto_depIdxs,
