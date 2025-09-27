@@ -5,8 +5,8 @@ import (
 
 	"github.com/jmsadair/keychain/chain/node"
 	"github.com/jmsadair/keychain/chain/storage"
+	"github.com/jmsadair/keychain/internal/transport"
 	pb "github.com/jmsadair/keychain/proto/pbchain"
-	"github.com/jmsadair/keychain/transport"
 	"google.golang.org/grpc"
 )
 
@@ -19,7 +19,12 @@ func (g *gRPCReceiveStream) Receive() (*storage.KeyValuePair, error) {
 	if err := g.stream.RecvMsg(msg); err != nil {
 		return nil, err
 	}
-	return &storage.KeyValuePair{Key: msg.GetKey(), Value: msg.GetValue(), Version: msg.GetVersion(), Committed: msg.GetIsCommitted()}, nil
+	return &storage.KeyValuePair{
+		Key:       msg.GetKey(),
+		Value:     msg.GetValue(),
+		Version:   msg.GetVersion(),
+		Committed: msg.GetIsCommitted(),
+	}, nil
 }
 
 // Client is a gRPC client for the chain service.
@@ -32,6 +37,7 @@ func NewClient(dialOpts ...grpc.DialOption) (*Client, error) {
 	return &Client{cache: transport.NewClientCache(pb.NewChainServiceClient, dialOpts...)}, nil
 }
 
+// Replicate chain-replicates a key-value pair. This operation can only be invoked on the head of the chain otherwise it will be rejected.
 func (c *Client) Replicate(ctx context.Context, address string, request *node.ReplicateRequest, response *node.ReplicateResponse) error {
 	client, err := c.cache.GetOrCreate(address)
 	if err != nil {
@@ -45,6 +51,7 @@ func (c *Client) Replicate(ctx context.Context, address string, request *node.Re
 	return nil
 }
 
+// Write writes a versioned key-value pair. This operation should only be invoked by chain nodes that are chain-replicating a key-value pair.
 func (c *Client) Write(ctx context.Context, address string, request *node.WriteRequest, response *node.WriteResponse) error {
 	client, err := c.cache.GetOrCreate(address)
 	if err != nil {
@@ -58,6 +65,7 @@ func (c *Client) Write(ctx context.Context, address string, request *node.WriteR
 	return nil
 }
 
+// Read reads a key-value pair.
 func (c *Client) Read(ctx context.Context, address string, request *node.ReadRequest, response *node.ReadResponse) error {
 	client, err := c.cache.GetOrCreate(address)
 	if err != nil {
@@ -71,6 +79,7 @@ func (c *Client) Read(ctx context.Context, address string, request *node.ReadReq
 	return nil
 }
 
+// Commit commits a versioned key-value pair.
 func (c *Client) Commit(ctx context.Context, address string, request *node.CommitRequest, response *node.CommitResponse) error {
 	client, err := c.cache.GetOrCreate(address)
 	if err != nil {
@@ -84,6 +93,7 @@ func (c *Client) Commit(ctx context.Context, address string, request *node.Commi
 	return nil
 }
 
+// Propagate initiates a stream of key-value pairs.
 func (c *Client) Propagate(ctx context.Context, address string, request *node.PropagateRequest) (node.KeyValueReceiveStream, error) {
 	client, err := c.cache.GetOrCreate(address)
 	if err != nil {
@@ -97,6 +107,7 @@ func (c *Client) Propagate(ctx context.Context, address string, request *node.Pr
 	return &gRPCReceiveStream{stream: stream}, nil
 }
 
+// Ping pings a node. Nodes will respond with their current status and configuration version.
 func (c *Client) Ping(ctx context.Context, address string, request *node.PingRequest, response *node.PingResponse) error {
 	client, err := c.cache.GetOrCreate(address)
 	if err != nil {
@@ -110,7 +121,13 @@ func (c *Client) Ping(ctx context.Context, address string, request *node.PingReq
 	return nil
 }
 
-func (c *Client) UpdateConfiguration(ctx context.Context, address string, request *node.UpdateConfigurationRequest, response *node.UpdateConfigurationResponse) error {
+// UpdateConfiguration will update the chain membership configuration of a node.
+func (c *Client) UpdateConfiguration(
+	ctx context.Context,
+	address string,
+	request *node.UpdateConfigurationRequest,
+	response *node.UpdateConfigurationResponse,
+) error {
 	client, err := c.cache.GetOrCreate(address)
 	if err != nil {
 		return err
