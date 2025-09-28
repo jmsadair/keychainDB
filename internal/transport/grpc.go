@@ -77,7 +77,7 @@ type ClientCache[T any] struct {
 	factory  ClientFactory[T]
 }
 
-// NewClientCache creates a new client cache with the provided dial options and client factory.
+// NewClientCache creates a new ClientCache.
 func NewClientCache[T any](factory ClientFactory[T], dialOpts ...grpc.DialOption) *ClientCache[T] {
 	closeOnEvict := func(_ string, cc *cachedClient[T]) {
 		cc.conn.Close()
@@ -89,7 +89,8 @@ func NewClientCache[T any](factory ClientFactory[T], dialOpts ...grpc.DialOption
 	}
 }
 
-// GetOrCreate returns an existing client or creates a new one if not cached.
+// GetOrCreate returns an existing client if one is cached.
+// Otherwise, it will create one and it add it to the cache.
 func (c *ClientCache[T]) GetOrCreate(address string) (T, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
