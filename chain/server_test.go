@@ -1,26 +1,22 @@
 package chain
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
-	"net/http"
 	"sync"
 	"testing"
-	"time"
 
-	chainhttp "github.com/jmsadair/keychain/chain/http"
+	chaingrpc "github.com/jmsadair/keychain/chain/grpc"
 	"github.com/jmsadair/keychain/chain/node"
+	"github.com/jmsadair/keychain/chain/storage"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
-func makeServer(t *testing.T) *Server {
-	id := "chain-node-1"
-	httpAddr := ":8080"
-	grpcAddr := ":8081"
-	srv, err := NewServer(id, httpAddr, grpcAddr, t.TempDir())
+func makeServer(t *testing.T, id string, port int) *Server {
+	srv, err := NewServer(id, fmt.Sprintf(":%d", port), t.TempDir())
 	require.NoError(t, err)
 	return srv
 }
@@ -34,19 +30,12 @@ func startServer(t *testing.T, srv *Server) (*node.Configuration, func()) {
 		require.NoError(t, srv.Run(ctx))
 	}()
 
-	waitForHealthy := func() bool {
-		healthURL := fmt.Sprintf("http://%s/healthz", srv.HTTPServer.Address)
-		resp, err := http.Get(healthURL)
-		if err != nil {
-			return false
-		}
-		defer resp.Body.Close()
-		return resp.StatusCode == http.StatusOK
-	}
-	require.Eventually(t, waitForHealthy, 3*time.Second, 100*time.Millisecond)
-
-	config := node.NewConfiguration([]*node.ChainMember{{Address: srv.Node.Address, ID: srv.Node.ID}}, 1)
-	require.NoError(t, srv.Node.UpdateConfiguration(context.Background(), &node.UpdateConfigurationRequest{Configuration: config}, &node.UpdateConfigurationResponse{}))
+	config := node.EmptyChain.AddMember(srv.Node.ID, srv.Node.Address)
+	require.NoError(t, srv.Node.UpdateConfiguration(
+		context.Background(),
+		&node.UpdateConfigurationRequest{Configuration: config},
+		&node.UpdateConfigurationResponse{},
+	))
 
 	return config, func() {
 		cancel()
@@ -54,138 +43,62 @@ func startServer(t *testing.T, srv *Server) (*node.Configuration, func()) {
 	}
 }
 
-func TestSetGet(t *testing.T) {
-	srv := makeServer(t)
+func TestReplicateRead(t *testing.T) {
+	srv := makeServer(t, "chain-node-1", 8080)
 	config, cancel := startServer(t, srv)
 	defer cancel()
+	client, err := chaingrpc.NewClient(grpc.WithTransportCredentials(insecure.NewCredentials()))
+	require.NoError(t, err)
+	head := config.Head()
+	require.NotNil(t, head)
 
-	key := "key-1"
-	value := []byte("value-1")
-	setURL := fmt.Sprintf("http://%s/set", srv.HTTPServer.Address)
-	setRequest := chainhttp.SetRequest{Key: key, Value: value, ConfigVersion: config.Version}
-	b, err := json.Marshal(&setRequest)
-	require.NoError(t, err)
+	// Store a key-value pair.
+	req1 := &node.ReplicateRequest{Key: "key-1", Value: []byte("value-1"), ConfigVersion: config.Version}
+	var resp1 node.ReplicateResponse
+	require.NoError(t, client.Replicate(context.Background(), head.Address, req1, &resp1))
 
-	setResponse, err := http.Post(setURL, "application/json", bytes.NewReader(b))
-	require.NoError(t, err)
-	defer setResponse.Body.Close()
-	require.Equal(t, http.StatusNoContent, setResponse.StatusCode)
-
-	getURL := fmt.Sprintf("http://%s/get", srv.HTTPServer.Address)
-	b, err = json.Marshal(&chainhttp.GetRequest{Key: key, ConfigVersion: config.Version})
-	require.NoError(t, err)
-	getRequest, err := http.NewRequest(http.MethodGet, getURL, bytes.NewReader(b))
-	require.NoError(t, err)
-
-	getResponse, err := http.DefaultClient.Do(getRequest)
-	require.NoError(t, err)
-	defer getResponse.Body.Close()
-	readValue, err := io.ReadAll(getResponse.Body)
-	require.NoError(t, err)
-	require.Equal(t, value, readValue)
-	require.Equal(t, http.StatusOK, getResponse.StatusCode)
+	// Read the key-value pair back.
+	req2 := &node.ReadRequest{Key: "key-1", ConfigVersion: config.Version}
+	var resp2 node.ReadResponse
+	require.NoError(t, client.Read(context.Background(), head.Address, req2, &resp2))
+	require.Equal(t, []byte("value-1"), resp2.Value)
 }
 
-func TestKeyDoesNotExist(t *testing.T) {
-	srv := makeServer(t)
+func TestPropagate(t *testing.T) {
+	srv := makeServer(t, "chain-node-1", 8080)
 	config, cancel := startServer(t, srv)
 	defer cancel()
+	client, err := chaingrpc.NewClient(grpc.WithTransportCredentials(insecure.NewCredentials()))
+	require.NoError(t, err)
+	head := config.Head()
+	require.NotNil(t, head)
 
-	key := "key-1"
-	getURL := fmt.Sprintf("http://%s/get", srv.HTTPServer.Address)
-	b, err := json.Marshal(&chainhttp.GetRequest{Key: key, ConfigVersion: config.Version})
-	require.NoError(t, err)
-	getRequest, err := http.NewRequest(http.MethodGet, getURL, bytes.NewReader(b))
-	require.NoError(t, err)
+	// Store key-value pairs.
+	numKeys := 1000
+	kvPairs := make(map[string][]byte, numKeys)
+	for i := range numKeys {
+		key := fmt.Sprintf("key-%d", i)
+		value := fmt.Appendf(nil, "value-%d", i)
+		kvPairs[key] = value
+		req := &node.ReplicateRequest{Key: key, Value: value, ConfigVersion: config.Version}
+		var resp node.ReplicateResponse
+		require.NoError(t, client.Replicate(context.Background(), head.Address, req, &resp))
+	}
 
-	getResponse, err := http.DefaultClient.Do(getRequest)
+	// Stream the written key-value pairs back. This is a single node chain so all keys should be committed.
+	req := &node.PropagateRequest{KeyFilter: storage.CommittedKeys, ConfigVersion: config.Version}
+	s, err := client.Propagate(context.Background(), head.Address, req)
 	require.NoError(t, err)
-	defer getResponse.Body.Close()
-	var apiErr chainhttp.APIError
-	err = json.NewDecoder(getResponse.Body).Decode(&apiErr)
-	require.NoError(t, err)
-	require.Equal(t, http.StatusNotFound, getResponse.StatusCode)
-	require.Equal(t, chainhttp.CodeKeyNotFound, apiErr.Code)
-}
+	for {
+		kv, err := s.Receive()
+		if err == io.EOF {
+			break
+		}
+		require.NoError(t, err)
+		require.Contains(t, kvPairs, kv.Key)
+		require.Equal(t, kvPairs[kv.Key], kv.Value)
+		delete(kvPairs, kv.Key)
+	}
 
-func TestSetGetInvalidKey(t *testing.T) {
-	srv := makeServer(t)
-	config, cancel := startServer(t, srv)
-	defer cancel()
-
-	key := ""
-	value := []byte("value-1")
-	setURL := fmt.Sprintf("http://%s/set", srv.HTTPServer.Address)
-	setRequest := chainhttp.SetRequest{Key: key, Value: value, ConfigVersion: config.Version}
-	b, err := json.Marshal(&setRequest)
-	require.NoError(t, err)
-
-	setResponse, err := http.Post(setURL, "application/json", bytes.NewReader(b))
-	require.NoError(t, err)
-	defer setResponse.Body.Close()
-	var apiErr chainhttp.APIError
-	err = json.NewDecoder(setResponse.Body).Decode(&apiErr)
-	require.NoError(t, err)
-	require.Equal(t, http.StatusBadRequest, setResponse.StatusCode)
-	require.Equal(t, chainhttp.CodeInvalidKey, apiErr.Code)
-
-	getURL := fmt.Sprintf("http://%s/get", srv.HTTPServer.Address)
-	b, err = json.Marshal(&chainhttp.GetRequest{ConfigVersion: config.Version})
-	require.NoError(t, err)
-	getRequest, err := http.NewRequest(http.MethodGet, getURL, bytes.NewReader(b))
-	require.NoError(t, err)
-
-	getResponse, err := http.DefaultClient.Do(getRequest)
-	require.NoError(t, err)
-	defer getResponse.Body.Close()
-	apiErr = chainhttp.APIError{}
-	err = json.NewDecoder(getResponse.Body).Decode(&apiErr)
-	require.NoError(t, err)
-	require.Equal(t, http.StatusBadRequest, getResponse.StatusCode)
-	require.Equal(t, chainhttp.CodeInvalidKey, apiErr.Code)
-
-}
-
-func TestSetGetInvalidConfigVersion(t *testing.T) {
-	srv := makeServer(t)
-	config, cancel := startServer(t, srv)
-	defer cancel()
-
-	key := "key-1"
-	value := []byte("value-1")
-	setURL := fmt.Sprintf("http://%s/set", srv.HTTPServer.Address)
-	invalidSetRequest := chainhttp.SetRequest{Key: key, Value: value, ConfigVersion: config.Version + 1}
-	b, err := json.Marshal(&invalidSetRequest)
-	require.NoError(t, err)
-
-	invalidSetResponse, err := http.Post(setURL, "application/json", bytes.NewReader(b))
-	require.NoError(t, err)
-	defer invalidSetResponse.Body.Close()
-	var apiErr chainhttp.APIError
-	err = json.NewDecoder(invalidSetResponse.Body).Decode(&apiErr)
-	require.NoError(t, err)
-	require.Equal(t, http.StatusConflict, invalidSetResponse.StatusCode)
-	require.Equal(t, chainhttp.CodeInvalidConfigVersion, apiErr.Code)
-
-	validSetRequest := chainhttp.SetRequest{Key: key, Value: value, ConfigVersion: config.Version}
-	b, err = json.Marshal(&validSetRequest)
-	require.NoError(t, err)
-	validSetResponse, err := http.Post(setURL, "application/json", bytes.NewReader(b))
-	require.NoError(t, err)
-	defer validSetResponse.Body.Close()
-
-	getURL := fmt.Sprintf("http://%s/get", srv.HTTPServer.Address)
-	b, err = json.Marshal(&chainhttp.GetRequest{Key: key, ConfigVersion: config.Version + 1})
-	require.NoError(t, err)
-	getRequest, err := http.NewRequest(http.MethodGet, getURL, bytes.NewReader(b))
-	require.NoError(t, err)
-
-	getResponse, err := http.DefaultClient.Do(getRequest)
-	require.NoError(t, err)
-	defer getResponse.Body.Close()
-	apiErr = chainhttp.APIError{}
-	err = json.NewDecoder(getResponse.Body).Decode(&apiErr)
-	require.NoError(t, err)
-	require.Equal(t, http.StatusConflict, getResponse.StatusCode)
-	require.Equal(t, chainhttp.CodeInvalidConfigVersion, apiErr.Code)
+	require.Empty(t, kvPairs)
 }

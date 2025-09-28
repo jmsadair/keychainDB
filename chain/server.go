@@ -4,7 +4,6 @@ import (
 	"context"
 
 	chaingrpc "github.com/jmsadair/keychain/chain/grpc"
-	chainhttp "github.com/jmsadair/keychain/chain/http"
 	"github.com/jmsadair/keychain/chain/node"
 	"github.com/jmsadair/keychain/chain/storage"
 	"golang.org/x/sync/errgroup"
@@ -13,16 +12,14 @@ import (
 
 // Server is the chain service.
 type Server struct {
-	// HTTP server that exposes public API.
-	HTTPServer *chainhttp.Server
-	// gRPC server used by internal clients.
+	// A gRPC server.
 	GRPCServer *chaingrpc.Server
-	// The chain node implementation.
+	// Chain node implementation.
 	Node *node.ChainNode
 }
 
 // NewServer creates a new server.
-func NewServer(id string, httpAddr string, gRPCAddr string, storePath string, dialOpts ...grpc.DialOption) (*Server, error) {
+func NewServer(id string, address string, storePath string, dialOpts ...grpc.DialOption) (*Server, error) {
 	tn, err := chaingrpc.NewClient(dialOpts...)
 	if err != nil {
 		return nil, err
@@ -31,10 +28,9 @@ func NewServer(id string, httpAddr string, gRPCAddr string, storePath string, di
 	if err != nil {
 		return nil, err
 	}
-	node := node.NewChainNode(id, gRPCAddr, store, tn)
-	grpcServer := chaingrpc.NewServer(gRPCAddr, node)
-	httpServer := &chainhttp.Server{Address: httpAddr, Node: node}
-	return &Server{HTTPServer: httpServer, GRPCServer: grpcServer, Node: node}, nil
+	node := node.NewChainNode(id, address, store, tn)
+	grpcServer := chaingrpc.NewServer(address, node)
+	return &Server{GRPCServer: grpcServer, Node: node}, nil
 }
 
 // Run runs the server.
@@ -45,6 +41,5 @@ func (s *Server) Run(ctx context.Context) error {
 		return nil
 	})
 	g.Go(func() error { return s.GRPCServer.Run(ctx) })
-	g.Go(func() error { return s.HTTPServer.Run(ctx) })
 	return g.Wait()
 }

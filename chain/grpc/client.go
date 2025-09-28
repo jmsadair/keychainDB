@@ -15,8 +15,8 @@ type gRPCReceiveStream struct {
 }
 
 func (g *gRPCReceiveStream) Receive() (*storage.KeyValuePair, error) {
-	var msg *pb.KeyValuePair
-	if err := g.stream.RecvMsg(msg); err != nil {
+	var msg pb.KeyValuePair
+	if err := g.stream.RecvMsg(&msg); err != nil {
 		return nil, err
 	}
 	return &storage.KeyValuePair{

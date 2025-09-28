@@ -2,25 +2,17 @@ package http
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
-
-	"github.com/jmsadair/keychain/chain/node"
-	"github.com/jmsadair/keychain/chain/storage"
 )
 
 type ErrorCode string
 
 const (
-	CodeInvalidKey           ErrorCode = "invalid_key"
-	CodeKeyNotFound          ErrorCode = "key_not_found"
-	CodeMethodNotAllowed     ErrorCode = "method_not_allowed"
-	CodeInvalidConfigVersion ErrorCode = "invalid_config_version"
-	CodeInvalidJSON          ErrorCode = "invalid_json"
-	CodeInternalError        ErrorCode = "internal_error"
-	CodeNotChainMember       ErrorCode = "not_chain_member"
-	CodeNotHeadNode          ErrorCode = "not_head_node"
+	CodeInvalidKey       ErrorCode = "invalid_key"
+	CodeMethodNotAllowed ErrorCode = "method_not_allowed"
+	CodeInvalidJSON      ErrorCode = "invalid_json"
+	CodeInternalError    ErrorCode = "internal_error"
 )
 
 type APIError struct {
@@ -45,25 +37,10 @@ var (
 		Code:    CodeInvalidKey,
 		Message: "Key must be of length 1 or greater",
 	}
-	ErrKeyNotFound = &APIError{
-		Status:  http.StatusNotFound,
-		Code:    CodeKeyNotFound,
-		Message: "Key does not exist",
-	}
 	ErrMethodNotAllowed = &APIError{
 		Status:  http.StatusMethodNotAllowed,
 		Code:    CodeMethodNotAllowed,
 		Message: "Method not allowed",
-	}
-	ErrInvalidConfigVersion = &APIError{
-		Status:  http.StatusConflict,
-		Code:    CodeInvalidConfigVersion,
-		Message: "Invalid config version",
-	}
-	ErrNotChainMember = &APIError{
-		Status:  http.StatusNotFound,
-		Code:    CodeNotChainMember,
-		Message: "Not member of chain",
 	}
 )
 
@@ -72,14 +49,12 @@ func keyIsValid(key string) bool {
 }
 
 type SetRequest struct {
-	Key           string `json:"key"`
-	Value         []byte `json:"value"`
-	ConfigVersion uint64 `json:"config_version"`
+	Key   string `json:"key"`
+	Value []byte `json:"value"`
 }
 
 type GetRequest struct {
-	Key           string `json:"key"`
-	ConfigVersion uint64 `json:"config_version"`
+	Key string `json:"key"`
 }
 
 func (s *Server) handleSet(w http.ResponseWriter, r *http.Request) {
@@ -104,26 +79,18 @@ func (s *Server) handleSet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var resp node.ReplicateResponse
-	err := s.Node.Replicate(r.Context(), &node.ReplicateRequest{Key: req.Key, Value: req.Value, ConfigVersion: req.ConfigVersion}, &resp)
+	err := s.Proxy.SetValue(r.Context(), req.Key, req.Value)
 
-	var errNotHead *node.ErrNotHead
-	switch {
-	case err == nil:
-		w.WriteHeader(http.StatusNoContent)
-	case errors.As(err, &errNotHead):
-		http.Redirect(w, r, fmt.Sprintf("http://%s/set", errNotHead.HeadAddr), http.StatusTemporaryRedirect)
-	case errors.Is(err, node.ErrInvalidConfigVersion):
-		writeAPIError(w, ErrInvalidConfigVersion)
-	case errors.Is(err, node.ErrNotMemberOfChain):
-		writeAPIError(w, ErrNotChainMember)
-	default:
+	if err != nil {
 		writeAPIError(w, &APIError{
 			Status:  http.StatusInternalServerError,
 			Code:    "internal_error",
 			Message: "An unexpected error occurred",
 		})
+		return
 	}
+
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (s *Server) handleGet(w http.ResponseWriter, r *http.Request) {
@@ -148,29 +115,18 @@ func (s *Server) handleGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var resp node.ReadResponse
-	err := s.Node.Read(r.Context(), &node.ReadRequest{
-		Key:           req.Key,
-		ConfigVersion: req.ConfigVersion,
-	}, &resp)
-
-	switch {
-	case err == nil:
-		w.Header().Set("Content-Type", "application/octet-stream")
-		w.Write(resp.Value)
-	case errors.Is(err, node.ErrInvalidConfigVersion):
-		writeAPIError(w, ErrInvalidConfigVersion)
-	case errors.Is(err, storage.ErrKeyDoesNotExist):
-		writeAPIError(w, ErrKeyNotFound)
-	case errors.Is(err, node.ErrNotMemberOfChain):
-		writeAPIError(w, ErrNotChainMember)
-	default:
+	value, err := s.Proxy.GetValue(r.Context(), req.Key)
+	if err != nil {
 		writeAPIError(w, &APIError{
 			Status:  http.StatusInternalServerError,
 			Code:    "internal_error",
 			Message: "An unexpected error occurred",
 		})
+		return
 	}
+
+	w.Header().Set("Content-Type", "application/octet-stream")
+	w.Write(value)
 }
 
 func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
