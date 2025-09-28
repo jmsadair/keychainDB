@@ -4,8 +4,8 @@ import (
 	"context"
 
 	"github.com/jmsadair/keychain/coordinator/node"
+	"github.com/jmsadair/keychain/internal/transport"
 	pb "github.com/jmsadair/keychain/proto/pbcoordinator"
-	"github.com/jmsadair/keychain/transport"
 	"google.golang.org/grpc"
 )
 
