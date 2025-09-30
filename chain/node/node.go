@@ -240,7 +240,7 @@ func (c *ChainNode) Replicate(ctx context.Context, request *ReplicateRequest, re
 		return err
 	}
 
-	req := &WriteRequest{Key: request.Key, Value: request.Value, Version: version}
+	req := &WriteRequest{Key: request.Key, Value: request.Value, Version: version, ConfigVersion: state.Config.Version}
 	var resp WriteResponse
 	return c.tn.Write(ctx, succ.Address, req, &resp)
 }
@@ -284,7 +284,7 @@ func (c *ChainNode) Read(ctx context.Context, request *ReadRequest, response *Re
 	value, err := c.store.CommittedRead(request.Key)
 	if err != nil && errors.Is(err, storage.ErrDirtyRead) {
 		tail := state.Config.Tail()
-		req := &ReadRequest{Key: request.Key}
+		req := &ReadRequest{Key: request.Key, ConfigVersion: state.Config.Version}
 		var resp ReadResponse
 		if err := c.tn.Read(ctx, tail.Address, req, &resp); err != nil {
 			return err
@@ -349,8 +349,23 @@ func (c *ChainNode) Ping(request *PingRequest, response *PingResponse) {
 	response.Version = state.Config.Version
 }
 
-func (c *ChainNode) requestPropagation(ctx context.Context, address string, keyFilter storage.KeyFilter, isTail bool) error {
-	req := &PropagateRequest{KeyFilter: keyFilter}
+func (c *ChainNode) Configuration() *Configuration {
+	state := c.state.Load()
+	return state.Config
+}
+
+func (c *ChainNode) Status() Status {
+	state := c.state.Load()
+	return state.Status
+}
+
+func (c *ChainNode) Store() Storage {
+	return c.store
+}
+
+func (c *ChainNode) requestPropagation(ctx context.Context, address string, keyFilter storage.KeyFilter, config *Configuration) error {
+	req := &PropagateRequest{KeyFilter: keyFilter, ConfigVersion: config.Version}
+	isTail := config.IsTail(c.ID)
 	stream, err := c.tn.Propagate(ctx, address, req)
 	if err != nil {
 		return err
@@ -484,6 +499,7 @@ func (c *ChainNode) onConfigChangeRoutine(ctx context.Context) {
 				newState.Config = EmptyChain
 				newState.Status = Inactive
 				c.state.Store(newState)
+				close(msg.doneCh)
 				continue
 			}
 			// Node is a new member of a chain. Cancel any ongoing syncing. Enter the active state
@@ -526,7 +542,7 @@ func (c *ChainNode) onNewSuccessor(ctx context.Context, config *Configuration, i
 				keyFilter = storage.AllKeys
 			}
 			if succ := config.Successor(c.ID); succ != nil {
-				if err := c.requestPropagation(ctx, succ.Address, keyFilter, config.IsTail(c.ID)); err != nil {
+				if err := c.requestPropagation(ctx, succ.Address, keyFilter, config); err != nil {
 					continue
 				}
 			} else {
@@ -564,7 +580,7 @@ func (c *ChainNode) onNewPredecessor(ctx context.Context, config *Configuration,
 				keyFilter = storage.AllKeys
 			}
 			if pred := config.Predecessor(c.ID); pred != nil {
-				err := c.requestPropagation(ctx, pred.Address, keyFilter, config.IsTail(c.ID))
+				err := c.requestPropagation(ctx, pred.Address, keyFilter, config)
 				if err != nil {
 					continue
 				}

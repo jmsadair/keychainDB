@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/jmsadair/keychain/chain/node"
+	"github.com/jmsadair/keychain/proxy/node"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -13,7 +13,7 @@ const defaultShutdownTimeout = 500 * time.Millisecond
 
 type Server struct {
 	Address string
-	Node    *node.ChainNode
+	Proxy   *node.Proxy
 }
 
 func (s *Server) Run(ctx context.Context) error {
