@@ -283,26 +283,30 @@ func TestRequestPropagation(t *testing.T) {
 	kv1 := storage.KeyValuePair{Key: "key-1", Value: []byte("value-1"), Committed: false}
 	kv2 := storage.KeyValuePair{Key: "key-2", Value: []byte("value-2"), Committed: true}
 
-	// All keys are propagated. Dirty keys should not be committed since the isTail flag is false.
+	// All keys are propagated. Dirty keys should not be committed since this node is not the tail.
+	config := NewConfiguration([]*ChainMember{member1, member2}, 0)
+	node.state.Load().Config = config
 	stream.On("Receive").Return(&kv1, nil).Once()
 	stream.On("Receive").Return(&kv2, nil).Once()
 	stream.On("Receive").Return(nil, io.EOF).Once()
 	transport.On("Propagate", mock.Anything, member2.Address, &PropagateRequest{KeyFilter: storage.AllKeys}).Return(stream, nil).Once()
 	store.On("UncommittedWrite", kv1.Key, kv1.Value, kv1.Version).Return(nil).Once()
 	store.On("CommittedWrite", kv2.Key, kv2.Value, kv2.Version).Return(nil).Once()
-	require.NoError(t, node.requestPropagation(context.Background(), member2.Address, storage.AllKeys, false))
+	require.NoError(t, node.requestPropagation(context.Background(), member2.Address, storage.AllKeys, config))
 	stream.AssertExpectations(t)
 	transport.AssertExpectations(t)
 	store.AssertExpectations(t)
 
-	// All keys are propagated. Dirty keys should be committed since the isTail flag is true.
+	// All keys are propagated. Dirty keys should be committed since this node is the tail.
+	config = NewConfiguration([]*ChainMember{member2, member1}, 0)
+	node.state.Load().Config = config
 	stream.On("Receive").Return(&kv1, nil).Once()
 	stream.On("Receive").Return(&kv2, nil).Once()
 	stream.On("Receive").Return(nil, io.EOF).Once()
 	transport.On("Propagate", mock.Anything, member2.Address, &PropagateRequest{KeyFilter: storage.AllKeys}).Return(stream, nil).Once()
 	store.On("CommittedWrite", kv1.Key, kv1.Value, kv1.Version).Return(nil).Once()
 	store.On("CommittedWrite", kv2.Key, kv2.Value, kv2.Version).Return(nil).Once()
-	require.NoError(t, node.requestPropagation(context.Background(), member2.Address, storage.AllKeys, true))
+	require.NoError(t, node.requestPropagation(context.Background(), member2.Address, storage.AllKeys, config))
 	stream.AssertExpectations(t)
 	transport.AssertExpectations(t)
 	store.AssertExpectations(t)

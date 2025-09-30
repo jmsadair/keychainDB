@@ -57,8 +57,8 @@ func NewPersistentStorage(dbpath string) (*PersistentStorage, error) {
 
 // Close will close the storage.
 // It is critical that this is called after the storage is done being used to ensure all updates are written to disk.
-func (ps *PersistentStorage) Close() {
-	ps.db.Close()
+func (ps *PersistentStorage) Close() error {
+	return ps.db.Close()
 }
 
 // UncommittedWriteNewVersion will transactionally generate a new version of the key and write the key-value pair to storage.

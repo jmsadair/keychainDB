@@ -16,6 +16,8 @@ type Server struct {
 	GRPCServer *chaingrpc.Server
 	// Chain node implementation.
 	Node *node.ChainNode
+	// Storage for the chain node.
+	store *storage.PersistentStorage
 }
 
 // NewServer creates a new server.
@@ -30,11 +32,12 @@ func NewServer(id string, address string, storePath string, dialOpts ...grpc.Dia
 	}
 	node := node.NewChainNode(id, address, store, tn)
 	grpcServer := chaingrpc.NewServer(address, node)
-	return &Server{GRPCServer: grpcServer, Node: node}, nil
+	return &Server{GRPCServer: grpcServer, Node: node, store: store}, nil
 }
 
 // Run runs the server.
 func (s *Server) Run(ctx context.Context) error {
+	defer s.store.Close()
 	g, ctx := errgroup.WithContext(ctx)
 	g.Go(func() error {
 		s.Node.Run(ctx)
