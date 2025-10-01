@@ -138,7 +138,7 @@ func TestReplicate(t *testing.T) {
 	config = NewConfiguration([]*ChainMember{member2, member1}, 0)
 	node.state.Load().Config = config
 	err = node.Replicate(context.Background(), request, &response)
-	require.ErrorAs(t, err, new(ErrNotHead))
+	require.ErrorIs(t, err, ErrNotHead)
 
 	// There is a mismatch between the node configuration version and the request configuration version.
 	config = NewConfiguration([]*ChainMember{member1}, 1)
@@ -221,8 +221,9 @@ func TestRead(t *testing.T) {
 
 	// Node is not the tail of the chain and the key-value pair is dirty.
 	// It should forward the read to the tail.
+	forwardedReq := &ReadRequest{Key: key, Forwarded: true}
 	store.On("CommittedRead", key).Return(nil, storage.ErrDirtyRead).Once()
-	transport.On("Read", mock.Anything, member3.Address, req).Return(&ReadResponse{Value: value}, nil).Once()
+	transport.On("Read", mock.Anything, member3.Address, forwardedReq).Return(&ReadResponse{Value: value}, nil).Once()
 	err = node.Read(context.Background(), req, &resp)
 	require.NoError(t, err)
 	require.Equal(t, value, resp.Value)

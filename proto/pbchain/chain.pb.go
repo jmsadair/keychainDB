@@ -484,7 +484,9 @@ type ReadRequest struct {
 	// The key being read.
 	Key string `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
 	// The configuration version.
-	ConfigVersion uint64 `protobuf:"varint,4,opt,name=config_version,json=configVersion,proto3" json:"config_version,omitempty"`
+	ConfigVersion uint64 `protobuf:"varint,2,opt,name=config_version,json=configVersion,proto3" json:"config_version,omitempty"`
+	// Indicates whether this request was forwarded from another node in the chain.
+	Forwarded     bool `protobuf:"varint,3,opt,name=forwarded,proto3" json:"forwarded,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -531,6 +533,13 @@ func (x *ReadRequest) GetConfigVersion() uint64 {
 		return x.ConfigVersion
 	}
 	return 0
+}
+
+func (x *ReadRequest) GetForwarded() bool {
+	if x != nil {
+		return x.Forwarded
+	}
+	return false
 }
 
 // ReadResponse is the response to a ReadRequest and contains the value of the key read.
@@ -922,10 +931,11 @@ const file_chain_proto_rawDesc = "" +
 	"\x05value\x18\x02 \x01(\fR\x05value\x12\x18\n" +
 	"\aversion\x18\x03 \x01(\x04R\aversion\x12%\n" +
 	"\x0econfig_version\x18\x04 \x01(\x04R\rconfigVersion\"\x0f\n" +
-	"\rWriteResponse\"F\n" +
+	"\rWriteResponse\"d\n" +
 	"\vReadRequest\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12%\n" +
-	"\x0econfig_version\x18\x04 \x01(\x04R\rconfigVersion\"$\n" +
+	"\x0econfig_version\x18\x02 \x01(\x04R\rconfigVersion\x12\x1c\n" +
+	"\tforwarded\x18\x03 \x01(\bR\tforwarded\"$\n" +
 	"\fReadResponse\x12\x14\n" +
 	"\x05value\x18\x01 \x01(\fR\x05value\"d\n" +
 	"\x10PropagateRequest\x12)\n" +

@@ -22,7 +22,7 @@ type Transport interface {
 
 type RaftProtocol interface {
 	AddChainMember(ctx context.Context, id, address string) (*chainnode.Configuration, error)
-	RemoveChainMember(ctx context.Context, id string) (*chainnode.Configuration, error)
+	RemoveChainMember(ctx context.Context, id string) (*chainnode.Configuration, *chainnode.ChainMember, error)
 	ReadChainConfiguration(ctx context.Context) (*chainnode.Configuration, error)
 	LeaderCh() <-chan bool
 	ChainConfiguration() *chainnode.Configuration
@@ -90,28 +90,36 @@ func (c *Coordinator) AddMember(ctx context.Context, id, address string) error {
 	if err != nil {
 		return err
 	}
-	return c.updateChainMemberConfigurations(ctx, config)
+	return c.updateChainMemberConfigurations(ctx, config, nil)
 }
 
 func (c *Coordinator) RemoveMember(ctx context.Context, id string) error {
-	config, err := c.Raft.RemoveChainMember(ctx, id)
+	config, removed, err := c.Raft.RemoveChainMember(ctx, id)
 	if err != nil {
 		return err
 	}
-	return c.updateChainMemberConfigurations(ctx, config)
+	return c.updateChainMemberConfigurations(ctx, config, removed)
 }
 
 func (c *Coordinator) ReadMembershipConfiguration(ctx context.Context) (*chainnode.Configuration, error) {
 	return c.Raft.ReadChainConfiguration(ctx)
 }
 
-func (c *Coordinator) updateChainMemberConfigurations(ctx context.Context, config *chainnode.Configuration) error {
+func (c *Coordinator) updateChainMemberConfigurations(ctx context.Context, config *chainnode.Configuration, removed *chainnode.ChainMember) error {
 	g, ctx := errgroup.WithContext(ctx)
-	for _, member := range config.Members() {
+	members := config.Members()
+	if removed != nil {
+		members = append(members, removed)
+	}
+	for _, member := range members {
 		g.Go(func() error {
 			req := &chainnode.UpdateConfigurationRequest{Configuration: config}
 			var resp chainnode.UpdateConfigurationResponse
-			return c.tn.UpdateConfiguration(ctx, member.Address, req, &resp)
+			err := c.tn.UpdateConfiguration(ctx, member.Address, req, &resp)
+			if removed != nil && member.Address == removed.Address {
+				return nil
+			}
+			return err
 		})
 	}
 

@@ -15,6 +15,10 @@ type AddMemberOperation struct {
 	Address string
 }
 
+type AddMemberResult struct {
+	Config *chainnode.Configuration
+}
+
 func (op *AddMemberOperation) Bytes() ([]byte, error) {
 	opProto := &pb.ReplicatedOperation{
 		Operation: &pb.ReplicatedOperation_AddMember{
@@ -31,6 +35,11 @@ type RemoveMemberOperation struct {
 	ID string
 }
 
+type RemoveMemberResult struct {
+	Config  *chainnode.Configuration
+	Removed *chainnode.ChainMember
+}
+
 func (op *RemoveMemberOperation) Bytes() ([]byte, error) {
 	opProto := &pb.ReplicatedOperation{
 		Operation: &pb.ReplicatedOperation_RemoveMember{
@@ -43,6 +52,10 @@ func (op *RemoveMemberOperation) Bytes() ([]byte, error) {
 }
 
 type ReadMembershipOperation struct{}
+
+type ReadMembershipResult struct {
+	Config *chainnode.Configuration
+}
 
 func (op *ReadMembershipOperation) Bytes() ([]byte, error) {
 	opProto := &pb.ReplicatedOperation{
@@ -97,11 +110,14 @@ func (f *FSM) Apply(log *raft.Log) any {
 	switch v := op.Operation.(type) {
 	case *pb.ReplicatedOperation_AddMember:
 		f.configuration = f.configuration.AddMember(v.AddMember.GetId(), v.AddMember.GetAddress())
+		return &AddMemberResult{Config: f.configuration.Copy()}
 	case *pb.ReplicatedOperation_RemoveMember:
+		removed := f.configuration.Member(v.RemoveMember.GetId())
 		f.configuration = f.configuration.RemoveMember(v.RemoveMember.GetId())
+		return &RemoveMemberResult{Config: f.configuration.Copy(), Removed: removed}
 	}
 
-	return f.configuration.Copy()
+	return &ReadMembershipResult{Config: f.configuration.Copy()}
 }
 
 func (f *FSM) Snapshot() (raft.FSMSnapshot, error) {

@@ -93,29 +93,32 @@ func (rb *RaftBackend) Shutdown() error {
 
 func (rb *RaftBackend) AddChainMember(ctx context.Context, id, address string) (*chainnode.Configuration, error) {
 	op := &AddMemberOperation{ID: id, Address: address}
-	result, err := rb.apply(ctx, op)
+	applied, err := rb.apply(ctx, op)
 	if err != nil {
 		return nil, err
 	}
-	return result.(*chainnode.Configuration), nil
+	opResult := applied.(*AddMemberResult)
+	return opResult.Config, nil
 }
 
-func (rb *RaftBackend) RemoveChainMember(ctx context.Context, id string) (*chainnode.Configuration, error) {
+func (rb *RaftBackend) RemoveChainMember(ctx context.Context, id string) (*chainnode.Configuration, *chainnode.ChainMember, error) {
 	op := &RemoveMemberOperation{ID: id}
-	result, err := rb.apply(ctx, op)
+	applied, err := rb.apply(ctx, op)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return result.(*chainnode.Configuration), nil
+	opResult := applied.(*RemoveMemberResult)
+	return opResult.Config, opResult.Removed, nil
 }
 
 func (rb *RaftBackend) ReadChainConfiguration(ctx context.Context) (*chainnode.Configuration, error) {
 	op := &ReadMembershipOperation{}
-	result, err := rb.apply(ctx, op)
+	applied, err := rb.apply(ctx, op)
 	if err != nil {
 		return nil, err
 	}
-	return result.(*chainnode.Configuration), nil
+	opResult := applied.(*ReadMembershipResult)
+	return opResult.Config, nil
 }
 
 func (rb *RaftBackend) JoinCluster(ctx context.Context, nodeID string, address string) error {

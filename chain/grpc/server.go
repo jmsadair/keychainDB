@@ -45,7 +45,7 @@ func (s *Server) Replicate(ctx context.Context, pbRequest *pb.ReplicateRequest) 
 	request.FromProto(pbRequest)
 	var response node.ReplicateResponse
 	if err := s.Node.Replicate(ctx, &request, &response); err != nil {
-		return nil, err
+		return nil, gRPCError(err)
 	}
 	return response.Proto(), nil
 }
@@ -56,7 +56,7 @@ func (s *Server) Write(ctx context.Context, pbRequest *pb.WriteRequest) (*pb.Wri
 	request.FromProto(pbRequest)
 	var response node.WriteResponse
 	if err := s.Node.WriteWithVersion(ctx, &request, &response); err != nil {
-		return nil, err
+		return nil, gRPCError(err)
 	}
 	return response.Proto(), nil
 }
@@ -67,7 +67,7 @@ func (s *Server) Read(ctx context.Context, pbRequest *pb.ReadRequest) (*pb.ReadR
 	request.FromProto(pbRequest)
 	var response node.ReadResponse
 	if err := s.Node.Read(ctx, &request, &response); err != nil {
-		return nil, err
+		return nil, gRPCError(err)
 	}
 	return response.Proto(), nil
 }
@@ -78,7 +78,7 @@ func (s *Server) Commit(ctx context.Context, pbRequest *pb.CommitRequest) (*pb.C
 	request.FromProto(pbRequest)
 	var response node.CommitResponse
 	if err := s.Node.Commit(ctx, &request, &response); err != nil {
-		return nil, err
+		return nil, gRPCError(err)
 	}
 	return response.Proto(), nil
 }
@@ -89,7 +89,7 @@ func (s *Server) UpdateConfiguration(ctx context.Context, pbRequest *pb.UpdateCo
 	request.FromProto(pbRequest)
 	var response node.UpdateConfigurationResponse
 	if err := s.Node.UpdateConfiguration(ctx, &request, &response); err != nil {
-		return nil, err
+		return nil, gRPCError(err)
 	}
 	return response.Proto(), nil
 }
@@ -98,7 +98,7 @@ func (s *Server) UpdateConfiguration(ctx context.Context, pbRequest *pb.UpdateCo
 func (s *Server) Propagate(pbRequest *pb.PropagateRequest, stream pb.ChainService_PropagateServer) error {
 	var request node.PropagateRequest
 	request.FromProto(pbRequest)
-	return s.Node.Propagate(stream.Context(), &request, &gRPCSendStream{stream: stream})
+	return gRPCError(s.Node.Propagate(stream.Context(), &request, &gRPCSendStream{stream: stream}))
 }
 
 // Ping handles requests from the coordinator for checking if this node is alive.

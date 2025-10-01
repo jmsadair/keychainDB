@@ -21,7 +21,12 @@ type ChainTransport interface {
 }
 
 type CoordinatorTransport interface {
-	ReadChainConfiguration(ctx context.Context, address string, request *coordinatornode.ReadChainConfigurationRequest, response *coordinatornode.ReadChainConfigurationResponse) error
+	ReadChainConfiguration(
+		ctx context.Context,
+		address string,
+		request *coordinatornode.ReadChainConfigurationRequest,
+		response *coordinatornode.ReadChainConfigurationResponse,
+	) error
 }
 
 type Proxy struct {
@@ -40,19 +45,29 @@ func (p *Proxy) GetValue(ctx context.Context, key string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	members := config.Members()
-	if len(members) == 0 {
+	tail := config.Tail()
+	if tail == nil {
 		return nil, ErrNoMembers
 	}
-	tail := members[len(members)-1]
 
 	req := &chainnode.ReadRequest{Key: key, ConfigVersion: config.Version}
 	var resp chainnode.ReadResponse
 	err = p.chainTn.Read(ctx, tail.Address, req, &resp)
 	if err != nil && errors.Is(err, chainnode.ErrInvalidConfigVersion) {
-		p.getChainConfiguration(ctx, true)
-		return nil, err
+		config, err := p.getChainConfiguration(ctx, true)
+		if err != nil {
+			return nil, err
+		}
+		tail := config.Tail()
+		if tail == nil {
+			return nil, ErrNoMembers
+		}
+		req.ConfigVersion = config.Version
+		err = p.chainTn.Read(ctx, tail.Address, req, &resp)
+		if err != nil {
+			return nil, err
+		}
+		return resp.Value, nil
 	}
 	if err != nil {
 		return nil, err
@@ -66,19 +81,25 @@ func (p *Proxy) SetValue(ctx context.Context, key string, value []byte) error {
 	if err != nil {
 		return err
 	}
-
-	members := config.Members()
-	if len(members) == 0 {
+	head := config.Head()
+	if head == nil {
 		return ErrNoMembers
 	}
-	head := members[0]
 
 	req := &chainnode.ReplicateRequest{Key: key, Value: value, ConfigVersion: config.Version}
 	var resp chainnode.ReplicateResponse
 	err = p.chainTn.Replicate(ctx, head.Address, req, &resp)
 	if err != nil && errors.Is(err, chainnode.ErrInvalidConfigVersion) {
-		p.getChainConfiguration(ctx, true)
-		return err
+		config, err := p.getChainConfiguration(ctx, true)
+		if err != nil {
+			return err
+		}
+		head := config.Head()
+		if head == nil {
+			return ErrNoMembers
+		}
+		req.ConfigVersion = config.Version
+		return p.chainTn.Replicate(ctx, head.Address, req, &resp)
 	}
 
 	return err
