@@ -1,0 +1,4 @@
+version: v2
+name: buf.build/keychain/proto
+deps:
+  - buf.build/googleapis/googleapis

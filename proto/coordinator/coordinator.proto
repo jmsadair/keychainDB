@@ -2,10 +2,10 @@ syntax = "proto3";
 
 package coordinator;
 
-option go_package = "github.com/jmsadair/keychain/proto/pbcoordinator";
+option go_package = "github.com/jmsadair/keychain/proto/coordinator";
 
 import "google/protobuf/timestamp.proto";
-import "chain.proto";
+import "proto/chain/chain.proto";
 
 // CoordinatorService is used to communicate with the coordinator cluster.
 service CoordinatorService {
