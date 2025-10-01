@@ -82,6 +82,7 @@ func (s *Server) handleSet(w http.ResponseWriter, r *http.Request) {
 	err := s.Proxy.SetValue(r.Context(), req.Key, req.Value)
 
 	if err != nil {
+		fmt.Println(err.Error())
 		writeAPIError(w, &APIError{
 			Status:  http.StatusInternalServerError,
 			Code:    "internal_error",

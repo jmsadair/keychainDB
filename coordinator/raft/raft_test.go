@@ -143,11 +143,17 @@ func TestAddRemoveChainMember(t *testing.T) {
 	require.True(t, expectedConfig.Equal(readConfig))
 
 	// Remove two of the chain members that were added.
-	newConfig, err = leader.RemoveChainMember(context.TODO(), memberID1)
+	newConfig, removed, err := leader.RemoveChainMember(context.TODO(), memberID1)
 	require.NoError(t, err)
+	require.NotNil(t, removed)
+	require.Equal(t, memberID1, removed.ID)
+	require.Equal(t, memberAddr1, removed.Address)
 	require.False(t, newConfig.IsMemberByID(memberID1))
-	newConfig, err = leader.RemoveChainMember(context.TODO(), memberID3)
+	newConfig, removed, err = leader.RemoveChainMember(context.TODO(), memberID3)
 	require.NoError(t, err)
+	require.NotNil(t, removed)
+	require.Equal(t, memberID3, removed.ID)
+	require.Equal(t, memberAddr3, removed.Address)
 	require.False(t, newConfig.IsMemberByID(memberID3))
 
 	readConfig, err = leader.ReadChainConfiguration(context.TODO())

@@ -64,25 +64,32 @@ func TestApply(t *testing.T) {
 	readMembershipOpBytes, err := readMembershipOp.Bytes()
 	require.NoError(t, err)
 	log := raft.Log{Data: readMembershipOpBytes}
-	result, ok := fsm.Apply(&log).(*chainnode.Configuration)
+	readMembershipOpResult, ok := fsm.Apply(&log).(*ReadMembershipResult)
 	require.True(t, ok)
-	require.True(t, chainnode.EmptyChain.Equal(result))
+	require.True(t, chainnode.EmptyChain.Equal(readMembershipOpResult.Config))
 
 	addOp := &AddMemberOperation{ID: memberID, Address: memberAddr}
 	addOpBytes, err := addOp.Bytes()
 	require.NoError(t, err)
 	log = raft.Log{Data: addOpBytes}
-	result, ok = fsm.Apply(&log).(*chainnode.Configuration)
+	addMemberOpResult, ok := fsm.Apply(&log).(*AddMemberResult)
 	require.True(t, ok)
-	require.True(t, result.IsMemberByID(memberID))
+	require.True(t, addMemberOpResult.Config.Equal(
+		chainnode.NewConfiguration([]*chainnode.ChainMember{{ID: memberID, Address: memberAddr}}, 1),
+	))
 
 	removeOp := &RemoveMemberOperation{ID: memberID}
 	removeOpBytes, err := removeOp.Bytes()
 	require.NoError(t, err)
 	log = raft.Log{Data: removeOpBytes}
-	result, ok = fsm.Apply(&log).(*chainnode.Configuration)
+	removeMemberOpResult, ok := fsm.Apply(&log).(*RemoveMemberResult)
 	require.True(t, ok)
-	require.True(t, result.Equal(&chainnode.Configuration{Version: 2}))
+	require.NotNil(t, removeMemberOpResult.Removed)
+	require.Equal(t, memberID, removeMemberOpResult.Removed.ID)
+	require.Equal(t, memberAddr, removeMemberOpResult.Removed.Address)
+	require.True(t, removeMemberOpResult.Config.Equal(
+		chainnode.NewConfiguration([]*chainnode.ChainMember{}, 2),
+	))
 }
 
 func TestSnapshotRestore(t *testing.T) {

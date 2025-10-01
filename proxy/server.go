@@ -1,4 +1,4 @@
-package coordinator
+package proxy
 
 import (
 	"context"

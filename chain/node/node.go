@@ -12,25 +12,20 @@ import (
 )
 
 var (
-	// Indicates a node is in the syncing state.
-	ErrSyncing = errors.New("syncing and cannot serve reads at this time")
+	// Indicates a node is in the syncing state. Nodes that are syncing are unable to serve reads.
+	ErrSyncing = errors.New("cannot serve reads while sycning")
 	// Indicates that a node is not a member of any chain.
-	ErrNotMemberOfChain = errors.New("not a member of the chain")
+	ErrNotMemberOfChain = errors.New("not member of chain")
 	// Indicates that the client provided configuration version does not match the configuration
 	// that this node has. This could mean that the client has an out-of-date configuration or
 	// that this node does.
-	ErrInvalidConfigVersion = errors.New("configuration versions not match")
+	ErrInvalidConfigVersion = errors.New("configuration version mismatch")
+	// Indicates that this node is not the head of the chain. Only the head of a chain
+	// is allowed to serve writes.
+	ErrNotHead = errors.New("chain head must serve writes")
+	// Indicates that the provided key does not exist.
+	ErrKeyDoesNotExist = errors.New("key does not exist")
 )
-
-// Indicates that a node is not a head of a chain.
-type ErrNotHead struct {
-	// The address of the node that this node recognizes as the head.
-	HeadAddr string
-}
-
-func (e ErrNotHead) Error() string {
-	return "writes must be initiated from the head of the chain"
-}
 
 const (
 	defaultBufferedChSize = 256
@@ -227,7 +222,7 @@ func (c *ChainNode) Replicate(ctx context.Context, request *ReplicateRequest, re
 		return ErrNotMemberOfChain
 	}
 	if !state.Config.IsHead(c.ID) {
-		return ErrNotHead{HeadAddr: state.Config.Head().Address}
+		return ErrNotHead
 	}
 
 	succ := state.Config.Successor(c.ID)
@@ -245,8 +240,7 @@ func (c *ChainNode) Replicate(ctx context.Context, request *ReplicateRequest, re
 	return c.tn.Write(ctx, succ.Address, req, &resp)
 }
 
-// Commit commits a previously written version, making it visible for reads.
-// This is part of the two-phase commit protocol used in chain replication.
+// Commit commits a previously written version of a key-value making it visible for reads.
 func (c *ChainNode) Commit(ctx context.Context, request *CommitRequest, response *CommitResponse) error {
 	state := c.state.Load()
 	if request.ConfigVersion != state.Config.Version {
@@ -254,9 +248,6 @@ func (c *ChainNode) Commit(ctx context.Context, request *CommitRequest, response
 	}
 	if !state.Config.IsMemberByID(c.ID) {
 		return ErrNotMemberOfChain
-	}
-	if !state.Config.IsHead(c.ID) {
-		return ErrNotHead{HeadAddr: state.Config.Head().Address}
 	}
 
 	if err := c.store.CommitVersion(request.Key, request.Version); err != nil {
@@ -277,14 +268,36 @@ func (c *ChainNode) Read(ctx context.Context, request *ReadRequest, response *Re
 	if !state.Config.IsMemberByID(c.ID) {
 		return ErrNotMemberOfChain
 	}
+
+	// If this node is syncing, try to forward to the predecessor.
 	if state.Status == Syncing {
-		return ErrSyncing
+		pred := state.Config.Predecessor(c.ID)
+		if pred == nil {
+			return ErrSyncing
+		}
+		req := &ReadRequest{Key: request.Key, ConfigVersion: state.Config.Version, Forwarded: true}
+		var resp ReadResponse
+		if err := c.tn.Read(ctx, pred.Address, req, &resp); err != nil {
+			return err
+		}
+		response.Value = resp.Value
+		return nil
 	}
 
 	value, err := c.store.CommittedRead(request.Key)
+
+	// If the key-value pair is dirty, forward the request to the tail.
 	if err != nil && errors.Is(err, storage.ErrDirtyRead) {
+		// Do not forward to the tail if this request was already forwarded.
+		// This is necessary to prevent a recursive RPC loop where the tail
+		// is syncing and forwards the request to its predecessor, but the
+		// predecessor has yet to commit the key-value pair so it forwards
+		// the request to the tail.
+		if state.Config.IsTail(c.ID) || request.Forwarded {
+			return err
+		}
 		tail := state.Config.Tail()
-		req := &ReadRequest{Key: request.Key, ConfigVersion: state.Config.Version}
+		req := &ReadRequest{Key: request.Key, ConfigVersion: state.Config.Version, Forwarded: true}
 		var resp ReadResponse
 		if err := c.tn.Read(ctx, tail.Address, req, &resp); err != nil {
 			return err
@@ -292,10 +305,13 @@ func (c *ChainNode) Read(ctx context.Context, request *ReadRequest, response *Re
 		response.Value = resp.Value
 		return nil
 	}
-
+	if err != nil && errors.Is(err, storage.ErrKeyDoesNotExist) {
+		return ErrKeyDoesNotExist
+	}
 	if err != nil {
 		return err
 	}
+
 	response.Value = value
 	return nil
 }

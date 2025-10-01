@@ -138,7 +138,7 @@ func TestReplicate(t *testing.T) {
 	config = NewConfiguration([]*ChainMember{member2, member1}, 0)
 	node.state.Load().Config = config
 	err = node.Replicate(context.Background(), request, &response)
-	require.ErrorAs(t, err, new(ErrNotHead))
+	require.ErrorIs(t, err, ErrNotHead)
 
 	// There is a mismatch between the node configuration version and the request configuration version.
 	config = NewConfiguration([]*ChainMember{member1}, 1)

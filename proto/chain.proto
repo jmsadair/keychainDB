@@ -81,7 +81,9 @@ message ReadRequest {
 	// The key being read.
 	string key = 1;
 	// The configuration version.
-	uint64 config_version = 4;
+	uint64 config_version = 2;
+	// Indicates whether this request was forwarded from another node in the chain.
+	bool forwarded = 3;
 }
 
 // ReadResponse is the response to a ReadRequest and contains the value of the key read.

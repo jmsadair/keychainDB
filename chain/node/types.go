@@ -89,6 +89,8 @@ type ReadRequest struct {
 	Key string
 	// The configuration version of the client.
 	ConfigVersion uint64
+	// Indicates whether this request was forwarded from another node.
+	Forwarded bool
 }
 
 // Proto converts a ReadRequest to its protobuf message equivalent.
@@ -96,13 +98,15 @@ func (r *ReadRequest) Proto() *pb.ReadRequest {
 	return &pb.ReadRequest{
 		Key:           r.Key,
 		ConfigVersion: r.ConfigVersion,
+		Forwarded:     r.Forwarded,
 	}
 }
 
 // FromProto converts a ReadRequest protobuf message to a WriteRequest.
 func (r *ReadRequest) FromProto(pbReq *pb.ReadRequest) {
 	r.Key = pbReq.GetKey()
-	r.ConfigVersion = pbReq.ConfigVersion
+	r.ConfigVersion = pbReq.GetConfigVersion()
+	r.Forwarded = pbReq.GetForwarded()
 }
 
 // ReadResponse is a response to a ReadRequest and contains the read value.

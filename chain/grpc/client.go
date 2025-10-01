@@ -45,7 +45,7 @@ func (c *Client) Replicate(ctx context.Context, address string, request *node.Re
 	}
 	pbResp, err := client.Replicate(ctx, request.Proto())
 	if err != nil {
-		return err
+		return parseGrpcErr(err)
 	}
 	response.FromProto(pbResp)
 	return nil
@@ -73,7 +73,7 @@ func (c *Client) Read(ctx context.Context, address string, request *node.ReadReq
 	}
 	pbResp, err := client.Read(ctx, request.Proto())
 	if err != nil {
-		return err
+		return parseGrpcErr(err)
 	}
 	response.FromProto(pbResp)
 	return nil
@@ -87,7 +87,7 @@ func (c *Client) Commit(ctx context.Context, address string, request *node.Commi
 	}
 	pbResp, err := client.Commit(ctx, request.Proto())
 	if err != nil {
-		return err
+		return parseGrpcErr(err)
 	}
 	response.FromProto(pbResp)
 	return nil
@@ -102,7 +102,7 @@ func (c *Client) Propagate(ctx context.Context, address string, request *node.Pr
 
 	stream, err := client.Propagate(ctx, request.Proto())
 	if err != nil {
-		return nil, err
+		return nil, parseGrpcErr(err)
 	}
 	return &gRPCReceiveStream{stream: stream}, nil
 }
@@ -115,7 +115,7 @@ func (c *Client) Ping(ctx context.Context, address string, request *node.PingReq
 	}
 	pbResp, err := client.Ping(ctx, request.Proto())
 	if err != nil {
-		return err
+		return parseGrpcErr(err)
 	}
 	response.FromProto(pbResp)
 	return nil
@@ -134,7 +134,7 @@ func (c *Client) UpdateConfiguration(
 	}
 	pbResp, err := client.UpdateConfiguration(ctx, request.Proto())
 	if err != nil {
-		return err
+		return parseGrpcErr(err)
 	}
 	response.FromProto(pbResp)
 	return nil
