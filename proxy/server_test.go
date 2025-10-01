@@ -19,6 +19,11 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
+const (
+	defaultTimeout = 5 * time.Second
+	defaultTick    = 100 * time.Millisecond
+)
+
 type testCluster struct {
 	coordinators []*coordinator.Server
 	leader       *coordinator.Server
@@ -65,7 +70,7 @@ func makeCluster(t *testing.T, clusterSize int) *testCluster {
 			return true
 		}
 		return false
-	}, 5*time.Second, 100*time.Millisecond)
+	}, defaultTimeout, defaultTick)
 
 	for _, srv := range tc.coordinators {
 		if srv == tc.leader {
@@ -165,7 +170,7 @@ func makeProxy(t *testing.T, clusterMembers []string) (*Server, func()) {
 		}
 		defer resp.Body.Close()
 		return resp.StatusCode == http.StatusOK
-	}, 3*time.Second, 100*time.Millisecond)
+	}, defaultTimeout, defaultTick)
 
 	return srv, func() {
 		cancel()

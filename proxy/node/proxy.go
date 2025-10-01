@@ -55,7 +55,6 @@ func (p *Proxy) GetValue(ctx context.Context, key string) ([]byte, error) {
 	var resp chainnode.ReadResponse
 	err = p.chainTn.Read(ctx, tail.Address, req, &resp)
 	if err != nil && errors.Is(err, chainnode.ErrInvalidConfigVersion) {
-		fmt.Println(err.Error())
 		config, err := p.getChainConfiguration(ctx, true)
 		if err != nil {
 			return nil, err
@@ -67,13 +66,11 @@ func (p *Proxy) GetValue(ctx context.Context, key string) ([]byte, error) {
 		req.ConfigVersion = config.Version
 		err = p.chainTn.Read(ctx, tail.Address, req, &resp)
 		if err != nil {
-			fmt.Println(err.Error())
 			return nil, err
 		}
 		return resp.Value, nil
 	}
 	if err != nil {
-		fmt.Println(err.Error())
 		return nil, err
 	}
 
