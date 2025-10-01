@@ -115,7 +115,11 @@ func (c *Coordinator) updateChainMemberConfigurations(ctx context.Context, confi
 		g.Go(func() error {
 			req := &chainnode.UpdateConfigurationRequest{Configuration: config}
 			var resp chainnode.UpdateConfigurationResponse
-			return c.tn.UpdateConfiguration(ctx, member.Address, req, &resp)
+			err := c.tn.UpdateConfiguration(ctx, member.Address, req, &resp)
+			if removed != nil && member.Address == removed.Address {
+				return nil
+			}
+			return err
 		})
 	}
 
