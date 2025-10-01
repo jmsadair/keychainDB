@@ -109,7 +109,9 @@ func TestAddMember(t *testing.T) {
 	tn.On("UpdateConfiguration", mock.Anything, memberAddr, mock.MatchedBy(func(r *chainnode.UpdateConfigurationRequest) bool {
 		return r.Configuration.Equal(config)
 	})).Return(&chainnode.UpdateConfigurationResponse{}, nil).Once()
-	err := coordinator.AddMember(context.Background(), memberID, memberAddr)
+	req := &AddMemberRequest{ID: memberID, Address: memberAddr}
+	var resp AddMemberResponse
+	err := coordinator.AddMember(context.Background(), req, &resp)
 	require.NoError(t, err)
 	tn.AssertExpectations(t)
 	raft.AssertExpectations(t)
@@ -140,7 +142,9 @@ func TestRemoveMember(t *testing.T) {
 		member2.Address,
 		&chainnode.UpdateConfigurationRequest{Configuration: config},
 	).Return(&chainnode.UpdateConfigurationResponse{}, nil).Once()
-	err := coordinator.RemoveMember(context.Background(), member2.ID)
+	req := &RemoveMemberRequest{ID: member2.ID}
+	var resp RemoveMemberResponse
+	err := coordinator.RemoveMember(context.Background(), req, &resp)
 	require.NoError(t, err)
 	raft.AssertExpectations(t)
 	tn.AssertExpectations(t)
@@ -159,9 +163,11 @@ func TestReadMembershipConfiguration(t *testing.T) {
 
 	expectedConfig := chainnode.NewConfiguration([]*chainnode.ChainMember{member1, member2}, 0)
 	raft.On("ReadChainConfiguration", mock.Anything).Return(expectedConfig, nil).Once()
-	config, err := coordinator.ReadMembershipConfiguration(context.Background())
+	req := &ReadChainConfigurationRequest{}
+	var resp ReadChainConfigurationResponse
+	err := coordinator.ReadMembershipConfiguration(context.Background(), req, &resp)
 	require.NoError(t, err)
-	require.Equal(t, expectedConfig, config)
+	require.Equal(t, expectedConfig, resp.Configuration)
 	raft.AssertExpectations(t)
 }
 
