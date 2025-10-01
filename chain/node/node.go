@@ -25,6 +25,8 @@ var (
 	ErrNotHead = errors.New("chain head must serve writes")
 	// Indicates that the provided key does not exist.
 	ErrKeyDoesNotExist = errors.New("key does not exist")
+	// Indicates that a read of a key-value pair failed because it was not yet committed.
+	ErrNotCommitted = errors.New("key not committed")
 )
 
 const (
@@ -294,7 +296,7 @@ func (c *ChainNode) Read(ctx context.Context, request *ReadRequest, response *Re
 		// predecessor has yet to commit the key-value pair so it forwards
 		// the request to the tail.
 		if state.Config.IsTail(c.ID) || request.Forwarded {
-			return err
+			return ErrNotCommitted
 		}
 		tail := state.Config.Tail()
 		req := &ReadRequest{Key: request.Key, ConfigVersion: state.Config.Version, Forwarded: true}

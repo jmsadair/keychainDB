@@ -2,17 +2,26 @@ package http
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
+
+	chainnode "github.com/jmsadair/keychain/chain/node"
+	proxynode "github.com/jmsadair/keychain/proxy/node"
 )
 
 type ErrorCode string
 
 const (
-	CodeInvalidKey       ErrorCode = "invalid_key"
-	CodeMethodNotAllowed ErrorCode = "method_not_allowed"
-	CodeInvalidJSON      ErrorCode = "invalid_json"
-	CodeInternalError    ErrorCode = "internal_error"
+	CodeInvalidKey             ErrorCode = "invalid_key"
+	CodeMethodNotAllowed       ErrorCode = "method_not_allowed"
+	CodeInvalidJSON            ErrorCode = "invalid_json"
+	CodeInternalError          ErrorCode = "internal_error"
+	CodeKeyNotCommitted        ErrorCode = "not_committed"
+	CodeConfigConflict         ErrorCode = "config_conflict"
+	CodeNodeNotReady           ErrorCode = "node_not_ready"
+	CodeNoMembers              ErrorCode = "no_members"
+	CodeCoordinatorUnavailable ErrorCode = "coordinator_unavailable"
 )
 
 type APIError struct {
@@ -31,7 +40,37 @@ func writeAPIError(w http.ResponseWriter, err *APIError) {
 	json.NewEncoder(w).Encode(err)
 }
 
+func handleProxyError(w http.ResponseWriter, err error) {
+	if err != nil {
+		return
+	}
+
+	switch {
+	case errors.Is(err, chainnode.ErrInvalidConfigVersion):
+		writeAPIError(w, ErrConfigConflict)
+	case errors.Is(err, chainnode.ErrSyncing):
+		writeAPIError(w, ErrNodeNotReady)
+	case errors.Is(err, chainnode.ErrNotCommitted):
+		writeAPIError(w, ErrKeyNotCommitted)
+	case errors.Is(err, proxynode.ErrConfigReadFailure):
+		writeAPIError(w, ErrCoordinatorUnavailable)
+	case errors.Is(err, proxynode.ErrNoMembers):
+		writeAPIError(w, ErrNoMembers)
+	default:
+		writeAPIError(w, &APIError{
+			Status:  http.StatusInternalServerError,
+			Code:    "internal_error",
+			Message: "An unexpected error occurred",
+		})
+	}
+}
+
 var (
+	ErrInvalidJSON = &APIError{
+		Status:  http.StatusBadRequest,
+		Code:    CodeInvalidJSON,
+		Message: "Malformed request body",
+	}
 	ErrInvalidKey = &APIError{
 		Status:  http.StatusBadRequest,
 		Code:    CodeInvalidKey,
@@ -41,6 +80,31 @@ var (
 		Status:  http.StatusMethodNotAllowed,
 		Code:    CodeMethodNotAllowed,
 		Message: "Method not allowed",
+	}
+	ErrKeyNotCommitted = &APIError{
+		Status:  http.StatusConflict,
+		Code:    CodeKeyNotCommitted,
+		Message: "Attempted read of uncommitted key, try again",
+	}
+	ErrConfigConflict = &APIError{
+		Status:  http.StatusConflict,
+		Code:    CodeConfigConflict,
+		Message: "Concurrent chain configuration modifcations, try again",
+	}
+	ErrNodeNotReady = &APIError{
+		Status:  http.StatusServiceUnavailable,
+		Code:    CodeNodeNotReady,
+		Message: "Node is syncing and is unable to serve reads, try again",
+	}
+	ErrNoMembers = &APIError{
+		Status:  http.StatusServiceUnavailable,
+		Code:    CodeNoMembers,
+		Message: "No nodes eligible to serve request",
+	}
+	ErrCoordinatorUnavailable = &APIError{
+		Status:  http.StatusServiceUnavailable,
+		Code:    CodeCoordinatorUnavailable,
+		Message: "Unable to contact coordinator, try again",
 	}
 )
 
@@ -66,11 +130,7 @@ func (s *Server) handleSet(w http.ResponseWriter, r *http.Request) {
 	var req SetRequest
 	defer r.Body.Close()
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeAPIError(w, &APIError{
-			Status:  http.StatusBadRequest,
-			Code:    "invalid_json",
-			Message: "Malformed request body",
-		})
+		writeAPIError(w, ErrInvalidJSON)
 		return
 	}
 
@@ -80,14 +140,8 @@ func (s *Server) handleSet(w http.ResponseWriter, r *http.Request) {
 	}
 
 	err := s.Proxy.SetValue(r.Context(), req.Key, req.Value)
-
 	if err != nil {
-		fmt.Println(err.Error())
-		writeAPIError(w, &APIError{
-			Status:  http.StatusInternalServerError,
-			Code:    "internal_error",
-			Message: "An unexpected error occurred",
-		})
+		handleProxyError(w, err)
 		return
 	}
 
@@ -103,11 +157,7 @@ func (s *Server) handleGet(w http.ResponseWriter, r *http.Request) {
 	var req GetRequest
 	defer r.Body.Close()
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeAPIError(w, &APIError{
-			Status:  http.StatusBadRequest,
-			Code:    "invalid_json",
-			Message: "Malformed request body",
-		})
+		writeAPIError(w, ErrInvalidJSON)
 		return
 	}
 
@@ -118,11 +168,7 @@ func (s *Server) handleGet(w http.ResponseWriter, r *http.Request) {
 
 	value, err := s.Proxy.GetValue(r.Context(), req.Key)
 	if err != nil {
-		writeAPIError(w, &APIError{
-			Status:  http.StatusInternalServerError,
-			Code:    "internal_error",
-			Message: "An unexpected error occurred",
-		})
+		handleProxyError(w, err)
 		return
 	}
 

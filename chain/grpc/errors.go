@@ -14,6 +14,7 @@ var errStringToErr = map[string]error{
 	node.ErrSyncing.Error():              node.ErrSyncing,
 	node.ErrInvalidConfigVersion.Error(): node.ErrInvalidConfigVersion,
 	node.ErrKeyDoesNotExist.Error():      node.ErrKeyDoesNotExist,
+	node.ErrNotCommitted.Error():         node.ErrNotCommitted,
 }
 
 func parseGrpcErr(err error) error {
