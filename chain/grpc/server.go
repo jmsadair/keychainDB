@@ -6,7 +6,7 @@ import (
 	"github.com/jmsadair/keychain/chain/node"
 	"github.com/jmsadair/keychain/chain/storage"
 	"github.com/jmsadair/keychain/internal/transport"
-	pb "github.com/jmsadair/keychain/proto/pbchain"
+	pb "github.com/jmsadair/keychain/proto/chain"
 	"google.golang.org/grpc"
 )
 

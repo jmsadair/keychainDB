@@ -20,6 +20,11 @@ const _ = grpc.SupportPackageIsVersion9
 
 const (
 	CoordinatorService_ReadChainConfiguration_FullMethodName = "/coordinator.CoordinatorService/ReadChainConfiguration"
+	CoordinatorService_AddMember_FullMethodName              = "/coordinator.CoordinatorService/AddMember"
+	CoordinatorService_RemoveMember_FullMethodName           = "/coordinator.CoordinatorService/RemoveMember"
+	CoordinatorService_JoinCluster_FullMethodName            = "/coordinator.CoordinatorService/JoinCluster"
+	CoordinatorService_RemoveFromCluster_FullMethodName      = "/coordinator.CoordinatorService/RemoveFromCluster"
+	CoordinatorService_ClusterStatus_FullMethodName          = "/coordinator.CoordinatorService/ClusterStatus"
 )
 
 // CoordinatorServiceClient is the client API for CoordinatorService service.
@@ -30,6 +35,16 @@ const (
 type CoordinatorServiceClient interface {
 	// ReadChainConfiguration handles requests to read the chain configuration.
 	ReadChainConfiguration(ctx context.Context, in *ReadChainConfigurationRequest, opts ...grpc.CallOption) (*ReadChainConfigurationResponse, error)
+	// AddMember handles requests to add a member to the chain.
+	AddMember(ctx context.Context, in *AddMemberRequest, opts ...grpc.CallOption) (*AddMemberResponse, error)
+	// RemoveMember handles requests to remove a member from the chain.
+	RemoveMember(ctx context.Context, in *RemoveMemberRequest, opts ...grpc.CallOption) (*RemoveMemberResponse, error)
+	// JoinCluster handles requests to join the coordinator cluster.
+	JoinCluster(ctx context.Context, in *JoinClusterRequest, opts ...grpc.CallOption) (*JoinClusterResponse, error)
+	// RemoveFromCluster handles requests to remove a node from the coordinator cluster.
+	RemoveFromCluster(ctx context.Context, in *RemoveFromClusterRequest, opts ...grpc.CallOption) (*RemoveFromClusterResponse, error)
+	// ClusterStatus handles requests to get the coordinator cluster status.
+	ClusterStatus(ctx context.Context, in *ClusterStatusRequest, opts ...grpc.CallOption) (*ClusterStatusResponse, error)
 }
 
 type coordinatorServiceClient struct {
@@ -50,6 +65,56 @@ func (c *coordinatorServiceClient) ReadChainConfiguration(ctx context.Context, i
 	return out, nil
 }
 
+func (c *coordinatorServiceClient) AddMember(ctx context.Context, in *AddMemberRequest, opts ...grpc.CallOption) (*AddMemberResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(AddMemberResponse)
+	err := c.cc.Invoke(ctx, CoordinatorService_AddMember_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *coordinatorServiceClient) RemoveMember(ctx context.Context, in *RemoveMemberRequest, opts ...grpc.CallOption) (*RemoveMemberResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RemoveMemberResponse)
+	err := c.cc.Invoke(ctx, CoordinatorService_RemoveMember_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *coordinatorServiceClient) JoinCluster(ctx context.Context, in *JoinClusterRequest, opts ...grpc.CallOption) (*JoinClusterResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(JoinClusterResponse)
+	err := c.cc.Invoke(ctx, CoordinatorService_JoinCluster_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *coordinatorServiceClient) RemoveFromCluster(ctx context.Context, in *RemoveFromClusterRequest, opts ...grpc.CallOption) (*RemoveFromClusterResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RemoveFromClusterResponse)
+	err := c.cc.Invoke(ctx, CoordinatorService_RemoveFromCluster_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *coordinatorServiceClient) ClusterStatus(ctx context.Context, in *ClusterStatusRequest, opts ...grpc.CallOption) (*ClusterStatusResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ClusterStatusResponse)
+	err := c.cc.Invoke(ctx, CoordinatorService_ClusterStatus_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // CoordinatorServiceServer is the server API for CoordinatorService service.
 // All implementations must embed UnimplementedCoordinatorServiceServer
 // for forward compatibility.
@@ -58,6 +123,16 @@ func (c *coordinatorServiceClient) ReadChainConfiguration(ctx context.Context, i
 type CoordinatorServiceServer interface {
 	// ReadChainConfiguration handles requests to read the chain configuration.
 	ReadChainConfiguration(context.Context, *ReadChainConfigurationRequest) (*ReadChainConfigurationResponse, error)
+	// AddMember handles requests to add a member to the chain.
+	AddMember(context.Context, *AddMemberRequest) (*AddMemberResponse, error)
+	// RemoveMember handles requests to remove a member from the chain.
+	RemoveMember(context.Context, *RemoveMemberRequest) (*RemoveMemberResponse, error)
+	// JoinCluster handles requests to join the coordinator cluster.
+	JoinCluster(context.Context, *JoinClusterRequest) (*JoinClusterResponse, error)
+	// RemoveFromCluster handles requests to remove a node from the coordinator cluster.
+	RemoveFromCluster(context.Context, *RemoveFromClusterRequest) (*RemoveFromClusterResponse, error)
+	// ClusterStatus handles requests to get the coordinator cluster status.
+	ClusterStatus(context.Context, *ClusterStatusRequest) (*ClusterStatusResponse, error)
 	mustEmbedUnimplementedCoordinatorServiceServer()
 }
 
@@ -70,6 +145,21 @@ type UnimplementedCoordinatorServiceServer struct{}
 
 func (UnimplementedCoordinatorServiceServer) ReadChainConfiguration(context.Context, *ReadChainConfigurationRequest) (*ReadChainConfigurationResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ReadChainConfiguration not implemented")
+}
+func (UnimplementedCoordinatorServiceServer) AddMember(context.Context, *AddMemberRequest) (*AddMemberResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method AddMember not implemented")
+}
+func (UnimplementedCoordinatorServiceServer) RemoveMember(context.Context, *RemoveMemberRequest) (*RemoveMemberResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RemoveMember not implemented")
+}
+func (UnimplementedCoordinatorServiceServer) JoinCluster(context.Context, *JoinClusterRequest) (*JoinClusterResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method JoinCluster not implemented")
+}
+func (UnimplementedCoordinatorServiceServer) RemoveFromCluster(context.Context, *RemoveFromClusterRequest) (*RemoveFromClusterResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RemoveFromCluster not implemented")
+}
+func (UnimplementedCoordinatorServiceServer) ClusterStatus(context.Context, *ClusterStatusRequest) (*ClusterStatusResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ClusterStatus not implemented")
 }
 func (UnimplementedCoordinatorServiceServer) mustEmbedUnimplementedCoordinatorServiceServer() {}
 func (UnimplementedCoordinatorServiceServer) testEmbeddedByValue()                            {}
@@ -110,6 +200,96 @@ func _CoordinatorService_ReadChainConfiguration_Handler(srv interface{}, ctx con
 	return interceptor(ctx, in, info, handler)
 }
 
+func _CoordinatorService_AddMember_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AddMemberRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CoordinatorServiceServer).AddMember(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CoordinatorService_AddMember_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CoordinatorServiceServer).AddMember(ctx, req.(*AddMemberRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CoordinatorService_RemoveMember_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RemoveMemberRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CoordinatorServiceServer).RemoveMember(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CoordinatorService_RemoveMember_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CoordinatorServiceServer).RemoveMember(ctx, req.(*RemoveMemberRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CoordinatorService_JoinCluster_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(JoinClusterRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CoordinatorServiceServer).JoinCluster(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CoordinatorService_JoinCluster_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CoordinatorServiceServer).JoinCluster(ctx, req.(*JoinClusterRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CoordinatorService_RemoveFromCluster_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RemoveFromClusterRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CoordinatorServiceServer).RemoveFromCluster(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CoordinatorService_RemoveFromCluster_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CoordinatorServiceServer).RemoveFromCluster(ctx, req.(*RemoveFromClusterRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CoordinatorService_ClusterStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ClusterStatusRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CoordinatorServiceServer).ClusterStatus(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CoordinatorService_ClusterStatus_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CoordinatorServiceServer).ClusterStatus(ctx, req.(*ClusterStatusRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // CoordinatorService_ServiceDesc is the grpc.ServiceDesc for CoordinatorService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -120,6 +300,26 @@ var CoordinatorService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ReadChainConfiguration",
 			Handler:    _CoordinatorService_ReadChainConfiguration_Handler,
+		},
+		{
+			MethodName: "AddMember",
+			Handler:    _CoordinatorService_AddMember_Handler,
+		},
+		{
+			MethodName: "RemoveMember",
+			Handler:    _CoordinatorService_RemoveMember_Handler,
+		},
+		{
+			MethodName: "JoinCluster",
+			Handler:    _CoordinatorService_JoinCluster_Handler,
+		},
+		{
+			MethodName: "RemoveFromCluster",
+			Handler:    _CoordinatorService_RemoveFromCluster_Handler,
+		},
+		{
+			MethodName: "ClusterStatus",
+			Handler:    _CoordinatorService_ClusterStatus_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

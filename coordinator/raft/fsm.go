@@ -6,7 +6,7 @@ import (
 
 	"github.com/hashicorp/raft"
 	chainnode "github.com/jmsadair/keychain/chain/node"
-	pb "github.com/jmsadair/keychain/proto/pbcoordinator"
+	pb "github.com/jmsadair/keychain/proto/coordinator"
 	"google.golang.org/protobuf/proto"
 )
 

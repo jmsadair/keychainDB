@@ -44,7 +44,7 @@ func NewServer(
 		return nil, err
 	}
 	coordinator := node.NewCoordinator(httpAddr, tn, rb)
-	httpSrv := &coordinatorhttp.Server{Address: httpAddr, Coordinator: coordinator}
+	httpSrv := &coordinatorhttp.Server{Address: httpAddr, GRPCAddress: grpcAddr, DialOptions: dialOpts}
 	grpcSrv := coordinatorgrpc.NewServer(grpcAddr, coordinator)
 	return &Server{HTTPServer: httpSrv, GRPCServer: grpcSrv, Coordinator: coordinator, Raft: rb}, nil
 }

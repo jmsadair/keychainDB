@@ -8,6 +8,7 @@ package coordinator
 
 import (
 	chain "github.com/jmsadair/keychain/proto/chain"
+	_ "google.golang.org/genproto/googleapis/api/annotations"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
@@ -106,6 +107,448 @@ func (x *ReadChainConfigurationResponse) GetConfiguration() *chain.Configuration
 	return nil
 }
 
+// AddMemberRequest is a request to add a member to the chain.
+type AddMemberRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The ID of the member being added.
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	// The address of the member being added.
+	Address       string `protobuf:"bytes,2,opt,name=address,proto3" json:"address,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AddMemberRequest) Reset() {
+	*x = AddMemberRequest{}
+	mi := &file_proto_coordinator_coordinator_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AddMemberRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AddMemberRequest) ProtoMessage() {}
+
+func (x *AddMemberRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_coordinator_coordinator_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AddMemberRequest.ProtoReflect.Descriptor instead.
+func (*AddMemberRequest) Descriptor() ([]byte, []int) {
+	return file_proto_coordinator_coordinator_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *AddMemberRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *AddMemberRequest) GetAddress() string {
+	if x != nil {
+		return x.Address
+	}
+	return ""
+}
+
+// AddMemberResponse is a response to an AddMemberRequest.
+type AddMemberResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AddMemberResponse) Reset() {
+	*x = AddMemberResponse{}
+	mi := &file_proto_coordinator_coordinator_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AddMemberResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AddMemberResponse) ProtoMessage() {}
+
+func (x *AddMemberResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_coordinator_coordinator_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AddMemberResponse.ProtoReflect.Descriptor instead.
+func (*AddMemberResponse) Descriptor() ([]byte, []int) {
+	return file_proto_coordinator_coordinator_proto_rawDescGZIP(), []int{3}
+}
+
+// RemoveMemberRequest is a request to remove a member from the chain.
+type RemoveMemberRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The ID of the member being removed.
+	Id            string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RemoveMemberRequest) Reset() {
+	*x = RemoveMemberRequest{}
+	mi := &file_proto_coordinator_coordinator_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RemoveMemberRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RemoveMemberRequest) ProtoMessage() {}
+
+func (x *RemoveMemberRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_coordinator_coordinator_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RemoveMemberRequest.ProtoReflect.Descriptor instead.
+func (*RemoveMemberRequest) Descriptor() ([]byte, []int) {
+	return file_proto_coordinator_coordinator_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *RemoveMemberRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+// RemoveMemberResponse is a response to a RemoveMemberRequest.
+type RemoveMemberResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RemoveMemberResponse) Reset() {
+	*x = RemoveMemberResponse{}
+	mi := &file_proto_coordinator_coordinator_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RemoveMemberResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RemoveMemberResponse) ProtoMessage() {}
+
+func (x *RemoveMemberResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_coordinator_coordinator_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RemoveMemberResponse.ProtoReflect.Descriptor instead.
+func (*RemoveMemberResponse) Descriptor() ([]byte, []int) {
+	return file_proto_coordinator_coordinator_proto_rawDescGZIP(), []int{5}
+}
+
+// JoinClusterRequest is a request to join the coordinator cluster.
+type JoinClusterRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The ID of the coordinator joining the cluster.
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	// The address of the coordinator joining the cluster.
+	Address       string `protobuf:"bytes,2,opt,name=address,proto3" json:"address,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *JoinClusterRequest) Reset() {
+	*x = JoinClusterRequest{}
+	mi := &file_proto_coordinator_coordinator_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *JoinClusterRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*JoinClusterRequest) ProtoMessage() {}
+
+func (x *JoinClusterRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_coordinator_coordinator_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use JoinClusterRequest.ProtoReflect.Descriptor instead.
+func (*JoinClusterRequest) Descriptor() ([]byte, []int) {
+	return file_proto_coordinator_coordinator_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *JoinClusterRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *JoinClusterRequest) GetAddress() string {
+	if x != nil {
+		return x.Address
+	}
+	return ""
+}
+
+// JoinClusterResponse is a response to a JoinClusterRequest.
+type JoinClusterResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *JoinClusterResponse) Reset() {
+	*x = JoinClusterResponse{}
+	mi := &file_proto_coordinator_coordinator_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *JoinClusterResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*JoinClusterResponse) ProtoMessage() {}
+
+func (x *JoinClusterResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_coordinator_coordinator_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use JoinClusterResponse.ProtoReflect.Descriptor instead.
+func (*JoinClusterResponse) Descriptor() ([]byte, []int) {
+	return file_proto_coordinator_coordinator_proto_rawDescGZIP(), []int{7}
+}
+
+// RemoveFromClusterRequest is a request to remove a coordinator from the cluster.
+type RemoveFromClusterRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The ID of the coordinator being removed.
+	Id            string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RemoveFromClusterRequest) Reset() {
+	*x = RemoveFromClusterRequest{}
+	mi := &file_proto_coordinator_coordinator_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RemoveFromClusterRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RemoveFromClusterRequest) ProtoMessage() {}
+
+func (x *RemoveFromClusterRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_coordinator_coordinator_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RemoveFromClusterRequest.ProtoReflect.Descriptor instead.
+func (*RemoveFromClusterRequest) Descriptor() ([]byte, []int) {
+	return file_proto_coordinator_coordinator_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *RemoveFromClusterRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+// RemoveFromClusterResponse is a response to a RemoveFromClusterRequest.
+type RemoveFromClusterResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RemoveFromClusterResponse) Reset() {
+	*x = RemoveFromClusterResponse{}
+	mi := &file_proto_coordinator_coordinator_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RemoveFromClusterResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RemoveFromClusterResponse) ProtoMessage() {}
+
+func (x *RemoveFromClusterResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_coordinator_coordinator_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RemoveFromClusterResponse.ProtoReflect.Descriptor instead.
+func (*RemoveFromClusterResponse) Descriptor() ([]byte, []int) {
+	return file_proto_coordinator_coordinator_proto_rawDescGZIP(), []int{9}
+}
+
+// ClusterStatusRequest is a request to get the coordinator cluster status.
+type ClusterStatusRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ClusterStatusRequest) Reset() {
+	*x = ClusterStatusRequest{}
+	mi := &file_proto_coordinator_coordinator_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ClusterStatusRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ClusterStatusRequest) ProtoMessage() {}
+
+func (x *ClusterStatusRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_coordinator_coordinator_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ClusterStatusRequest.ProtoReflect.Descriptor instead.
+func (*ClusterStatusRequest) Descriptor() ([]byte, []int) {
+	return file_proto_coordinator_coordinator_proto_rawDescGZIP(), []int{10}
+}
+
+// ClusterStatusResponse is a response to a ClusterStatusRequest.
+type ClusterStatusResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The cluster members (ID -> Address mapping).
+	Members map[string]string `protobuf:"bytes,1,rep,name=members,proto3" json:"members,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// The leader ID.
+	Leader        string `protobuf:"bytes,2,opt,name=leader,proto3" json:"leader,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ClusterStatusResponse) Reset() {
+	*x = ClusterStatusResponse{}
+	mi := &file_proto_coordinator_coordinator_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ClusterStatusResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ClusterStatusResponse) ProtoMessage() {}
+
+func (x *ClusterStatusResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_coordinator_coordinator_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ClusterStatusResponse.ProtoReflect.Descriptor instead.
+func (*ClusterStatusResponse) Descriptor() ([]byte, []int) {
+	return file_proto_coordinator_coordinator_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *ClusterStatusResponse) GetMembers() map[string]string {
+	if x != nil {
+		return x.Members
+	}
+	return nil
+}
+
+func (x *ClusterStatusResponse) GetLeader() string {
+	if x != nil {
+		return x.Leader
+	}
+	return ""
+}
+
 // An operation that adds a member to a chain.
 type AddMemberOperation struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -119,7 +562,7 @@ type AddMemberOperation struct {
 
 func (x *AddMemberOperation) Reset() {
 	*x = AddMemberOperation{}
-	mi := &file_proto_coordinator_coordinator_proto_msgTypes[2]
+	mi := &file_proto_coordinator_coordinator_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -131,7 +574,7 @@ func (x *AddMemberOperation) String() string {
 func (*AddMemberOperation) ProtoMessage() {}
 
 func (x *AddMemberOperation) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_coordinator_coordinator_proto_msgTypes[2]
+	mi := &file_proto_coordinator_coordinator_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -144,7 +587,7 @@ func (x *AddMemberOperation) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AddMemberOperation.ProtoReflect.Descriptor instead.
 func (*AddMemberOperation) Descriptor() ([]byte, []int) {
-	return file_proto_coordinator_coordinator_proto_rawDescGZIP(), []int{2}
+	return file_proto_coordinator_coordinator_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *AddMemberOperation) GetId() string {
@@ -172,7 +615,7 @@ type RemoveMemberOperation struct {
 
 func (x *RemoveMemberOperation) Reset() {
 	*x = RemoveMemberOperation{}
-	mi := &file_proto_coordinator_coordinator_proto_msgTypes[3]
+	mi := &file_proto_coordinator_coordinator_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -184,7 +627,7 @@ func (x *RemoveMemberOperation) String() string {
 func (*RemoveMemberOperation) ProtoMessage() {}
 
 func (x *RemoveMemberOperation) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_coordinator_coordinator_proto_msgTypes[3]
+	mi := &file_proto_coordinator_coordinator_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -197,7 +640,7 @@ func (x *RemoveMemberOperation) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RemoveMemberOperation.ProtoReflect.Descriptor instead.
 func (*RemoveMemberOperation) Descriptor() ([]byte, []int) {
-	return file_proto_coordinator_coordinator_proto_rawDescGZIP(), []int{3}
+	return file_proto_coordinator_coordinator_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *RemoveMemberOperation) GetId() string {
@@ -216,7 +659,7 @@ type ReadMembershipOperation struct {
 
 func (x *ReadMembershipOperation) Reset() {
 	*x = ReadMembershipOperation{}
-	mi := &file_proto_coordinator_coordinator_proto_msgTypes[4]
+	mi := &file_proto_coordinator_coordinator_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -228,7 +671,7 @@ func (x *ReadMembershipOperation) String() string {
 func (*ReadMembershipOperation) ProtoMessage() {}
 
 func (x *ReadMembershipOperation) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_coordinator_coordinator_proto_msgTypes[4]
+	mi := &file_proto_coordinator_coordinator_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -241,7 +684,7 @@ func (x *ReadMembershipOperation) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReadMembershipOperation.ProtoReflect.Descriptor instead.
 func (*ReadMembershipOperation) Descriptor() ([]byte, []int) {
-	return file_proto_coordinator_coordinator_proto_rawDescGZIP(), []int{4}
+	return file_proto_coordinator_coordinator_proto_rawDescGZIP(), []int{14}
 }
 
 // An operation that will be replicated across a raft cluster.
@@ -259,7 +702,7 @@ type ReplicatedOperation struct {
 
 func (x *ReplicatedOperation) Reset() {
 	*x = ReplicatedOperation{}
-	mi := &file_proto_coordinator_coordinator_proto_msgTypes[5]
+	mi := &file_proto_coordinator_coordinator_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -271,7 +714,7 @@ func (x *ReplicatedOperation) String() string {
 func (*ReplicatedOperation) ProtoMessage() {}
 
 func (x *ReplicatedOperation) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_coordinator_coordinator_proto_msgTypes[5]
+	mi := &file_proto_coordinator_coordinator_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -284,7 +727,7 @@ func (x *ReplicatedOperation) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReplicatedOperation.ProtoReflect.Descriptor instead.
 func (*ReplicatedOperation) Descriptor() ([]byte, []int) {
-	return file_proto_coordinator_coordinator_proto_rawDescGZIP(), []int{5}
+	return file_proto_coordinator_coordinator_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *ReplicatedOperation) GetOperation() isReplicatedOperation_Operation {
@@ -364,7 +807,7 @@ type Log struct {
 
 func (x *Log) Reset() {
 	*x = Log{}
-	mi := &file_proto_coordinator_coordinator_proto_msgTypes[6]
+	mi := &file_proto_coordinator_coordinator_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -376,7 +819,7 @@ func (x *Log) String() string {
 func (*Log) ProtoMessage() {}
 
 func (x *Log) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_coordinator_coordinator_proto_msgTypes[6]
+	mi := &file_proto_coordinator_coordinator_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -389,7 +832,7 @@ func (x *Log) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Log.ProtoReflect.Descriptor instead.
 func (*Log) Descriptor() ([]byte, []int) {
-	return file_proto_coordinator_coordinator_proto_rawDescGZIP(), []int{6}
+	return file_proto_coordinator_coordinator_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *Log) GetIndex() uint64 {
@@ -438,10 +881,31 @@ var File_proto_coordinator_coordinator_proto protoreflect.FileDescriptor
 
 const file_proto_coordinator_coordinator_proto_rawDesc = "" +
 	"\n" +
-	"#proto/coordinator/coordinator.proto\x12\vcoordinator\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x17proto/chain/chain.proto\"\x1f\n" +
+	"#proto/coordinator/coordinator.proto\x12\vcoordinator\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1cgoogle/api/annotations.proto\x1a\x17proto/chain/chain.proto\"\x1f\n" +
 	"\x1dReadChainConfigurationRequest\"\\\n" +
 	"\x1eReadChainConfigurationResponse\x12:\n" +
-	"\rconfiguration\x18\x01 \x01(\v2\x14.chain.ConfigurationR\rconfiguration\">\n" +
+	"\rconfiguration\x18\x01 \x01(\v2\x14.chain.ConfigurationR\rconfiguration\"<\n" +
+	"\x10AddMemberRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x18\n" +
+	"\aaddress\x18\x02 \x01(\tR\aaddress\"\x13\n" +
+	"\x11AddMemberResponse\"%\n" +
+	"\x13RemoveMemberRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"\x16\n" +
+	"\x14RemoveMemberResponse\">\n" +
+	"\x12JoinClusterRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x18\n" +
+	"\aaddress\x18\x02 \x01(\tR\aaddress\"\x15\n" +
+	"\x13JoinClusterResponse\"*\n" +
+	"\x18RemoveFromClusterRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"\x1b\n" +
+	"\x19RemoveFromClusterResponse\"\x16\n" +
+	"\x14ClusterStatusRequest\"\xb6\x01\n" +
+	"\x15ClusterStatusResponse\x12I\n" +
+	"\amembers\x18\x01 \x03(\v2/.coordinator.ClusterStatusResponse.MembersEntryR\amembers\x12\x16\n" +
+	"\x06leader\x18\x02 \x01(\tR\x06leader\x1a:\n" +
+	"\fMembersEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\">\n" +
 	"\x12AddMemberOperation\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x18\n" +
 	"\aaddress\x18\x02 \x01(\tR\aaddress\"'\n" +
@@ -463,9 +927,14 @@ const file_proto_coordinator_coordinator_proto_rawDesc = "" +
 	"extensions\x18\x05 \x01(\fR\n" +
 	"extensions\x12;\n" +
 	"\vappended_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
-	"appendedAt2\x89\x01\n" +
-	"\x12CoordinatorService\x12s\n" +
-	"\x16ReadChainConfiguration\x12*.coordinator.ReadChainConfigurationRequest\x1a+.coordinator.ReadChainConfigurationResponse\"\x00B0Z.github.com/jmsadair/keychain/proto/coordinatorb\x06proto3"
+	"appendedAt2\xf5\x05\n" +
+	"\x12CoordinatorService\x12\x92\x01\n" +
+	"\x16ReadChainConfiguration\x12*.coordinator.ReadChainConfigurationRequest\x1a+.coordinator.ReadChainConfigurationResponse\"\x1f\x82\xd3\xe4\x93\x02\x19\x12\x17/v1/chain/configuration\x12h\n" +
+	"\tAddMember\x12\x1d.coordinator.AddMemberRequest\x1a\x1e.coordinator.AddMemberResponse\"\x1c\x82\xd3\xe4\x93\x02\x16:\x01*\"\x11/v1/chain/members\x12s\n" +
+	"\fRemoveMember\x12 .coordinator.RemoveMemberRequest\x1a!.coordinator.RemoveMemberResponse\"\x1e\x82\xd3\xe4\x93\x02\x18*\x16/v1/chain/members/{id}\x12p\n" +
+	"\vJoinCluster\x12\x1f.coordinator.JoinClusterRequest\x1a .coordinator.JoinClusterResponse\"\x1e\x82\xd3\xe4\x93\x02\x18:\x01*\"\x13/v1/cluster/members\x12\x84\x01\n" +
+	"\x11RemoveFromCluster\x12%.coordinator.RemoveFromClusterRequest\x1a&.coordinator.RemoveFromClusterResponse\" \x82\xd3\xe4\x93\x02\x1a*\x18/v1/cluster/members/{id}\x12r\n" +
+	"\rClusterStatus\x12!.coordinator.ClusterStatusRequest\x1a\".coordinator.ClusterStatusResponse\"\x1a\x82\xd3\xe4\x93\x02\x14\x12\x12/v1/cluster/statusB0Z.github.com/jmsadair/keychain/proto/coordinatorb\x06proto3"
 
 var (
 	file_proto_coordinator_coordinator_proto_rawDescOnce sync.Once
@@ -479,31 +948,53 @@ func file_proto_coordinator_coordinator_proto_rawDescGZIP() []byte {
 	return file_proto_coordinator_coordinator_proto_rawDescData
 }
 
-var file_proto_coordinator_coordinator_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
+var file_proto_coordinator_coordinator_proto_msgTypes = make([]protoimpl.MessageInfo, 18)
 var file_proto_coordinator_coordinator_proto_goTypes = []any{
 	(*ReadChainConfigurationRequest)(nil),  // 0: coordinator.ReadChainConfigurationRequest
 	(*ReadChainConfigurationResponse)(nil), // 1: coordinator.ReadChainConfigurationResponse
-	(*AddMemberOperation)(nil),             // 2: coordinator.AddMemberOperation
-	(*RemoveMemberOperation)(nil),          // 3: coordinator.RemoveMemberOperation
-	(*ReadMembershipOperation)(nil),        // 4: coordinator.ReadMembershipOperation
-	(*ReplicatedOperation)(nil),            // 5: coordinator.ReplicatedOperation
-	(*Log)(nil),                            // 6: coordinator.Log
-	(*chain.Configuration)(nil),            // 7: chain.Configuration
-	(*timestamppb.Timestamp)(nil),          // 8: google.protobuf.Timestamp
+	(*AddMemberRequest)(nil),               // 2: coordinator.AddMemberRequest
+	(*AddMemberResponse)(nil),              // 3: coordinator.AddMemberResponse
+	(*RemoveMemberRequest)(nil),            // 4: coordinator.RemoveMemberRequest
+	(*RemoveMemberResponse)(nil),           // 5: coordinator.RemoveMemberResponse
+	(*JoinClusterRequest)(nil),             // 6: coordinator.JoinClusterRequest
+	(*JoinClusterResponse)(nil),            // 7: coordinator.JoinClusterResponse
+	(*RemoveFromClusterRequest)(nil),       // 8: coordinator.RemoveFromClusterRequest
+	(*RemoveFromClusterResponse)(nil),      // 9: coordinator.RemoveFromClusterResponse
+	(*ClusterStatusRequest)(nil),           // 10: coordinator.ClusterStatusRequest
+	(*ClusterStatusResponse)(nil),          // 11: coordinator.ClusterStatusResponse
+	(*AddMemberOperation)(nil),             // 12: coordinator.AddMemberOperation
+	(*RemoveMemberOperation)(nil),          // 13: coordinator.RemoveMemberOperation
+	(*ReadMembershipOperation)(nil),        // 14: coordinator.ReadMembershipOperation
+	(*ReplicatedOperation)(nil),            // 15: coordinator.ReplicatedOperation
+	(*Log)(nil),                            // 16: coordinator.Log
+	nil,                                    // 17: coordinator.ClusterStatusResponse.MembersEntry
+	(*chain.Configuration)(nil),            // 18: chain.Configuration
+	(*timestamppb.Timestamp)(nil),          // 19: google.protobuf.Timestamp
 }
 var file_proto_coordinator_coordinator_proto_depIdxs = []int32{
-	7, // 0: coordinator.ReadChainConfigurationResponse.configuration:type_name -> chain.Configuration
-	2, // 1: coordinator.ReplicatedOperation.add_member:type_name -> coordinator.AddMemberOperation
-	3, // 2: coordinator.ReplicatedOperation.remove_member:type_name -> coordinator.RemoveMemberOperation
-	4, // 3: coordinator.ReplicatedOperation.read_membership:type_name -> coordinator.ReadMembershipOperation
-	8, // 4: coordinator.Log.appended_at:type_name -> google.protobuf.Timestamp
-	0, // 5: coordinator.CoordinatorService.ReadChainConfiguration:input_type -> coordinator.ReadChainConfigurationRequest
-	1, // 6: coordinator.CoordinatorService.ReadChainConfiguration:output_type -> coordinator.ReadChainConfigurationResponse
-	6, // [6:7] is the sub-list for method output_type
-	5, // [5:6] is the sub-list for method input_type
-	5, // [5:5] is the sub-list for extension type_name
-	5, // [5:5] is the sub-list for extension extendee
-	0, // [0:5] is the sub-list for field type_name
+	18, // 0: coordinator.ReadChainConfigurationResponse.configuration:type_name -> chain.Configuration
+	17, // 1: coordinator.ClusterStatusResponse.members:type_name -> coordinator.ClusterStatusResponse.MembersEntry
+	12, // 2: coordinator.ReplicatedOperation.add_member:type_name -> coordinator.AddMemberOperation
+	13, // 3: coordinator.ReplicatedOperation.remove_member:type_name -> coordinator.RemoveMemberOperation
+	14, // 4: coordinator.ReplicatedOperation.read_membership:type_name -> coordinator.ReadMembershipOperation
+	19, // 5: coordinator.Log.appended_at:type_name -> google.protobuf.Timestamp
+	0,  // 6: coordinator.CoordinatorService.ReadChainConfiguration:input_type -> coordinator.ReadChainConfigurationRequest
+	2,  // 7: coordinator.CoordinatorService.AddMember:input_type -> coordinator.AddMemberRequest
+	4,  // 8: coordinator.CoordinatorService.RemoveMember:input_type -> coordinator.RemoveMemberRequest
+	6,  // 9: coordinator.CoordinatorService.JoinCluster:input_type -> coordinator.JoinClusterRequest
+	8,  // 10: coordinator.CoordinatorService.RemoveFromCluster:input_type -> coordinator.RemoveFromClusterRequest
+	10, // 11: coordinator.CoordinatorService.ClusterStatus:input_type -> coordinator.ClusterStatusRequest
+	1,  // 12: coordinator.CoordinatorService.ReadChainConfiguration:output_type -> coordinator.ReadChainConfigurationResponse
+	3,  // 13: coordinator.CoordinatorService.AddMember:output_type -> coordinator.AddMemberResponse
+	5,  // 14: coordinator.CoordinatorService.RemoveMember:output_type -> coordinator.RemoveMemberResponse
+	7,  // 15: coordinator.CoordinatorService.JoinCluster:output_type -> coordinator.JoinClusterResponse
+	9,  // 16: coordinator.CoordinatorService.RemoveFromCluster:output_type -> coordinator.RemoveFromClusterResponse
+	11, // 17: coordinator.CoordinatorService.ClusterStatus:output_type -> coordinator.ClusterStatusResponse
+	12, // [12:18] is the sub-list for method output_type
+	6,  // [6:12] is the sub-list for method input_type
+	6,  // [6:6] is the sub-list for extension type_name
+	6,  // [6:6] is the sub-list for extension extendee
+	0,  // [0:6] is the sub-list for field type_name
 }
 
 func init() { file_proto_coordinator_coordinator_proto_init() }
@@ -511,7 +1002,7 @@ func file_proto_coordinator_coordinator_proto_init() {
 	if File_proto_coordinator_coordinator_proto != nil {
 		return
 	}
-	file_proto_coordinator_coordinator_proto_msgTypes[5].OneofWrappers = []any{
+	file_proto_coordinator_coordinator_proto_msgTypes[15].OneofWrappers = []any{
 		(*ReplicatedOperation_AddMember)(nil),
 		(*ReplicatedOperation_RemoveMember)(nil),
 		(*ReplicatedOperation_ReadMembership)(nil),
@@ -522,7 +1013,7 @@ func file_proto_coordinator_coordinator_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_coordinator_coordinator_proto_rawDesc), len(file_proto_coordinator_coordinator_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   7,
+			NumMessages:   18,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

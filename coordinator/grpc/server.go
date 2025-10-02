@@ -5,8 +5,12 @@ import (
 
 	"github.com/jmsadair/keychain/coordinator/node"
 	"github.com/jmsadair/keychain/internal/transport"
-	pb "github.com/jmsadair/keychain/proto/pbcoordinator"
+	pb "github.com/jmsadair/keychain/proto/coordinator"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/health"
+	"google.golang.org/grpc/health/grpc_health_v1"
+	"google.golang.org/grpc/status"
 )
 
 // Server is the gRPC coordinator service.
@@ -25,6 +29,7 @@ func NewServer(address string, node *node.Coordinator) *Server {
 	}
 	s.Server = transport.NewServer(address, func(grpcServer *grpc.Server) {
 		pb.RegisterCoordinatorServiceServer(grpcServer, s)
+		grpc_health_v1.RegisterHealthServer(grpcServer, health.NewServer())
 	})
 	return s
 }
@@ -98,4 +103,14 @@ func (s *Server) ClusterStatus(ctx context.Context, pbRequest *pb.ClusterStatusR
 		return nil, err
 	}
 	return resp.Proto(), nil
+}
+
+// Check implements the gRPC health check protocol.
+func (s *Server) Check(ctx context.Context, req *grpc_health_v1.HealthCheckRequest) (*grpc_health_v1.HealthCheckResponse, error) {
+	return &grpc_health_v1.HealthCheckResponse{Status: grpc_health_v1.HealthCheckResponse_SERVING}, nil
+}
+
+// Watch implements the gRPC health check protocol.
+func (s *Server) Watch(req *grpc_health_v1.HealthCheckRequest, _ grpc_health_v1.Health_WatchServer) error {
+	return status.Error(codes.Unimplemented, "unimplemented")
 }

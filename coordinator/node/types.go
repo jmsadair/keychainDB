@@ -3,7 +3,7 @@ package node
 import (
 	chainnode "github.com/jmsadair/keychain/chain/node"
 	"github.com/jmsadair/keychain/coordinator/raft"
-	pb "github.com/jmsadair/keychain/proto/pbcoordinator"
+	pb "github.com/jmsadair/keychain/proto/coordinator"
 )
 
 // ReadChainConfigurationRequest is a request to read the chain configuration.
@@ -71,7 +71,7 @@ type ClusterStatusRequest struct{}
 
 // ClusterStatusResponse is a response to a ClusterStatusRequest.
 type ClusterStatusResponse struct {
-	Status *raft.Status
+	Status raft.Status
 }
 
 // Proto converts an AddMemberRequest to its protobuf message equivalent.
@@ -171,7 +171,7 @@ func (r *ClusterStatusResponse) Proto() *pb.ClusterStatusResponse {
 
 // FromProto converts a ClusterStatusResponse protobuf message to a ClusterStatusResponse.
 func (r *ClusterStatusResponse) FromProto(pbResp *pb.ClusterStatusResponse) {
-	r.Status = &raft.Status{
+	r.Status = raft.Status{
 		Members: pbResp.GetMembers(),
 		Leader:  pbResp.GetLeader(),
 	}

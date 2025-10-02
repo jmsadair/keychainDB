@@ -28,7 +28,7 @@ type RaftProtocol interface {
 	ChainConfiguration() *chainnode.Configuration
 	JoinCluster(ctx context.Context, id, address string) error
 	RemoveFromCluster(ctx context.Context, id string) error
-	ClusterStatus() (*raft.Status, error)
+	ClusterStatus() (raft.Status, error)
 	Shutdown() error
 }
 

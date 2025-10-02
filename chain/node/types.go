@@ -2,7 +2,7 @@ package node
 
 import (
 	"github.com/jmsadair/keychain/chain/storage"
-	pb "github.com/jmsadair/keychain/proto/pbchain"
+	pb "github.com/jmsadair/keychain/proto/chain"
 )
 
 // ReplicateRequest represents a request to write a versioned key-value pair.
