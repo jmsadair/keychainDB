@@ -156,19 +156,19 @@ func (rb *RaftBackend) RemoveFromCluster(ctx context.Context, nodeID string) err
 	return nil
 }
 
-func (rb *RaftBackend) ClusterStatus() (*Status, error) {
+func (rb *RaftBackend) ClusterStatus() (Status, error) {
 	_, leaderID := rb.raft.LeaderWithID()
 
 	configFuture := rb.raft.GetConfiguration()
 	if err := configFuture.Error(); err != nil {
-		return nil, err
+		return Status{}, err
 	}
 	nodeIDToAddr := make(map[string]string, len(configFuture.Configuration().Servers))
 	for _, srv := range configFuture.Configuration().Servers {
 		nodeIDToAddr[string(srv.ID)] = string(srv.Address)
 	}
 
-	return &Status{Members: nodeIDToAddr, Leader: string(leaderID)}, nil
+	return Status{Members: nodeIDToAddr, Leader: string(leaderID)}, nil
 }
 
 func (rb *RaftBackend) LeadershipCh() <-chan bool {

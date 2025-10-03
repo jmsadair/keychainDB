@@ -2,6 +2,7 @@ package node
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
@@ -28,7 +29,7 @@ type RaftProtocol interface {
 	ChainConfiguration() *chainnode.Configuration
 	JoinCluster(ctx context.Context, id, address string) error
 	RemoveFromCluster(ctx context.Context, id string) error
-	ClusterStatus() (*raft.Status, error)
+	ClusterStatus() (raft.Status, error)
 	Shutdown() error
 }
 
@@ -85,24 +86,47 @@ func (c *Coordinator) Run(ctx context.Context) error {
 	return c.Raft.Shutdown()
 }
 
-func (c *Coordinator) AddMember(ctx context.Context, id, address string) error {
-	config, err := c.Raft.AddChainMember(ctx, id, address)
+func (c *Coordinator) AddMember(ctx context.Context, request *AddMemberRequest, response *AddMemberResponse) error {
+	config, err := c.Raft.AddChainMember(ctx, request.ID, request.Address)
 	if err != nil {
 		return err
 	}
 	return c.updateChainMemberConfigurations(ctx, config, nil)
 }
 
-func (c *Coordinator) RemoveMember(ctx context.Context, id string) error {
-	config, removed, err := c.Raft.RemoveChainMember(ctx, id)
+func (c *Coordinator) RemoveMember(ctx context.Context, request *RemoveMemberRequest, response *RemoveMemberResponse) error {
+	config, removed, err := c.Raft.RemoveChainMember(ctx, request.ID)
 	if err != nil {
 		return err
 	}
 	return c.updateChainMemberConfigurations(ctx, config, removed)
 }
 
-func (c *Coordinator) ReadMembershipConfiguration(ctx context.Context) (*chainnode.Configuration, error) {
-	return c.Raft.ReadChainConfiguration(ctx)
+func (c *Coordinator) ReadMembershipConfiguration(ctx context.Context, request *ReadChainConfigurationRequest, response *ReadChainConfigurationResponse) error {
+	config, err := c.Raft.ReadChainConfiguration(ctx)
+	if err != nil {
+		return err
+	}
+	response.Configuration = config
+	fmt.Println(config.Members())
+	return nil
+}
+
+func (c *Coordinator) JoinCluster(ctx context.Context, request *JoinClusterRequest, response *JoinClusterResponse) error {
+	return c.Raft.JoinCluster(ctx, request.ID, request.Address)
+}
+
+func (c *Coordinator) RemoveFromCluster(ctx context.Context, request *RemoveFromClusterRequest, response *RemoveFromClusterResponse) error {
+	return c.Raft.RemoveFromCluster(ctx, request.ID)
+}
+
+func (c *Coordinator) ClusterStatus(ctx context.Context, request *ClusterStatusRequest, response *ClusterStatusResponse) error {
+	status, err := c.Raft.ClusterStatus()
+	if err != nil {
+		return err
+	}
+	response.Status = status
+	return nil
 }
 
 func (c *Coordinator) updateChainMemberConfigurations(ctx context.Context, config *chainnode.Configuration, removed *chainnode.ChainMember) error {
@@ -178,10 +202,13 @@ func (c *Coordinator) onConfigSync(ctx context.Context) error {
 	}
 	c.mu.Unlock()
 
-	config, err := c.ReadMembershipConfiguration(ctx)
+	req := &ReadChainConfigurationRequest{}
+	var resp ReadChainConfigurationResponse
+	err := c.ReadMembershipConfiguration(ctx, req, &resp)
 	if err != nil {
 		return err
 	}
+	config := resp.Configuration
 
 	c.mu.Lock()
 	needSync := []string{}
@@ -230,7 +257,11 @@ func (c *Coordinator) onFailedChainMember(ctx context.Context) error {
 
 	g, ctx := errgroup.WithContext(ctx)
 	for _, memberID := range toRemove {
-		g.Go(func() error { return c.RemoveMember(ctx, memberID) })
+		g.Go(func() error {
+			req := &RemoveMemberRequest{ID: memberID}
+			var resp RemoveMemberResponse
+			return c.RemoveMember(ctx, req, &resp)
+		})
 	}
 
 	return g.Wait()

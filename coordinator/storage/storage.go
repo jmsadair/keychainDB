@@ -6,7 +6,7 @@ import (
 
 	"github.com/dgraph-io/badger/v4"
 	"github.com/hashicorp/raft"
-	pb "github.com/jmsadair/keychain/proto/pbcoordinator"
+	pb "github.com/jmsadair/keychain/proto/coordinator"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )

@@ -1,7 +1,7 @@
 package node
 
 import (
-	pb "github.com/jmsadair/keychain/proto/pbchain"
+	pb "github.com/jmsadair/keychain/proto/chain"
 	"google.golang.org/protobuf/proto"
 )
 

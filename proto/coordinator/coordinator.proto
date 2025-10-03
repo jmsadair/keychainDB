@@ -1,0 +1,153 @@
+syntax = "proto3";
+
+package coordinator;
+
+option go_package = "github.com/jmsadair/keychain/proto/coordinator";
+
+import "google/protobuf/timestamp.proto";
+import "google/api/annotations.proto";
+import "proto/chain/chain.proto";
+
+// CoordinatorService is used to communicate with the coordinator cluster.
+service CoordinatorService {
+	// ReadChainConfiguration handles requests to read the chain configuration.
+	rpc ReadChainConfiguration(ReadChainConfigurationRequest) returns (ReadChainConfigurationResponse) {
+		option (google.api.http) = {
+			get: "/v1/chain/configuration"
+		};
+	}
+	// AddMember handles requests to add a member to the chain.
+	rpc AddMember(AddMemberRequest) returns (AddMemberResponse) {
+		option (google.api.http) = {
+			post: "/v1/chain/members"
+			body: "*"
+		};
+	}
+	// RemoveMember handles requests to remove a member from the chain.
+	rpc RemoveMember(RemoveMemberRequest) returns (RemoveMemberResponse) {
+		option (google.api.http) = {
+			delete: "/v1/chain/members/{id}"
+		};
+	}
+	// JoinCluster handles requests to join the coordinator cluster.
+	rpc JoinCluster(JoinClusterRequest) returns (JoinClusterResponse) {
+		option (google.api.http) = {
+			post: "/v1/cluster/members"
+			body: "*"
+		};
+	}
+	// RemoveFromCluster handles requests to remove a node from the coordinator cluster.
+	rpc RemoveFromCluster(RemoveFromClusterRequest) returns (RemoveFromClusterResponse) {
+		option (google.api.http) = {
+			delete: "/v1/cluster/members/{id}"
+		};
+	}
+	// ClusterStatus handles requests to get the coordinator cluster status.
+	rpc ClusterStatus(ClusterStatusRequest) returns (ClusterStatusResponse) {
+		option (google.api.http) = {
+			get: "/v1/cluster/status"
+		};
+	}
+}
+
+// ReadChainConfigurationRequest is a request to read the chain configuration.
+message ReadChainConfigurationRequest {}
+
+// ReadChainConfigurationResponse is a response to a ReadChainConfigurationRequest.
+message ReadChainConfigurationResponse {
+	// A chain configuration.
+	chain.Configuration configuration = 1;
+}
+
+// AddMemberRequest is a request to add a member to the chain.
+message AddMemberRequest {
+	// The ID of the member being added.
+	string id = 1;
+	// The address of the member being added.
+	string address = 2;
+}
+
+// AddMemberResponse is a response to an AddMemberRequest.
+message AddMemberResponse {}
+
+// RemoveMemberRequest is a request to remove a member from the chain.
+message RemoveMemberRequest {
+	// The ID of the member being removed.
+	string id = 1;
+}
+
+// RemoveMemberResponse is a response to a RemoveMemberRequest.
+message RemoveMemberResponse {}
+
+// JoinClusterRequest is a request to join the coordinator cluster.
+message JoinClusterRequest {
+	// The ID of the coordinator joining the cluster.
+	string id = 1;
+	// The address of the coordinator joining the cluster.
+	string address = 2;
+}
+
+// JoinClusterResponse is a response to a JoinClusterRequest.
+message JoinClusterResponse {}
+
+// RemoveFromClusterRequest is a request to remove a coordinator from the cluster.
+message RemoveFromClusterRequest {
+	// The ID of the coordinator being removed.
+	string id = 1;
+}
+
+// RemoveFromClusterResponse is a response to a RemoveFromClusterRequest.
+message RemoveFromClusterResponse {}
+
+// ClusterStatusRequest is a request to get the coordinator cluster status.
+message ClusterStatusRequest {}
+
+// ClusterStatusResponse is a response to a ClusterStatusRequest.
+message ClusterStatusResponse {
+	// The cluster members (ID -> Address mapping).
+	map<string, string> members = 1;
+	// The leader ID.
+	string leader = 2;
+}
+
+// An operation that adds a member to a chain.
+message AddMemberOperation {
+	// The ID of the member being added.
+	string id = 1;
+	// The address of the member being added.
+	string address = 2;
+}
+
+// An operation that removes a member from a chain.
+message RemoveMemberOperation {
+	// The ID of the member being removed.
+	string id = 1;
+}
+
+// An operation to read the current chain membership configuration.
+message ReadMembershipOperation {}
+
+// An operation that will be replicated across a raft cluster.
+message ReplicatedOperation {
+	oneof operation {
+		AddMemberOperation add_member = 1;
+		RemoveMemberOperation remove_member = 2;
+		ReadMembershipOperation read_membership = 3;
+	}
+}
+
+// Log is a log entry in the raft log.
+message Log {
+	// The index of this log entry.
+	uint64 index = 1;
+	// The election term of this log entry.
+	uint64 term = 2;
+	// The type of this log entry.
+	uint32 type = 3;
+	// The data of this log entry.
+	bytes data = 4;
+	// The extensions for this log entry.
+	bytes extensions = 5;
+	// The time at which this log entry was appended to the log.
+	google.protobuf.Timestamp appended_at = 6;
+}
