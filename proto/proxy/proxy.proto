@@ -1,0 +1,47 @@
+syntax = "proto3";
+
+package proxy;
+
+option go_package = "github.com/jmsadair/keychain/proto/proxy";
+
+import "google/api/annotations.proto";
+
+// Proxy service is the client-facing gateway API.
+service ProxyService {
+	// Get handles requests for reading key-value pairs.
+	rpc Get(GetRequest) returns (GetResponse) {
+		option (google.api.http) = {
+			get: "/v1/keys/{key}"
+		};
+	}
+	// Set handles requests for setting key-value pairs.
+	rpc Set(SetRequest) returns (SetResponse) {
+		option (google.api.http) = {
+			post: "/v1/keys"
+			body: "*"
+		};
+	}
+}
+
+// GetRequest is a request to read a key-value pair.
+message GetRequest {
+	// The key to read.
+	string key = 1;
+}
+
+// GetResponse is a response to a GetRequest.
+message GetResponse {
+	// The value read.
+	bytes value = 1;
+}
+
+// SetRequest is a request to set the value for a key.
+message SetRequest {
+	// The key to set the value for.
+	string key = 1;
+	// The value.
+	bytes value = 2;
+}
+
+// SetResponse is a response to a SetRequest.
+message SetResponse {}

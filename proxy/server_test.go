@@ -3,18 +3,16 @@ package proxy
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"sync"
 	"testing"
 	"time"
 
+	"github.com/jmsadair/keychain/api"
 	"github.com/jmsadair/keychain/chain"
 	"github.com/jmsadair/keychain/coordinator"
 	coordinatornode "github.com/jmsadair/keychain/coordinator/node"
-	proxyhttp "github.com/jmsadair/keychain/proxy/http"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -154,6 +152,7 @@ func (tc *testChain) stop() {
 func makeProxy(t *testing.T, clusterMembers []string) (*Server, func()) {
 	srv, err := NewServer(
 		"127.0.0.3:8080",
+		"127.0.0.3:8081",
 		clusterMembers,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	)
@@ -194,31 +193,17 @@ func TestSetGetValue(t *testing.T) {
 	proxy, cancel := makeProxy(t, cluster.members())
 	defer cancel()
 
+	client, err := api.NewClient(proxy.GRPCServer.Address, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	require.NoError(t, err)
+
 	key := "key-1"
 	value := []byte("value-1")
-	setURL := fmt.Sprintf("http://%s/set", proxy.HTTPServer.Address)
-	setRequest := proxyhttp.SetRequest{Key: key, Value: value}
-	b, err := json.Marshal(&setRequest)
-	require.NoError(t, err)
 
-	setResponse, err := http.Post(setURL, "application/json", bytes.NewReader(b))
-	require.NoError(t, err)
-	defer setResponse.Body.Close()
-	require.Equal(t, http.StatusNoContent, setResponse.StatusCode)
+	require.NoError(t, client.Set(context.Background(), key, value))
 
-	getURL := fmt.Sprintf("http://%s/get", proxy.HTTPServer.Address)
-	b, err = json.Marshal(&proxyhttp.GetRequest{Key: key})
+	v, err := client.Get(context.Background(), key)
 	require.NoError(t, err)
-	getRequest, err := http.NewRequest(http.MethodGet, getURL, bytes.NewReader(b))
-	require.NoError(t, err)
-
-	getResponse, err := http.DefaultClient.Do(getRequest)
-	require.NoError(t, err)
-	defer getResponse.Body.Close()
-	readValue, err := io.ReadAll(getResponse.Body)
-	require.NoError(t, err)
-	require.Equal(t, value, readValue)
-	require.Equal(t, http.StatusOK, getResponse.StatusCode)
+	require.Equal(t, value, v)
 }
 
 func TestRemoveMemberThenGetValue(t *testing.T) {
@@ -232,38 +217,23 @@ func TestRemoveMemberThenGetValue(t *testing.T) {
 	proxy, cancel := makeProxy(t, cluster.members())
 	defer cancel()
 
-	key := "key-1"
-	value := []byte("value-1")
-	setURL := fmt.Sprintf("http://%s/set", proxy.HTTPServer.Address)
-	setRequest := proxyhttp.SetRequest{Key: key, Value: value}
-	b, err := json.Marshal(&setRequest)
+	client, err := api.NewClient(proxy.GRPCServer.Address, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	require.NoError(t, err)
 
-	setResponse, err := http.Post(setURL, "application/json", bytes.NewReader(b))
-	require.NoError(t, err)
-	defer setResponse.Body.Close()
-	require.Equal(t, http.StatusNoContent, setResponse.StatusCode)
+	key := "key-1"
+	value := []byte("value-1")
+
+	require.NoError(t, client.Set(context.Background(), key, value))
 
 	// Remove the tail.
 	chain.removeMember(t, "chain-node-3")
 
-	getURL := fmt.Sprintf("http://%s/get", proxy.HTTPServer.Address)
-	b, err = json.Marshal(&proxyhttp.GetRequest{Key: key})
-	require.NoError(t, err)
-	getRequest, err := http.NewRequest(http.MethodGet, getURL, bytes.NewReader(b))
-	require.NoError(t, err)
-
 	// This may fail due to new tail not yet having committed all of its key-value pairs.
-	var getResponse *http.Response
+	// It should succeed eventually, though.
 	require.Eventually(t, func() bool {
-		getResponse, err = http.DefaultClient.Do(getRequest)
-		return err == nil && getResponse.StatusCode == http.StatusOK
+		v, err := client.Get(context.Background(), key)
+		return err == nil && bytes.Equal(v, value)
 	}, 1*time.Second, 50*time.Millisecond)
-
-	defer getResponse.Body.Close()
-	readValue, err := io.ReadAll(getResponse.Body)
-	require.NoError(t, err)
-	require.Equal(t, value, readValue)
 }
 
 func TestAddMemberThenGetValue(t *testing.T) {
@@ -276,32 +246,20 @@ func TestAddMemberThenGetValue(t *testing.T) {
 	proxy, cancel := makeProxy(t, cluster.members())
 	defer cancel()
 
-	key := "key-1"
-	value := []byte("value-1")
-	setURL := fmt.Sprintf("http://%s/set", proxy.HTTPServer.Address)
-	setRequest := proxyhttp.SetRequest{Key: key, Value: value}
-	b, err := json.Marshal(&setRequest)
+	client, err := api.NewClient(proxy.GRPCServer.Address, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	require.NoError(t, err)
 
-	setResponse, err := http.Post(setURL, "application/json", bytes.NewReader(b))
-	require.NoError(t, err)
-	defer setResponse.Body.Close()
-	require.Equal(t, http.StatusNoContent, setResponse.StatusCode)
+	key := "key-1"
+	value := []byte("value-1")
+
+	require.NoError(t, client.Set(context.Background(), key, value))
 
 	// Add a member to the tail.
 	chain.addMember(t, "chain-node-3")
 
-	getURL := fmt.Sprintf("http://%s/get", proxy.HTTPServer.Address)
-	b, err = json.Marshal(&proxyhttp.GetRequest{Key: key})
+	// This should succeed since the newly added node should just forward the request to
+	// its predecessor if it is still catching up.
+	v, err := client.Get(context.Background(), key)
 	require.NoError(t, err)
-	getRequest, err := http.NewRequest(http.MethodGet, getURL, bytes.NewReader(b))
-	require.NoError(t, err)
-
-	getResponse, err := http.DefaultClient.Do(getRequest)
-	require.NoError(t, err)
-	defer getResponse.Body.Close()
-	readValue, err := io.ReadAll(getResponse.Body)
-	require.NoError(t, err)
-	require.Equal(t, value, readValue)
-	require.Equal(t, http.StatusOK, getResponse.StatusCode)
+	require.Equal(t, value, v)
 }
