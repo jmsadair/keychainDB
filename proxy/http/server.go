@@ -5,24 +5,32 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/jmsadair/keychain/proxy/node"
+	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	gw "github.com/jmsadair/keychain/proto/proxy"
 	"golang.org/x/sync/errgroup"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/health/grpc_health_v1"
 )
 
 const defaultShutdownTimeout = 500 * time.Millisecond
 
 type Server struct {
-	Address string
-	Proxy   *node.Proxy
+	GRPCAddress string
+	Address     string
+	DialOptions []grpc.DialOption
 }
 
 func (s *Server) Run(ctx context.Context) error {
-	mux := http.NewServeMux()
-	mux.HandleFunc("/get", s.handleGet)
-	mux.HandleFunc("/set", s.handleSet)
-	mux.HandleFunc("/healthz", s.handleHealth)
-	httpServer := &http.Server{Addr: s.Address, Handler: mux}
+	cc, err := grpc.NewClient(s.GRPCAddress, s.DialOptions...)
+	if err != nil {
+		return err
+	}
+	mux := runtime.NewServeMux(runtime.WithHealthzEndpoint(grpc_health_v1.NewHealthClient(cc)))
+	if err := gw.RegisterProxyServiceHandlerFromEndpoint(ctx, mux, s.GRPCAddress, s.DialOptions); err != nil {
+		return err
+	}
 
+	httpServer := &http.Server{Addr: s.Address, Handler: mux}
 	g, ctx := errgroup.WithContext(ctx)
 	g.Go(func() error {
 		<-ctx.Done()
@@ -30,7 +38,6 @@ func (s *Server) Run(ctx context.Context) error {
 		defer cancel()
 		return httpServer.Shutdown(ctx)
 	})
-
 	g.Go(func() error {
 		if err := httpServer.ListenAndServe(); err != http.ErrServerClosed {
 			return err
