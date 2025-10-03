@@ -4,6 +4,7 @@ import (
 	chainnode "github.com/jmsadair/keychain/chain/node"
 	"github.com/jmsadair/keychain/coordinator/raft"
 	pb "github.com/jmsadair/keychain/proto/coordinator"
+	"google.golang.org/protobuf/encoding/protojson"
 )
 
 // ReadChainConfigurationRequest is a request to read the chain configuration.
@@ -24,12 +25,23 @@ type ReadChainConfigurationResponse struct {
 
 // Proto converts a ReadChainConfigurationResponse to its protobuf message equivalent.
 func (r *ReadChainConfigurationResponse) Proto() *pb.ReadChainConfigurationResponse {
-	return &pb.ReadChainConfigurationResponse{Configuration: r.Configuration.Proto()}
+	return &pb.ReadChainConfigurationResponse{}
 }
 
 // FromProto converts a ReadChainConfigurationResponse protobuf message to a ReadChainConfigurationResponse.
-func (r *ReadChainConfigurationResponse) FromProto(pbReq *pb.ReadChainConfigurationResponse) {
-	r.Configuration = chainnode.NewConfigurationFromProto(pbReq.GetConfiguration())
+func (r *ReadChainConfigurationResponse) FromProto(pbResp *pb.ReadChainConfigurationResponse) {
+	r.Configuration = chainnode.NewConfigurationFromProto(pbResp.GetConfiguration())
+}
+
+// UnmarshalJSON converts the JSON encoded bytes of ReadChainConfigurationResponse protobuf message to
+// a ReadChainConfigurationResponse.
+func (r *ReadChainConfigurationResponse) UnmarshalJSON(b []byte) error {
+	var pbResp pb.ReadChainConfigurationResponse
+	if err := protojson.Unmarshal(b, &pbResp); err != nil {
+		return err
+	}
+	r.FromProto(&pbResp)
+	return nil
 }
 
 // AddMemberRequest is a request to add a member to the chain.
@@ -65,14 +77,6 @@ type RemoveFromClusterRequest struct {
 
 // RemoveFromClusterResponse is a response to a RemoveFromClusterRequest.
 type RemoveFromClusterResponse struct{}
-
-// ClusterStatusRequest is a request to get the coordinator cluster status.
-type ClusterStatusRequest struct{}
-
-// ClusterStatusResponse is a response to a ClusterStatusRequest.
-type ClusterStatusResponse struct {
-	Status raft.Status
-}
 
 // Proto converts an AddMemberRequest to its protobuf message equivalent.
 func (r *AddMemberRequest) Proto() *pb.AddMemberRequest {
@@ -152,14 +156,21 @@ func (r *RemoveFromClusterResponse) Proto() *pb.RemoveFromClusterResponse {
 func (r *RemoveFromClusterResponse) FromProto(pbResp *pb.RemoveFromClusterResponse) {
 }
 
+// ClusterStatusRequest is a request to get the coordinator cluster status.
+type ClusterStatusRequest struct{}
+
+// ClusterStatusResponse is a response to a ClusterStatusRequest.
+type ClusterStatusResponse struct {
+	Status raft.Status
+}
+
 // Proto converts a ClusterStatusRequest to its protobuf message equivalent.
 func (r *ClusterStatusRequest) Proto() *pb.ClusterStatusRequest {
 	return &pb.ClusterStatusRequest{}
 }
 
 // FromProto converts a ClusterStatusRequest protobuf message to a ClusterStatusRequest.
-func (r *ClusterStatusRequest) FromProto(pbReq *pb.ClusterStatusRequest) {
-}
+func (r *ClusterStatusRequest) FromProto(pbReq *pb.ClusterStatusRequest) {}
 
 // Proto converts a ClusterStatusResponse to its protobuf message equivalent.
 func (r *ClusterStatusResponse) Proto() *pb.ClusterStatusResponse {
@@ -175,4 +186,15 @@ func (r *ClusterStatusResponse) FromProto(pbResp *pb.ClusterStatusResponse) {
 		Members: pbResp.GetMembers(),
 		Leader:  pbResp.GetLeader(),
 	}
+}
+
+// UnmarshalJSON converts the JSON encoded bytes of ClusterStatusResponse protobuf message to
+// a ClusterStatusResponse.
+func (r *ClusterStatusResponse) UnmarshalJSON(b []byte) error {
+	var pbResp pb.ClusterStatusResponse
+	if err := protojson.Unmarshal(b, &pbResp); err != nil {
+		return err
+	}
+	r.FromProto(&pbResp)
+	return nil
 }

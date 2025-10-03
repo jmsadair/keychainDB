@@ -13,6 +13,7 @@ import (
 
 	"github.com/jmsadair/keychain/chain"
 	"github.com/jmsadair/keychain/coordinator"
+	coordinatornode "github.com/jmsadair/keychain/coordinator/node"
 	proxyhttp "github.com/jmsadair/keychain/proxy/http"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
@@ -88,11 +89,15 @@ func (tc *testCluster) stop() {
 }
 
 func (tc *testCluster) addChainMember(t *testing.T, id string, addr string) {
-	require.NoError(t, tc.leader.Coordinator.AddMember(context.Background(), id, addr))
+	req := &coordinatornode.AddMemberRequest{ID: id, Address: addr}
+	var resp coordinatornode.AddMemberResponse
+	require.NoError(t, tc.leader.Coordinator.AddMember(context.Background(), req, &resp))
 }
 
 func (tc *testCluster) removeChainMember(t *testing.T, id string) {
-	require.NoError(t, tc.leader.Coordinator.RemoveMember(context.Background(), id))
+	req := &coordinatornode.RemoveMemberRequest{ID: id}
+	var resp coordinatornode.RemoveMemberResponse
+	require.NoError(t, tc.leader.Coordinator.RemoveMember(context.Background(), req, &resp))
 }
 
 func (tc *testCluster) members() []string {

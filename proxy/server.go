@@ -11,7 +11,7 @@ import (
 	"google.golang.org/grpc"
 )
 
-// Server is the coordinator service.
+// Server is the proxy service.
 type Server struct {
 	// HTTP server that exposes public API.
 	HTTPServer *proxyhttp.Server

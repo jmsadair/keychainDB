@@ -47,9 +47,9 @@ func (m *mockRaft) ChainConfiguration() *chainnode.Configuration {
 	return m.MethodCalled("ChainConfiguration").Get(0).(*chainnode.Configuration)
 }
 
-func (m *mockRaft) ClusterStatus() (*raft.Status, error) {
+func (m *mockRaft) ClusterStatus() (raft.Status, error) {
 	args := m.MethodCalled("ClusterStatus")
-	return args.Get(0).(*raft.Status), args.Error(1)
+	return args.Get(0).(raft.Status), args.Error(1)
 }
 
 func (m *mockRaft) Shutdown() error {

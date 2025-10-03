@@ -2,6 +2,7 @@ package node
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
@@ -107,6 +108,7 @@ func (c *Coordinator) ReadMembershipConfiguration(ctx context.Context, request *
 		return err
 	}
 	response.Configuration = config
+	fmt.Println(config.Members())
 	return nil
 }
 
