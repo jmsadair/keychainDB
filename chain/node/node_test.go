@@ -6,53 +6,60 @@ import (
 	"testing"
 
 	"github.com/jmsadair/keychain/chain/storage"
+	pb "github.com/jmsadair/keychain/proto/chain"
+	storagepb "github.com/jmsadair/keychain/proto/storage"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc"
 )
 
-type mockKeyValueStreamReader struct {
+type mockClientStream struct {
+	grpc.ClientStream
 	mock.Mock
 }
 
-func (m *mockKeyValueStreamReader) Receive() (*storage.KeyValuePair, error) {
-	args := m.MethodCalled("Receive")
+func (m *mockClientStream) Recv() (*storagepb.KeyValuePair, error) {
+	args := m.MethodCalled("Recv")
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*storage.KeyValuePair), args.Error(1)
+	return args.Get(0).(*storagepb.KeyValuePair), args.Error(1)
 }
 
 type mockTransport struct {
 	mock.Mock
 }
 
-func (m *mockTransport) Write(ctx context.Context, address string, request *WriteRequest, response *WriteResponse) error {
+func (m *mockTransport) Write(ctx context.Context, address string, request *pb.WriteRequest) (*pb.WriteResponse, error) {
 	args := m.MethodCalled("Write", ctx, address, request)
 	if resp := args.Get(0); resp != nil {
-		*response = *resp.(*WriteResponse)
+		return resp.(*pb.WriteResponse), nil
 	}
-	return args.Error(1)
+	return nil, args.Error(1)
 }
 
-func (m *mockTransport) Read(ctx context.Context, address string, request *ReadRequest, response *ReadResponse) error {
+func (m *mockTransport) Read(ctx context.Context, address string, request *pb.ReadRequest) (*pb.ReadResponse, error) {
 	args := m.MethodCalled("Read", ctx, address, request)
 	if resp := args.Get(0); resp != nil {
-		*response = *resp.(*ReadResponse)
+		return resp.(*pb.ReadResponse), nil
 	}
-	return args.Error(1)
+	return nil, args.Error(1)
 }
 
-func (m *mockTransport) Commit(ctx context.Context, address string, request *CommitRequest, response *CommitResponse) error {
+func (m *mockTransport) Commit(ctx context.Context, address string, request *pb.CommitRequest) (*pb.CommitResponse, error) {
 	args := m.MethodCalled("Commit", ctx, address, request)
 	if resp := args.Get(0); resp != nil {
-		*response = *resp.(*CommitResponse)
+		return resp.(*pb.CommitResponse), nil
 	}
-	return args.Error(1)
+	return nil, args.Error(1)
 }
 
-func (m *mockTransport) Propagate(ctx context.Context, address string, request *PropagateRequest) (KeyValueReceiveStream, error) {
+func (m *mockTransport) Propagate(ctx context.Context, address string, request *pb.PropagateRequest) (grpc.ServerStreamingClient[storagepb.KeyValuePair], error) {
 	args := m.MethodCalled("Propagate", ctx, address, request)
-	return args.Get(0).(KeyValueReceiveStream), args.Error(1)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(grpc.ServerStreamingClient[storagepb.KeyValuePair]), args.Error(1)
 }
 
 type mockStorage struct {
@@ -106,44 +113,48 @@ func TestReplicate(t *testing.T) {
 	node := NewChainNode(member1.ID, member1.Address, store, transport)
 
 	// Node is not a member of a chain.
-	request := &ReplicateRequest{Key: "key", Value: []byte("value")}
-	var response ReplicateResponse
+	request := &pb.ReplicateRequest{Key: "key", Value: []byte("value")}
 	version := uint64(1)
-	err := node.Replicate(context.Background(), request, &response)
+	_, err := node.Replicate(context.Background(), request)
 	require.ErrorIs(t, err, ErrNotMemberOfChain)
 
 	// Node is the the sole member of the chain - no forwarding is necessary.
 	config := NewConfiguration([]*ChainMember{member1}, 0)
-	node.state.Load().Config = config
+	state := node.state.Load()
+	state.Config = config
 	store.On("CommittedWriteNewVersion", request.Key, request.Value).Return(version, nil).Once()
-	err = node.Replicate(context.Background(), request, &response)
+	_, err = node.Replicate(context.Background(), request)
 	require.NoError(t, err)
 	store.AssertExpectations(t)
 
 	// Node is head of a chain with multiple members - forwarding is necessary.
 	config = NewConfiguration([]*ChainMember{member1, member2}, 0)
-	node.state.Load().Config = config
+	state = node.state.Load()
+	state.Config = config
 	store.On("UncommittedWriteNewVersion", request.Key, request.Value).Return(version, nil).Once()
-	transport.On("Write", mock.Anything, member2.Address, &WriteRequest{
-		Key:     request.Key,
-		Value:   request.Value,
-		Version: version,
-	}).Return(&WriteResponse{}, nil).Once()
-	err = node.Replicate(context.Background(), request, &response)
+	transport.On("Write", mock.Anything, member2.Address, &pb.WriteRequest{
+		Key:           request.Key,
+		Value:         request.Value,
+		Version:       version,
+		ConfigVersion: 0,
+	}).Return(&pb.WriteResponse{}, nil).Once()
+	_, err = node.Replicate(context.Background(), request)
 	require.NoError(t, err)
 	store.AssertExpectations(t)
 	transport.AssertExpectations(t)
 
 	// Node is not the head.
 	config = NewConfiguration([]*ChainMember{member2, member1}, 0)
-	node.state.Load().Config = config
-	err = node.Replicate(context.Background(), request, &response)
+	state = node.state.Load()
+	state.Config = config
+	_, err = node.Replicate(context.Background(), request)
 	require.ErrorIs(t, err, ErrNotHead)
 
 	// There is a mismatch between the node configuration version and the request configuration version.
 	config = NewConfiguration([]*ChainMember{member1}, 1)
-	node.state.Load().Config = config
-	err = node.Replicate(context.Background(), request, &response)
+	state = node.state.Load()
+	state.Config = config
+	_, err = node.Replicate(context.Background(), request)
 	require.ErrorIs(t, err, ErrInvalidConfigVersion)
 }
 
@@ -160,36 +171,39 @@ func TestWriteWithVersion(t *testing.T) {
 	key := "key"
 	value := []byte("value")
 	version := uint64(1)
-	req := &WriteRequest{Key: key, Value: value, Version: version}
-	err := node.WriteWithVersion(context.Background(), req, &WriteResponse{})
+	req := &pb.WriteRequest{Key: key, Value: value, Version: version}
+	_, err := node.WriteWithVersion(context.Background(), req)
 	require.ErrorIs(t, err, ErrNotMemberOfChain)
 
 	// Node is the the tail of the chain. It should immediately commit the key-value pair.
 	config := NewConfiguration([]*ChainMember{member2, member1}, 0)
-	node.state.Load().Config = config
+	state := node.state.Load()
+	state.Config = config
 	store.On("CommittedWrite", key, value, version).Return(nil).Once()
-	err = node.WriteWithVersion(context.Background(), req, &WriteResponse{})
+	_, err = node.WriteWithVersion(context.Background(), req)
 	require.NoError(t, err)
 	store.AssertExpectations(t)
 
 	// Node is not he head of the chain. It should forward the write without committing.
 	config = NewConfiguration([]*ChainMember{member2, member1, member3}, 0)
-	node.state.Load().Config = config
+	state = node.state.Load()
+	state.Config = config
 	store.On("UncommittedWrite", key, value, version).Return(nil).Once()
-	transport.On("Write", mock.Anything, member3.Address, &WriteRequest{
+	transport.On("Write", mock.Anything, member3.Address, &pb.WriteRequest{
 		Key:     key,
 		Value:   value,
 		Version: version,
-	}).Return(&WriteResponse{}, nil).Once()
-	err = node.WriteWithVersion(context.Background(), req, &WriteResponse{})
+	}).Return(&pb.WriteResponse{}, nil).Once()
+	_, err = node.WriteWithVersion(context.Background(), req)
 	require.NoError(t, err)
 	store.AssertExpectations(t)
 	transport.AssertExpectations(t)
 
 	// There is a mismatch between the node configuration version and the request configuration version.
 	config = NewConfiguration([]*ChainMember{member2, member1, member3}, 1)
-	node.state.Load().Config = config
-	err = node.WriteWithVersion(context.Background(), req, &WriteResponse{})
+	state = node.state.Load()
+	state.Config = config
+	_, err = node.WriteWithVersion(context.Background(), req)
 	require.ErrorIs(t, err, ErrInvalidConfigVersion)
 }
 
@@ -205,26 +219,26 @@ func TestRead(t *testing.T) {
 	// Node is not a member of a chain.
 	key := "key"
 	value := []byte("value")
-	req := &ReadRequest{Key: key}
-	var resp ReadResponse
-	err := node.Read(context.Background(), req, &resp)
+	req := &pb.ReadRequest{Key: key}
+	_, err := node.Read(context.Background(), req)
 	require.ErrorIs(t, err, ErrNotMemberOfChain)
 
 	// Node is not the tail of the chain, but the key-value pair is committed.
 	config := NewConfiguration([]*ChainMember{member1, member2, member3}, 0)
-	node.state.Load().Config = config
+	state := node.state.Load()
+	state.Config = config
 	store.On("CommittedRead", key).Return(value, nil).Once()
-	err = node.Read(context.Background(), req, &resp)
+	resp, err := node.Read(context.Background(), req)
 	require.NoError(t, err)
 	require.Equal(t, value, resp.Value)
 	store.AssertExpectations(t)
 
 	// Node is not the tail of the chain and the key-value pair is dirty.
 	// It should forward the read to the tail.
-	forwardedReq := &ReadRequest{Key: key, Forwarded: true}
+	forwardedReq := &pb.ReadRequest{Key: key, ConfigVersion: 0, Forwarded: true}
 	store.On("CommittedRead", key).Return(nil, storage.ErrDirtyRead).Once()
-	transport.On("Read", mock.Anything, member3.Address, forwardedReq).Return(&ReadResponse{Value: value}, nil).Once()
-	err = node.Read(context.Background(), req, &resp)
+	transport.On("Read", mock.Anything, member3.Address, forwardedReq).Return(&pb.ReadResponse{Value: value}, nil).Once()
+	resp, err = node.Read(context.Background(), req)
 	require.NoError(t, err)
 	require.Equal(t, value, resp.Value)
 	store.AssertExpectations(t)
@@ -232,8 +246,9 @@ func TestRead(t *testing.T) {
 
 	// There is a mismatch between the node configuration version and the request configuration version.
 	config = NewConfiguration([]*ChainMember{member1, member2, member3}, 1)
-	node.state.Load().Config = config
-	err = node.Read(context.Background(), req, &resp)
+	state = node.state.Load()
+	state.Config = config
+	_, err = node.Read(context.Background(), req)
 	require.ErrorIs(t, err, ErrInvalidConfigVersion)
 }
 
@@ -247,17 +262,17 @@ func TestCommit(t *testing.T) {
 	// Node is not a member of a chain.
 	key := "key"
 	version := uint64(1)
-	req := &CommitRequest{Key: key, Version: version}
-	resp := &CommitResponse{}
-	err := node.Commit(context.Background(), req, resp)
+	req := &pb.CommitRequest{Key: key, Version: version}
+	_, err := node.Commit(context.Background(), req)
 	require.ErrorIs(t, err, ErrNotMemberOfChain)
 
 	// Once a key-value pair is committed, the node should notify the background routine
 	// which will inform the predecessors of the commit.
 	config := NewConfiguration([]*ChainMember{member1}, 0)
-	node.state.Load().Config = config
+	state := node.state.Load()
+	state.Config = config
 	store.On("CommitVersion", key, version).Return(nil).Once()
-	err = node.Commit(context.Background(), req, resp)
+	_, err = node.Commit(context.Background(), req)
 	require.NoError(t, err)
 	store.AssertExpectations(t)
 	require.Len(t, node.onCommitCh, 1)
@@ -267,8 +282,9 @@ func TestCommit(t *testing.T) {
 
 	// There is a mismatch between the node configuration version and the request configuration version.
 	config = NewConfiguration([]*ChainMember{member1}, 1)
-	node.state.Load().Config = config
-	err = node.Commit(context.Background(), req, resp)
+	state = node.state.Load()
+	state.Config = config
+	_, err = node.Commit(context.Background(), req)
 	require.ErrorIs(t, err, ErrInvalidConfigVersion)
 }
 
@@ -280,17 +296,18 @@ func TestRequestPropagation(t *testing.T) {
 	transport := new(mockTransport)
 	node := NewChainNode(member1.ID, member1.Address, store, transport)
 
-	stream := new(mockKeyValueStreamReader)
+	stream := new(mockClientStream)
 	kv1 := storage.KeyValuePair{Key: "key-1", Value: []byte("value-1"), Committed: false}
 	kv2 := storage.KeyValuePair{Key: "key-2", Value: []byte("value-2"), Committed: true}
 
 	// All keys are propagated. Dirty keys should not be committed since this node is not the tail.
 	config := NewConfiguration([]*ChainMember{member1, member2}, 0)
-	node.state.Load().Config = config
-	stream.On("Receive").Return(&kv1, nil).Once()
-	stream.On("Receive").Return(&kv2, nil).Once()
-	stream.On("Receive").Return(nil, io.EOF).Once()
-	transport.On("Propagate", mock.Anything, member2.Address, &PropagateRequest{KeyFilter: storage.AllKeys}).Return(stream, nil).Once()
+	state := node.state.Load()
+	state.Config = config
+	stream.On("Recv").Return(kv1.Proto(), nil).Once()
+	stream.On("Recv").Return(kv2.Proto(), nil).Once()
+	stream.On("Recv").Return(nil, io.EOF).Once()
+	transport.On("Propagate", mock.Anything, member2.Address, &pb.PropagateRequest{KeyType: storage.AllKeys.Proto(), ConfigVersion: 0}).Return(stream, nil).Once()
 	store.On("UncommittedWrite", kv1.Key, kv1.Value, kv1.Version).Return(nil).Once()
 	store.On("CommittedWrite", kv2.Key, kv2.Value, kv2.Version).Return(nil).Once()
 	require.NoError(t, node.requestPropagation(context.Background(), member2.Address, storage.AllKeys, config))
@@ -300,11 +317,12 @@ func TestRequestPropagation(t *testing.T) {
 
 	// All keys are propagated. Dirty keys should be committed since this node is the tail.
 	config = NewConfiguration([]*ChainMember{member2, member1}, 0)
-	node.state.Load().Config = config
-	stream.On("Receive").Return(&kv1, nil).Once()
-	stream.On("Receive").Return(&kv2, nil).Once()
-	stream.On("Receive").Return(nil, io.EOF).Once()
-	transport.On("Propagate", mock.Anything, member2.Address, &PropagateRequest{KeyFilter: storage.AllKeys}).Return(stream, nil).Once()
+	state = node.state.Load()
+	state.Config = config
+	stream.On("Recv").Return(kv1.Proto(), nil).Once()
+	stream.On("Recv").Return(kv2.Proto(), nil).Once()
+	stream.On("Recv").Return(nil, io.EOF).Once()
+	transport.On("Propagate", mock.Anything, member2.Address, &pb.PropagateRequest{KeyType: storage.AllKeys.Proto(), ConfigVersion: 0}).Return(stream, nil).Once()
 	store.On("CommittedWrite", kv1.Key, kv1.Value, kv1.Version).Return(nil).Once()
 	store.On("CommittedWrite", kv2.Key, kv2.Value, kv2.Version).Return(nil).Once()
 	require.NoError(t, node.requestPropagation(context.Background(), member2.Address, storage.AllKeys, config))
@@ -322,7 +340,7 @@ func TestOnNewPredecessor(t *testing.T) {
 	transport := new(mockTransport)
 	node := NewChainNode(member1.ID, member1.Address, store, transport)
 
-	stream := new(mockKeyValueStreamReader)
+	stream := new(mockClientStream)
 	kv1 := storage.KeyValuePair{Key: "key-1", Value: []byte("value-1"), Committed: false}
 	kv2 := storage.KeyValuePair{Key: "key-2", Value: []byte("value-2"), Committed: true}
 
@@ -331,10 +349,10 @@ func TestOnNewPredecessor(t *testing.T) {
 	// It is the tail so it should commit any key-value pairs it receives immediately.
 	node.syncCompleteCh = make(chan any, 1)
 	config := NewConfiguration([]*ChainMember{member2, member1}, 0)
-	stream.On("Receive").Return(&kv1, nil).Once()
-	stream.On("Receive").Return(&kv2, nil).Once()
-	stream.On("Receive").Return(nil, io.EOF).Once()
-	transport.On("Propagate", mock.Anything, member2.Address, &PropagateRequest{KeyFilter: storage.AllKeys}).Return(stream, nil).Once()
+	stream.On("Recv").Return(kv1.Proto(), nil).Once()
+	stream.On("Recv").Return(kv2.Proto(), nil).Once()
+	stream.On("Recv").Return(nil, io.EOF).Once()
+	transport.On("Propagate", mock.Anything, member2.Address, &pb.PropagateRequest{KeyType: storage.AllKeys.Proto(), ConfigVersion: 0}).Return(stream, nil).Once()
 	store.On("CommittedWrite", kv1.Key, kv1.Value, kv1.Version).Return(nil).Once()
 	store.On("CommittedWrite", kv2.Key, kv2.Value, kv2.Version).Return(nil).Once()
 	node.onNewPredecessor(context.Background(), config, true)
@@ -349,10 +367,10 @@ func TestOnNewPredecessor(t *testing.T) {
 	// predecessor failed and did not finish sending them. It is the tail so it should commit
 	// any key-value pairs it receives immediately.
 	config = NewConfiguration([]*ChainMember{member3, member1}, 0)
-	stream.On("Receive").Return(&kv1, nil).Once()
-	stream.On("Receive").Return(&kv2, nil).Once()
-	stream.On("Receive").Return(nil, io.EOF).Once()
-	transport.On("Propagate", mock.Anything, member3.Address, &PropagateRequest{KeyFilter: storage.DirtyKeys}).Return(stream, nil).Once()
+	stream.On("Recv").Return(kv1.Proto(), nil).Once()
+	stream.On("Recv").Return(kv2.Proto(), nil).Once()
+	stream.On("Recv").Return(nil, io.EOF).Once()
+	transport.On("Propagate", mock.Anything, member3.Address, &pb.PropagateRequest{KeyType: storage.DirtyKeys.Proto(), ConfigVersion: 0}).Return(stream, nil).Once()
 	store.On("CommittedWrite", kv1.Key, kv1.Value, kv1.Version).Return(nil).Once()
 	store.On("CommittedWrite", kv2.Key, kv2.Value, kv2.Version).Return(nil).Once()
 	node.onNewPredecessor(context.Background(), config, false)
@@ -370,7 +388,7 @@ func TestOnNewSuccessor(t *testing.T) {
 	transport := new(mockTransport)
 	node := NewChainNode(member1.ID, member1.Address, store, transport)
 
-	stream := new(mockKeyValueStreamReader)
+	stream := new(mockClientStream)
 	kv1 := storage.KeyValuePair{Key: "key-1", Value: []byte("value-1"), Committed: false}
 	kv2 := storage.KeyValuePair{Key: "key-2", Value: []byte("value-2"), Committed: true}
 
@@ -379,10 +397,10 @@ func TestOnNewSuccessor(t *testing.T) {
 	// It is not the tail, so it should only commit key-value pairs that it knows are committed.
 	node.syncCompleteCh = make(chan any, 1)
 	config := NewConfiguration([]*ChainMember{member1, member2}, 0)
-	stream.On("Receive").Return(&kv1, nil).Once()
-	stream.On("Receive").Return(&kv2, nil).Once()
-	stream.On("Receive").Return(nil, io.EOF).Once()
-	transport.On("Propagate", mock.Anything, member2.Address, &PropagateRequest{KeyFilter: storage.AllKeys}).Return(stream, nil).Once()
+	stream.On("Recv").Return(kv1.Proto(), nil).Once()
+	stream.On("Recv").Return(kv2.Proto(), nil).Once()
+	stream.On("Recv").Return(nil, io.EOF).Once()
+	transport.On("Propagate", mock.Anything, member2.Address, &pb.PropagateRequest{KeyType: storage.AllKeys.Proto(), ConfigVersion: 0}).Return(stream, nil).Once()
 	store.On("UncommittedWrite", kv1.Key, kv1.Value, kv1.Version).Return(nil).Once()
 	store.On("CommittedWrite", kv2.Key, kv2.Value, kv2.Version).Return(nil).Once()
 	node.onNewSuccessor(context.Background(), config, true)
@@ -396,9 +414,9 @@ func TestOnNewSuccessor(t *testing.T) {
 	// It should request only the committed key-value pairs from its predecessor in case its previous
 	// successor failed without sending an acknowledgement of the commit.
 	config = NewConfiguration([]*ChainMember{member1, member3}, 0)
-	stream.On("Receive").Return(&kv2, nil).Once()
-	stream.On("Receive").Return(nil, io.EOF).Once()
-	transport.On("Propagate", mock.Anything, member3.Address, &PropagateRequest{KeyFilter: storage.CommittedKeys}).Return(stream, nil).Once()
+	stream.On("Recv").Return(kv2.Proto(), nil).Once()
+	stream.On("Recv").Return(nil, io.EOF).Once()
+	transport.On("Propagate", mock.Anything, member3.Address, &pb.PropagateRequest{KeyType: storage.CommittedKeys.Proto(), ConfigVersion: 0}).Return(stream, nil).Once()
 	store.On("CommittedWrite", kv2.Key, kv2.Value, kv2.Version).Return(nil).Once()
 	node.onNewSuccessor(context.Background(), config, false)
 	stream.AssertExpectations(t)
@@ -425,12 +443,12 @@ func TestPing(t *testing.T) {
 	version := uint64(3)
 	status := Syncing
 	config := NewConfiguration([]*ChainMember{member1, member2, member3}, version)
-	node.state.Load().Config = config
-	node.state.Load().Status = status
+	state := node.state.Load()
+	state.Config = config
+	state.Status = status
 
-	req := &PingRequest{}
-	var resp PingResponse
-	node.Ping(req, &resp)
-	require.Equal(t, version, resp.Version)
-	require.Equal(t, Syncing, resp.Status)
+	req := &pb.PingRequest{}
+	resp := node.Ping(req)
+	require.Equal(t, version, resp.ConfigVersion)
+	require.Equal(t, int32(Syncing), resp.Status)
 }

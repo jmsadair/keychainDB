@@ -6,6 +6,7 @@ import (
 
 	badger "github.com/dgraph-io/badger/v4"
 	"github.com/dgraph-io/ristretto/v2/z"
+	pb "github.com/jmsadair/keychain/proto/storage"
 )
 
 var (
@@ -27,6 +28,32 @@ const (
 	CommittedKeys
 )
 
+func (kf KeyFilter) Proto() pb.KeyType {
+	switch kf {
+	case AllKeys:
+		return pb.KeyType_KEYTYPE_ALL
+	case DirtyKeys:
+		return pb.KeyType_KEYTYPE_DIRTY
+	case CommittedKeys:
+		return pb.KeyType_KEYTYPE_COMMITTED
+	default:
+		panic("unknown key filter type")
+	}
+}
+
+func KeyFilterFromProto(kf pb.KeyType) KeyFilter {
+	switch kf {
+	case pb.KeyType_KEYTYPE_ALL:
+		return AllKeys
+	case pb.KeyType_KEYTYPE_COMMITTED:
+		return CommittedKeys
+	case pb.KeyType_KEYTYPE_DIRTY:
+		return DirtyKeys
+	default:
+		panic("unknown key filter type")
+	}
+}
+
 // KeyValuePair represents a versioned key-value pair in storage.
 type KeyValuePair struct {
 	// Key is the client-provided key.
@@ -37,6 +64,14 @@ type KeyValuePair struct {
 	Version uint64
 	// Committed indicates whether this version has been committed.
 	Committed bool
+}
+
+func (kv *KeyValuePair) Proto() *pb.KeyValuePair {
+	return &pb.KeyValuePair{Key: kv.Key, Value: kv.Value, Version: kv.Version, IsCommitted: kv.Committed}
+}
+
+func KeyValuePairFromProto(kv *pb.KeyValuePair) *KeyValuePair {
+	return &KeyValuePair{Key: kv.GetKey(), Value: kv.GetValue(), Version: kv.GetVersion(), Committed: kv.GetIsCommitted()}
 }
 
 // PersistentStorage is a disk-backed key-value storage system that is

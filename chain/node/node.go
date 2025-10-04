@@ -8,7 +8,10 @@ import (
 	"sync/atomic"
 
 	"github.com/jmsadair/keychain/chain/storage"
+	pb "github.com/jmsadair/keychain/proto/chain"
+	storagepb "github.com/jmsadair/keychain/proto/storage"
 	"golang.org/x/sync/errgroup"
+	"google.golang.org/grpc"
 )
 
 var (
@@ -35,7 +38,7 @@ const (
 )
 
 // Status represents the operational status of a chain node.
-type Status int
+type Status int32
 
 const (
 	// Unknown indicates the status of the node is not known.
@@ -54,18 +57,6 @@ type State struct {
 	Config *Configuration
 	// The operation status of a chain node.
 	Status Status
-}
-
-// KeyValueSendStream is a stream for sending key-value pairs.
-type KeyValueSendStream interface {
-	// Send sends the key-valur pair over the stream.
-	Send(*storage.KeyValuePair) error
-}
-
-// KeyValueReceiveStream is a stream for receiving key-value pairs.
-type KeyValueReceiveStream interface {
-	// Recieve reads the next key-value pair in a stream of key-value pairs.
-	Receive() (*storage.KeyValuePair, error)
 }
 
 // Storage defines the interface for persistent storage operations on a chain node.
@@ -96,13 +87,13 @@ type Storage interface {
 // Transport defines the interface for chain node communication.
 type Transport interface {
 	// Write will write a versioned key-value pair.
-	Write(ctx context.Context, address string, request *WriteRequest, response *WriteResponse) error
+	Write(ctx context.Context, address string, request *pb.WriteRequest) (*pb.WriteResponse, error)
 	// Read will read the committed version of the key.
-	Read(ctx context.Context, address string, request *ReadRequest, response *ReadResponse) error
+	Read(ctx context.Context, address string, request *pb.ReadRequest) (*pb.ReadResponse, error)
 	// Commit will commit the provided version of the key.
-	Commit(ctx context.Context, address string, request *CommitRequest, response *CommitResponse) error
+	Commit(ctx context.Context, address string, request *pb.CommitRequest) (*pb.CommitResponse, error)
 	// Propagate will initiate a stream of key-value pairs from another node.
-	Propagate(ctx context.Context, address string, request *PropagateRequest) (KeyValueReceiveStream, error)
+	Propagate(ctx context.Context, address string, request *pb.PropagateRequest) (grpc.ServerStreamingClient[storagepb.KeyValuePair], error)
 }
 
 type onConfigChangeMessage struct {
@@ -187,103 +178,101 @@ func (c *ChainNode) Run(ctx context.Context) {
 
 // WriteWithVersion performs a write operation with a specific version number.
 // This is used for replicated writes that are part of the chain replication protocol.
-func (c *ChainNode) WriteWithVersion(ctx context.Context, request *WriteRequest, response *WriteResponse) error {
+func (c *ChainNode) WriteWithVersion(ctx context.Context, request *pb.WriteRequest) (*pb.WriteResponse, error) {
 	state := c.state.Load()
 	if request.ConfigVersion != state.Config.Version {
-		return ErrInvalidConfigVersion
+		return nil, ErrInvalidConfigVersion
 	}
 	if !state.Config.IsMemberByID(c.ID) {
-		return ErrNotMemberOfChain
+		return nil, ErrNotMemberOfChain
 	}
 
 	succ := state.Config.Successor(c.ID)
 	if succ == nil {
 		err := c.store.CommittedWrite(request.Key, request.Value, request.Version)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		c.onCommitCh <- onCommitMessage{key: request.Key, version: request.Version}
-		return nil
+		return &pb.WriteResponse{}, nil
 	}
 	if err := c.store.UncommittedWrite(request.Key, request.Value, request.Version); err != nil {
-		return err
+		return nil, err
 	}
 
-	var resp WriteResponse
-	return c.tn.Write(ctx, succ.Address, request, &resp)
+	return c.tn.Write(ctx, succ.Address, request)
 }
 
 // Replicate starts a new replicated write operation from the head of the chain.
 // This method can only be invoked from the head of the chain and will generate a new version number for the key-value pair.
-func (c *ChainNode) Replicate(ctx context.Context, request *ReplicateRequest, response *ReplicateResponse) error {
+func (c *ChainNode) Replicate(ctx context.Context, request *pb.ReplicateRequest) (*pb.ReplicateResponse, error) {
 	state := c.state.Load()
 	if request.ConfigVersion != state.Config.Version {
-		return ErrInvalidConfigVersion
+		return nil, ErrInvalidConfigVersion
 	}
 	if !state.Config.IsMemberByID(c.ID) {
-		return ErrNotMemberOfChain
+		return nil, ErrNotMemberOfChain
 	}
 	if !state.Config.IsHead(c.ID) {
-		return ErrNotHead
+		return nil, ErrNotHead
 	}
 
 	succ := state.Config.Successor(c.ID)
 	if succ == nil {
-		_, err := c.store.CommittedWriteNewVersion(request.Key, request.Value)
-		return err
+		if _, err := c.store.CommittedWriteNewVersion(request.Key, request.Value); err != nil {
+			return nil, err
+		}
+		return &pb.ReplicateResponse{}, nil
 	}
 	version, err := c.store.UncommittedWriteNewVersion(request.Key, request.Value)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	req := &WriteRequest{Key: request.Key, Value: request.Value, Version: version, ConfigVersion: state.Config.Version}
-	var resp WriteResponse
-	return c.tn.Write(ctx, succ.Address, req, &resp)
+	req := &pb.WriteRequest{Key: request.Key, Value: request.Value, Version: version, ConfigVersion: state.Config.Version}
+	if _, err := c.tn.Write(ctx, succ.Address, req); err != nil {
+		return nil, err
+	}
+	return &pb.ReplicateResponse{}, nil
 }
 
 // Commit commits a previously written version of a key-value making it visible for reads.
-func (c *ChainNode) Commit(ctx context.Context, request *CommitRequest, response *CommitResponse) error {
+func (c *ChainNode) Commit(ctx context.Context, request *pb.CommitRequest) (*pb.CommitResponse, error) {
 	state := c.state.Load()
 	if request.ConfigVersion != state.Config.Version {
-		return ErrInvalidConfigVersion
+		return nil, ErrInvalidConfigVersion
 	}
 	if !state.Config.IsMemberByID(c.ID) {
-		return ErrNotMemberOfChain
+		return nil, ErrNotMemberOfChain
 	}
 
 	if err := c.store.CommitVersion(request.Key, request.Version); err != nil {
-		return err
+		return nil, err
 	}
 	c.onCommitCh <- onCommitMessage{key: request.Key, version: request.Version}
 
-	return nil
+	return &pb.CommitResponse{}, nil
 }
 
 // Read retrieves the committed value for the given key.
 // If the local store has uncommitted data, it forwards the read to the tail node.
-func (c *ChainNode) Read(ctx context.Context, request *ReadRequest, response *ReadResponse) error {
+func (c *ChainNode) Read(ctx context.Context, request *pb.ReadRequest) (*pb.ReadResponse, error) {
 	state := c.state.Load()
 	if request.ConfigVersion != state.Config.Version {
-		return ErrInvalidConfigVersion
+		return nil, ErrInvalidConfigVersion
 	}
 	if !state.Config.IsMemberByID(c.ID) {
-		return ErrNotMemberOfChain
+		return nil, ErrNotMemberOfChain
 	}
 
 	// If this node is syncing, try to forward to the predecessor.
 	if state.Status == Syncing {
 		pred := state.Config.Predecessor(c.ID)
 		if pred == nil {
-			return ErrSyncing
+			return nil, ErrSyncing
 		}
-		req := &ReadRequest{Key: request.Key, ConfigVersion: state.Config.Version, Forwarded: true}
-		var resp ReadResponse
-		if err := c.tn.Read(ctx, pred.Address, req, &resp); err != nil {
-			return err
-		}
-		response.Value = resp.Value
-		return nil
+		req := &pb.ReadRequest{Key: request.Key, ConfigVersion: state.Config.Version, Forwarded: true}
+		return c.tn.Read(ctx, pred.Address, req)
 	}
 
 	value, err := c.store.CommittedRead(request.Key)
@@ -296,30 +285,24 @@ func (c *ChainNode) Read(ctx context.Context, request *ReadRequest, response *Re
 		// predecessor has yet to commit the key-value pair so it forwards
 		// the request to the tail.
 		if state.Config.IsTail(c.ID) || request.Forwarded {
-			return ErrNotCommitted
+			return nil, ErrNotCommitted
 		}
 		tail := state.Config.Tail()
-		req := &ReadRequest{Key: request.Key, ConfigVersion: state.Config.Version, Forwarded: true}
-		var resp ReadResponse
-		if err := c.tn.Read(ctx, tail.Address, req, &resp); err != nil {
-			return err
-		}
-		response.Value = resp.Value
-		return nil
+		req := &pb.ReadRequest{Key: request.Key, ConfigVersion: state.Config.Version, Forwarded: true}
+		return c.tn.Read(ctx, tail.Address, req)
 	}
 	if err != nil && errors.Is(err, storage.ErrKeyDoesNotExist) {
-		return ErrKeyDoesNotExist
+		return nil, ErrKeyDoesNotExist
 	}
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	response.Value = value
-	return nil
+	return &pb.ReadResponse{Value: value}, nil
 }
 
 // Propagate sends key-value pairs to a requesting node through the provided stream.
-func (c *ChainNode) Propagate(ctx context.Context, request *PropagateRequest, stream KeyValueSendStream) error {
+func (c *ChainNode) Propagate(ctx context.Context, request *pb.PropagateRequest, stream grpc.ServerStreamingServer[storagepb.KeyValuePair]) error {
 	state := c.state.Load()
 	if request.ConfigVersion != state.Config.Version {
 		return ErrInvalidConfigVersion
@@ -333,38 +316,37 @@ func (c *ChainNode) Propagate(ctx context.Context, request *PropagateRequest, st
 
 	sendFunc := func(ctx context.Context, kvPairs []storage.KeyValuePair) error {
 		for _, kvPair := range kvPairs {
-			if err := stream.Send(&kvPair); err != nil {
+			if err := stream.Send(kvPair.Proto()); err != nil {
 				return err
 			}
 		}
 		return nil
 	}
 
-	return c.store.SendKeyValuePairs(ctx, sendFunc, request.KeyFilter)
+	return c.store.SendKeyValuePairs(ctx, sendFunc, storage.KeyFilterFromProto(request.KeyType))
 }
 
 // UpdateConfiguration updates the chain configuration for this node.
-func (c *ChainNode) UpdateConfiguration(ctx context.Context, request *UpdateConfigurationRequest, response *UpdateConfigurationResponse) error {
-	msg := onConfigChangeMessage{config: request.Configuration, doneCh: make(chan bool)}
+func (c *ChainNode) UpdateConfiguration(ctx context.Context, request *pb.UpdateConfigurationRequest) (*pb.UpdateConfigurationResponse, error) {
+	msg := onConfigChangeMessage{config: NewConfigurationFromProto(request.Configuration), doneCh: make(chan bool)}
 
 	select {
 	case c.onConfigChangeCh <- msg:
 	case <-ctx.Done():
-		return ctx.Err()
+		return nil, ctx.Err()
 	}
 
 	select {
 	case <-msg.doneCh:
-		return nil
+		return &pb.UpdateConfigurationResponse{}, nil
 	case <-ctx.Done():
-		return ctx.Err()
+		return nil, ctx.Err()
 	}
 }
 
-func (c *ChainNode) Ping(request *PingRequest, response *PingResponse) {
+func (c *ChainNode) Ping(request *pb.PingRequest) *pb.PingResponse {
 	state := c.state.Load()
-	response.Status = state.Status
-	response.Version = state.Config.Version
+	return &pb.PingResponse{Status: int32(state.Status), ConfigVersion: state.Config.Version}
 }
 
 func (c *ChainNode) Configuration() *Configuration {
@@ -382,7 +364,7 @@ func (c *ChainNode) Store() Storage {
 }
 
 func (c *ChainNode) requestPropagation(ctx context.Context, address string, keyFilter storage.KeyFilter, config *Configuration) error {
-	req := &PropagateRequest{KeyFilter: keyFilter, ConfigVersion: config.Version}
+	req := &pb.PropagateRequest{KeyType: keyFilter.Proto(), ConfigVersion: config.Version}
 	isTail := config.IsTail(c.ID)
 	stream, err := c.tn.Propagate(ctx, address, req)
 	if err != nil {
@@ -390,7 +372,7 @@ func (c *ChainNode) requestPropagation(ctx context.Context, address string, keyF
 	}
 
 	for {
-		kvPair, err := stream.Receive()
+		kvPair, err := stream.Recv()
 		if err == io.EOF {
 			break
 		}
@@ -398,19 +380,19 @@ func (c *ChainNode) requestPropagation(ctx context.Context, address string, keyF
 			return err
 		}
 
-		shouldCommit := kvPair.Committed || isTail
+		shouldCommit := kvPair.GetIsCommitted() || isTail
 		if shouldCommit {
-			err = c.store.CommittedWrite(kvPair.Key, kvPair.Value, kvPair.Version)
+			err = c.store.CommittedWrite(kvPair.GetKey(), kvPair.GetValue(), kvPair.GetVersion())
 			if err == nil {
 				select {
 				case <-ctx.Done():
 					return nil
-				case c.onCommitCh <- onCommitMessage{key: kvPair.Key, version: kvPair.Version}:
+				case c.onCommitCh <- onCommitMessage{key: kvPair.GetKey(), version: kvPair.GetVersion()}:
 				}
 			}
 
 		} else {
-			err = c.store.UncommittedWrite(kvPair.Key, kvPair.Value, kvPair.Version)
+			err = c.store.UncommittedWrite(kvPair.GetKey(), kvPair.GetValue(), kvPair.GetVersion())
 		}
 
 		if err != nil {
@@ -436,9 +418,9 @@ func (c *ChainNode) onCommit(ctx context.Context, key string, version uint64) er
 		return nil
 	}
 
-	req := &CommitRequest{Key: key, Version: version}
-	var resp CommitResponse
-	return c.tn.Commit(ctx, pred.Address, req, &resp)
+	req := &pb.CommitRequest{Key: key, Version: version}
+	_, err = c.tn.Commit(ctx, pred.Address, req)
+	return err
 }
 
 func (c *ChainNode) onCommitRoutine(ctx context.Context) {

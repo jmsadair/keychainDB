@@ -2,30 +2,11 @@ package grpc
 
 import (
 	"context"
-
-	"github.com/jmsadair/keychain/chain/node"
-	"github.com/jmsadair/keychain/chain/storage"
 	"github.com/jmsadair/keychain/internal/transport"
 	pb "github.com/jmsadair/keychain/proto/chain"
+	storagepb "github.com/jmsadair/keychain/proto/storage"
 	"google.golang.org/grpc"
 )
-
-type gRPCReceiveStream struct {
-	stream grpc.ClientStream
-}
-
-func (g *gRPCReceiveStream) Receive() (*storage.KeyValuePair, error) {
-	var msg pb.KeyValuePair
-	if err := g.stream.RecvMsg(&msg); err != nil {
-		return nil, err
-	}
-	return &storage.KeyValuePair{
-		Key:       msg.GetKey(),
-		Value:     msg.GetValue(),
-		Version:   msg.GetVersion(),
-		Committed: msg.GetIsCommitted(),
-	}, nil
-}
 
 // Client is a gRPC client for the chain service.
 type Client struct {
@@ -38,104 +19,96 @@ func NewClient(dialOpts ...grpc.DialOption) (*Client, error) {
 }
 
 // Replicate chain-replicates a key-value pair. This operation can only be invoked on the head of the chain otherwise it will be rejected.
-func (c *Client) Replicate(ctx context.Context, address string, request *node.ReplicateRequest, response *node.ReplicateResponse) error {
-	client, err := c.cache.GetOrCreate(address)
-	if err != nil {
-		return err
-	}
-	pbResp, err := client.Replicate(ctx, request.Proto())
-	if err != nil {
-		return parseGrpcErr(err)
-	}
-	response.FromProto(pbResp)
-	return nil
-}
-
-// Write writes a versioned key-value pair. This operation should only be invoked by chain nodes that are chain-replicating a key-value pair.
-func (c *Client) Write(ctx context.Context, address string, request *node.WriteRequest, response *node.WriteResponse) error {
-	client, err := c.cache.GetOrCreate(address)
-	if err != nil {
-		return err
-	}
-	pbResp, err := client.Write(ctx, request.Proto())
-	if err != nil {
-		return err
-	}
-	response.FromProto(pbResp)
-	return nil
-}
-
-// Read reads a key-value pair.
-func (c *Client) Read(ctx context.Context, address string, request *node.ReadRequest, response *node.ReadResponse) error {
-	client, err := c.cache.GetOrCreate(address)
-	if err != nil {
-		return err
-	}
-	pbResp, err := client.Read(ctx, request.Proto())
-	if err != nil {
-		return parseGrpcErr(err)
-	}
-	response.FromProto(pbResp)
-	return nil
-}
-
-// Commit commits a versioned key-value pair.
-func (c *Client) Commit(ctx context.Context, address string, request *node.CommitRequest, response *node.CommitResponse) error {
-	client, err := c.cache.GetOrCreate(address)
-	if err != nil {
-		return err
-	}
-	pbResp, err := client.Commit(ctx, request.Proto())
-	if err != nil {
-		return parseGrpcErr(err)
-	}
-	response.FromProto(pbResp)
-	return nil
-}
-
-// Propagate initiates a stream of key-value pairs.
-func (c *Client) Propagate(ctx context.Context, address string, request *node.PropagateRequest) (node.KeyValueReceiveStream, error) {
+func (c *Client) Replicate(ctx context.Context, address string, request *pb.ReplicateRequest) (*pb.ReplicateResponse, error) {
 	client, err := c.cache.GetOrCreate(address)
 	if err != nil {
 		return nil, err
 	}
-
-	stream, err := client.Propagate(ctx, request.Proto())
+	resp, err := client.Replicate(ctx, request)
 	if err != nil {
 		return nil, parseGrpcErr(err)
 	}
-	return &gRPCReceiveStream{stream: stream}, nil
+	return resp, nil
 }
 
-// Ping pings a node. Nodes will respond with their current status and configuration version.
-func (c *Client) Ping(ctx context.Context, address string, request *node.PingRequest, response *node.PingResponse) error {
+// Write writes a versioned key-value pair. This operation should only be invoked by chain nodes that are chain-replicating a key-value pair.
+func (c *Client) Write(ctx context.Context, address string, request *pb.WriteRequest) (*pb.WriteResponse, error) {
 	client, err := c.cache.GetOrCreate(address)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	pbResp, err := client.Ping(ctx, request.Proto())
+	resp, err := client.Write(ctx, request)
 	if err != nil {
-		return parseGrpcErr(err)
+		return nil, parseGrpcErr(err)
 	}
-	response.FromProto(pbResp)
-	return nil
+	return resp, nil
 }
 
-// UpdateConfiguration will update the chain membership configuration of a node.
+// Read reads a key-value pair.
+func (c *Client) Read(ctx context.Context, address string, request *pb.ReadRequest) (*pb.ReadResponse, error) {
+	client, err := c.cache.GetOrCreate(address)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := client.Read(ctx, request)
+	if err != nil {
+		return nil, parseGrpcErr(err)
+	}
+	return resp, nil
+}
+
+// Commit commits a versioned key-value pair.
+func (c *Client) Commit(ctx context.Context, address string, request *pb.CommitRequest) (*pb.CommitResponse, error) {
+	client, err := c.cache.GetOrCreate(address)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := client.Commit(ctx, request)
+	if err != nil {
+		return nil, parseGrpcErr(err)
+	}
+	return resp, nil
+}
+
+// Propagate initiates a stream of key-value pairs.
+func (c *Client) Propagate(ctx context.Context, address string, request *pb.PropagateRequest) (grpc.ServerStreamingClient[storagepb.KeyValuePair], error) {
+	client, err := c.cache.GetOrCreate(address)
+	if err != nil {
+		return nil, err
+	}
+	stream, err := client.Propagate(ctx, request)
+	if err != nil {
+		return nil, parseGrpcErr(err)
+	}
+	return stream, nil
+}
+
+// Ping will ping a node.
+func (c *Client) Ping(ctx context.Context, address string, request *pb.PingRequest) (*pb.PingResponse, error) {
+	client, err := c.cache.GetOrCreate(address)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := client.Ping(ctx, request)
+	if err != nil {
+		return nil, parseGrpcErr(err)
+	}
+	return resp, nil
+}
+
+// UpdateConfiguration will update the chain configuration for a node.
 func (c *Client) UpdateConfiguration(
 	ctx context.Context,
 	address string,
-	request *node.UpdateConfigurationRequest,
-	response *node.UpdateConfigurationResponse,
-) error {
+	request *pb.UpdateConfigurationRequest,
+) (*pb.UpdateConfigurationResponse, error) {
 	client, err := c.cache.GetOrCreate(address)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	pbResp, err := client.UpdateConfiguration(ctx, request.Proto())
+	resp, err := client.UpdateConfiguration(ctx, request)
 	if err != nil {
-		return parseGrpcErr(err)
+		return nil, parseGrpcErr(err)
 	}
-	response.FromProto(pbResp)
-	return nil
+	return resp, nil
 }
