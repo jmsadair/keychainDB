@@ -133,7 +133,6 @@ func makeChainServer(t *testing.T, id string, address string) (*chain.Server, fu
 		cancel()
 		wg.Wait()
 	}
-
 }
 
 func makeTestChain(t *testing.T, numNodes int) *testChain {
