@@ -10,10 +10,10 @@ import "proto/chain/chain.proto";
 
 // CoordinatorService is used to communicate with the coordinator cluster.
 service CoordinatorService {
-	// ReadChainConfiguration handles requests to read the chain configuration.
-	rpc ReadChainConfiguration(ReadChainConfigurationRequest) returns (ReadChainConfigurationResponse) {
+	// GetMembers handles requests to read the chain configuration.
+	rpc GetMembers(GetMembersRequest) returns (GetMembersResponse) {
 		option (google.api.http) = {
-			get: "/v1/chain/configuration"
+			get: "/v1/chain/members"
 		};
 	}
 	// AddMember handles requests to add a member to the chain.
@@ -50,12 +50,12 @@ service CoordinatorService {
 	}
 }
 
-// ReadChainConfigurationRequest is a request to read the chain configuration.
-message ReadChainConfigurationRequest {}
+// GetMembersRequest is a request to get the members of the chain configuration.
+message GetMembersRequest {}
 
-// ReadChainConfigurationResponse is a response to a ReadChainConfigurationRequest.
-message ReadChainConfigurationResponse {
-	// A chain configuration.
+// GetMembersResponse is a response to a GetMembersRequest.
+message GetMembersResponse {
+	// A chain membership configuration.
 	chain.Configuration configuration = 1;
 }
 

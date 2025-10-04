@@ -24,27 +24,27 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// ReadChainConfigurationRequest is a request to read the chain configuration.
-type ReadChainConfigurationRequest struct {
+// GetMembersRequest is a request to get the members of the chain configuration.
+type GetMembersRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *ReadChainConfigurationRequest) Reset() {
-	*x = ReadChainConfigurationRequest{}
+func (x *GetMembersRequest) Reset() {
+	*x = GetMembersRequest{}
 	mi := &file_proto_coordinator_coordinator_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *ReadChainConfigurationRequest) String() string {
+func (x *GetMembersRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ReadChainConfigurationRequest) ProtoMessage() {}
+func (*GetMembersRequest) ProtoMessage() {}
 
-func (x *ReadChainConfigurationRequest) ProtoReflect() protoreflect.Message {
+func (x *GetMembersRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_proto_coordinator_coordinator_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -56,34 +56,34 @@ func (x *ReadChainConfigurationRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ReadChainConfigurationRequest.ProtoReflect.Descriptor instead.
-func (*ReadChainConfigurationRequest) Descriptor() ([]byte, []int) {
+// Deprecated: Use GetMembersRequest.ProtoReflect.Descriptor instead.
+func (*GetMembersRequest) Descriptor() ([]byte, []int) {
 	return file_proto_coordinator_coordinator_proto_rawDescGZIP(), []int{0}
 }
 
-// ReadChainConfigurationResponse is a response to a ReadChainConfigurationRequest.
-type ReadChainConfigurationResponse struct {
+// GetMembersResponse is a response to a GetMembersRequest.
+type GetMembersResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// A chain configuration.
+	// A chain membership configuration.
 	Configuration *chain.Configuration `protobuf:"bytes,1,opt,name=configuration,proto3" json:"configuration,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *ReadChainConfigurationResponse) Reset() {
-	*x = ReadChainConfigurationResponse{}
+func (x *GetMembersResponse) Reset() {
+	*x = GetMembersResponse{}
 	mi := &file_proto_coordinator_coordinator_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *ReadChainConfigurationResponse) String() string {
+func (x *GetMembersResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ReadChainConfigurationResponse) ProtoMessage() {}
+func (*GetMembersResponse) ProtoMessage() {}
 
-func (x *ReadChainConfigurationResponse) ProtoReflect() protoreflect.Message {
+func (x *GetMembersResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_proto_coordinator_coordinator_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -95,12 +95,12 @@ func (x *ReadChainConfigurationResponse) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ReadChainConfigurationResponse.ProtoReflect.Descriptor instead.
-func (*ReadChainConfigurationResponse) Descriptor() ([]byte, []int) {
+// Deprecated: Use GetMembersResponse.ProtoReflect.Descriptor instead.
+func (*GetMembersResponse) Descriptor() ([]byte, []int) {
 	return file_proto_coordinator_coordinator_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *ReadChainConfigurationResponse) GetConfiguration() *chain.Configuration {
+func (x *GetMembersResponse) GetConfiguration() *chain.Configuration {
 	if x != nil {
 		return x.Configuration
 	}
@@ -881,9 +881,9 @@ var File_proto_coordinator_coordinator_proto protoreflect.FileDescriptor
 
 const file_proto_coordinator_coordinator_proto_rawDesc = "" +
 	"\n" +
-	"#proto/coordinator/coordinator.proto\x12\vcoordinator\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1cgoogle/api/annotations.proto\x1a\x17proto/chain/chain.proto\"\x1f\n" +
-	"\x1dReadChainConfigurationRequest\"\\\n" +
-	"\x1eReadChainConfigurationResponse\x12:\n" +
+	"#proto/coordinator/coordinator.proto\x12\vcoordinator\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1cgoogle/api/annotations.proto\x1a\x17proto/chain/chain.proto\"\x13\n" +
+	"\x11GetMembersRequest\"P\n" +
+	"\x12GetMembersResponse\x12:\n" +
 	"\rconfiguration\x18\x01 \x01(\v2\x14.chain.ConfigurationR\rconfiguration\"<\n" +
 	"\x10AddMemberRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x18\n" +
@@ -927,9 +927,10 @@ const file_proto_coordinator_coordinator_proto_rawDesc = "" +
 	"extensions\x18\x05 \x01(\fR\n" +
 	"extensions\x12;\n" +
 	"\vappended_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
-	"appendedAt2\xf5\x05\n" +
-	"\x12CoordinatorService\x12\x92\x01\n" +
-	"\x16ReadChainConfiguration\x12*.coordinator.ReadChainConfigurationRequest\x1a+.coordinator.ReadChainConfigurationResponse\"\x1f\x82\xd3\xe4\x93\x02\x19\x12\x17/v1/chain/configuration\x12h\n" +
+	"appendedAt2\xca\x05\n" +
+	"\x12CoordinatorService\x12h\n" +
+	"\n" +
+	"GetMembers\x12\x1e.coordinator.GetMembersRequest\x1a\x1f.coordinator.GetMembersResponse\"\x19\x82\xd3\xe4\x93\x02\x13\x12\x11/v1/chain/members\x12h\n" +
 	"\tAddMember\x12\x1d.coordinator.AddMemberRequest\x1a\x1e.coordinator.AddMemberResponse\"\x1c\x82\xd3\xe4\x93\x02\x16:\x01*\"\x11/v1/chain/members\x12s\n" +
 	"\fRemoveMember\x12 .coordinator.RemoveMemberRequest\x1a!.coordinator.RemoveMemberResponse\"\x1e\x82\xd3\xe4\x93\x02\x18*\x16/v1/chain/members/{id}\x12p\n" +
 	"\vJoinCluster\x12\x1f.coordinator.JoinClusterRequest\x1a .coordinator.JoinClusterResponse\"\x1e\x82\xd3\xe4\x93\x02\x18:\x01*\"\x13/v1/cluster/members\x12\x84\x01\n" +
@@ -950,41 +951,41 @@ func file_proto_coordinator_coordinator_proto_rawDescGZIP() []byte {
 
 var file_proto_coordinator_coordinator_proto_msgTypes = make([]protoimpl.MessageInfo, 18)
 var file_proto_coordinator_coordinator_proto_goTypes = []any{
-	(*ReadChainConfigurationRequest)(nil),  // 0: coordinator.ReadChainConfigurationRequest
-	(*ReadChainConfigurationResponse)(nil), // 1: coordinator.ReadChainConfigurationResponse
-	(*AddMemberRequest)(nil),               // 2: coordinator.AddMemberRequest
-	(*AddMemberResponse)(nil),              // 3: coordinator.AddMemberResponse
-	(*RemoveMemberRequest)(nil),            // 4: coordinator.RemoveMemberRequest
-	(*RemoveMemberResponse)(nil),           // 5: coordinator.RemoveMemberResponse
-	(*JoinClusterRequest)(nil),             // 6: coordinator.JoinClusterRequest
-	(*JoinClusterResponse)(nil),            // 7: coordinator.JoinClusterResponse
-	(*RemoveFromClusterRequest)(nil),       // 8: coordinator.RemoveFromClusterRequest
-	(*RemoveFromClusterResponse)(nil),      // 9: coordinator.RemoveFromClusterResponse
-	(*ClusterStatusRequest)(nil),           // 10: coordinator.ClusterStatusRequest
-	(*ClusterStatusResponse)(nil),          // 11: coordinator.ClusterStatusResponse
-	(*AddMemberOperation)(nil),             // 12: coordinator.AddMemberOperation
-	(*RemoveMemberOperation)(nil),          // 13: coordinator.RemoveMemberOperation
-	(*ReadMembershipOperation)(nil),        // 14: coordinator.ReadMembershipOperation
-	(*ReplicatedOperation)(nil),            // 15: coordinator.ReplicatedOperation
-	(*Log)(nil),                            // 16: coordinator.Log
-	nil,                                    // 17: coordinator.ClusterStatusResponse.MembersEntry
-	(*chain.Configuration)(nil),            // 18: chain.Configuration
-	(*timestamppb.Timestamp)(nil),          // 19: google.protobuf.Timestamp
+	(*GetMembersRequest)(nil),         // 0: coordinator.GetMembersRequest
+	(*GetMembersResponse)(nil),        // 1: coordinator.GetMembersResponse
+	(*AddMemberRequest)(nil),          // 2: coordinator.AddMemberRequest
+	(*AddMemberResponse)(nil),         // 3: coordinator.AddMemberResponse
+	(*RemoveMemberRequest)(nil),       // 4: coordinator.RemoveMemberRequest
+	(*RemoveMemberResponse)(nil),      // 5: coordinator.RemoveMemberResponse
+	(*JoinClusterRequest)(nil),        // 6: coordinator.JoinClusterRequest
+	(*JoinClusterResponse)(nil),       // 7: coordinator.JoinClusterResponse
+	(*RemoveFromClusterRequest)(nil),  // 8: coordinator.RemoveFromClusterRequest
+	(*RemoveFromClusterResponse)(nil), // 9: coordinator.RemoveFromClusterResponse
+	(*ClusterStatusRequest)(nil),      // 10: coordinator.ClusterStatusRequest
+	(*ClusterStatusResponse)(nil),     // 11: coordinator.ClusterStatusResponse
+	(*AddMemberOperation)(nil),        // 12: coordinator.AddMemberOperation
+	(*RemoveMemberOperation)(nil),     // 13: coordinator.RemoveMemberOperation
+	(*ReadMembershipOperation)(nil),   // 14: coordinator.ReadMembershipOperation
+	(*ReplicatedOperation)(nil),       // 15: coordinator.ReplicatedOperation
+	(*Log)(nil),                       // 16: coordinator.Log
+	nil,                               // 17: coordinator.ClusterStatusResponse.MembersEntry
+	(*chain.Configuration)(nil),       // 18: chain.Configuration
+	(*timestamppb.Timestamp)(nil),     // 19: google.protobuf.Timestamp
 }
 var file_proto_coordinator_coordinator_proto_depIdxs = []int32{
-	18, // 0: coordinator.ReadChainConfigurationResponse.configuration:type_name -> chain.Configuration
+	18, // 0: coordinator.GetMembersResponse.configuration:type_name -> chain.Configuration
 	17, // 1: coordinator.ClusterStatusResponse.members:type_name -> coordinator.ClusterStatusResponse.MembersEntry
 	12, // 2: coordinator.ReplicatedOperation.add_member:type_name -> coordinator.AddMemberOperation
 	13, // 3: coordinator.ReplicatedOperation.remove_member:type_name -> coordinator.RemoveMemberOperation
 	14, // 4: coordinator.ReplicatedOperation.read_membership:type_name -> coordinator.ReadMembershipOperation
 	19, // 5: coordinator.Log.appended_at:type_name -> google.protobuf.Timestamp
-	0,  // 6: coordinator.CoordinatorService.ReadChainConfiguration:input_type -> coordinator.ReadChainConfigurationRequest
+	0,  // 6: coordinator.CoordinatorService.GetMembers:input_type -> coordinator.GetMembersRequest
 	2,  // 7: coordinator.CoordinatorService.AddMember:input_type -> coordinator.AddMemberRequest
 	4,  // 8: coordinator.CoordinatorService.RemoveMember:input_type -> coordinator.RemoveMemberRequest
 	6,  // 9: coordinator.CoordinatorService.JoinCluster:input_type -> coordinator.JoinClusterRequest
 	8,  // 10: coordinator.CoordinatorService.RemoveFromCluster:input_type -> coordinator.RemoveFromClusterRequest
 	10, // 11: coordinator.CoordinatorService.ClusterStatus:input_type -> coordinator.ClusterStatusRequest
-	1,  // 12: coordinator.CoordinatorService.ReadChainConfiguration:output_type -> coordinator.ReadChainConfigurationResponse
+	1,  // 12: coordinator.CoordinatorService.GetMembers:output_type -> coordinator.GetMembersResponse
 	3,  // 13: coordinator.CoordinatorService.AddMember:output_type -> coordinator.AddMemberResponse
 	5,  // 14: coordinator.CoordinatorService.RemoveMember:output_type -> coordinator.RemoveMemberResponse
 	7,  // 15: coordinator.CoordinatorService.JoinCluster:output_type -> coordinator.JoinClusterResponse

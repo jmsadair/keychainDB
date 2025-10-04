@@ -35,24 +35,24 @@ var (
 	_ = metadata.Join
 )
 
-func request_CoordinatorService_ReadChainConfiguration_0(ctx context.Context, marshaler runtime.Marshaler, client CoordinatorServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func request_CoordinatorService_GetMembers_0(ctx context.Context, marshaler runtime.Marshaler, client CoordinatorServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var (
-		protoReq ReadChainConfigurationRequest
+		protoReq GetMembersRequest
 		metadata runtime.ServerMetadata
 	)
 	if req.Body != nil {
 		_, _ = io.Copy(io.Discard, req.Body)
 	}
-	msg, err := client.ReadChainConfiguration(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	msg, err := client.GetMembers(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
 }
 
-func local_request_CoordinatorService_ReadChainConfiguration_0(ctx context.Context, marshaler runtime.Marshaler, server CoordinatorServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func local_request_CoordinatorService_GetMembers_0(ctx context.Context, marshaler runtime.Marshaler, server CoordinatorServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var (
-		protoReq ReadChainConfigurationRequest
+		protoReq GetMembersRequest
 		metadata runtime.ServerMetadata
 	)
-	msg, err := server.ReadChainConfiguration(ctx, &protoReq)
+	msg, err := server.GetMembers(ctx, &protoReq)
 	return msg, metadata, err
 }
 
@@ -215,25 +215,25 @@ func local_request_CoordinatorService_ClusterStatus_0(ctx context.Context, marsh
 // Note that using this registration option will cause many gRPC library features to stop working. Consider using RegisterCoordinatorServiceHandlerFromEndpoint instead.
 // GRPC interceptors will not work for this type of registration. To use interceptors, you must use the "runtime.WithMiddlewares" option in the "runtime.NewServeMux" call.
 func RegisterCoordinatorServiceHandlerServer(ctx context.Context, mux *runtime.ServeMux, server CoordinatorServiceServer) error {
-	mux.Handle(http.MethodGet, pattern_CoordinatorService_ReadChainConfiguration_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle(http.MethodGet, pattern_CoordinatorService_GetMembers_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/coordinator.CoordinatorService/ReadChainConfiguration", runtime.WithHTTPPathPattern("/v1/chain/configuration"))
+		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/coordinator.CoordinatorService/GetMembers", runtime.WithHTTPPathPattern("/v1/chain/members"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_CoordinatorService_ReadChainConfiguration_0(annotatedContext, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_CoordinatorService_GetMembers_0(annotatedContext, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		forward_CoordinatorService_ReadChainConfiguration_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_CoordinatorService_GetMembers_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 	})
 	mux.Handle(http.MethodPost, pattern_CoordinatorService_AddMember_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
@@ -375,22 +375,22 @@ func RegisterCoordinatorServiceHandler(ctx context.Context, mux *runtime.ServeMu
 // doesn't go through the normal gRPC flow (creating a gRPC client etc.) then it will be up to the passed in
 // "CoordinatorServiceClient" to call the correct interceptors. This client ignores the HTTP middlewares.
 func RegisterCoordinatorServiceHandlerClient(ctx context.Context, mux *runtime.ServeMux, client CoordinatorServiceClient) error {
-	mux.Handle(http.MethodGet, pattern_CoordinatorService_ReadChainConfiguration_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle(http.MethodGet, pattern_CoordinatorService_GetMembers_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/coordinator.CoordinatorService/ReadChainConfiguration", runtime.WithHTTPPathPattern("/v1/chain/configuration"))
+		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/coordinator.CoordinatorService/GetMembers", runtime.WithHTTPPathPattern("/v1/chain/members"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_CoordinatorService_ReadChainConfiguration_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_CoordinatorService_GetMembers_0(annotatedContext, inboundMarshaler, client, req, pathParams)
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		forward_CoordinatorService_ReadChainConfiguration_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_CoordinatorService_GetMembers_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 	})
 	mux.Handle(http.MethodPost, pattern_CoordinatorService_AddMember_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
@@ -481,19 +481,19 @@ func RegisterCoordinatorServiceHandlerClient(ctx context.Context, mux *runtime.S
 }
 
 var (
-	pattern_CoordinatorService_ReadChainConfiguration_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v1", "chain", "configuration"}, ""))
-	pattern_CoordinatorService_AddMember_0              = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v1", "chain", "members"}, ""))
-	pattern_CoordinatorService_RemoveMember_0           = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v1", "chain", "members", "id"}, ""))
-	pattern_CoordinatorService_JoinCluster_0            = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v1", "cluster", "members"}, ""))
-	pattern_CoordinatorService_RemoveFromCluster_0      = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v1", "cluster", "members", "id"}, ""))
-	pattern_CoordinatorService_ClusterStatus_0          = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v1", "cluster", "status"}, ""))
+	pattern_CoordinatorService_GetMembers_0        = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v1", "chain", "members"}, ""))
+	pattern_CoordinatorService_AddMember_0         = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v1", "chain", "members"}, ""))
+	pattern_CoordinatorService_RemoveMember_0      = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v1", "chain", "members", "id"}, ""))
+	pattern_CoordinatorService_JoinCluster_0       = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v1", "cluster", "members"}, ""))
+	pattern_CoordinatorService_RemoveFromCluster_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v1", "cluster", "members", "id"}, ""))
+	pattern_CoordinatorService_ClusterStatus_0     = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v1", "cluster", "status"}, ""))
 )
 
 var (
-	forward_CoordinatorService_ReadChainConfiguration_0 = runtime.ForwardResponseMessage
-	forward_CoordinatorService_AddMember_0              = runtime.ForwardResponseMessage
-	forward_CoordinatorService_RemoveMember_0           = runtime.ForwardResponseMessage
-	forward_CoordinatorService_JoinCluster_0            = runtime.ForwardResponseMessage
-	forward_CoordinatorService_RemoveFromCluster_0      = runtime.ForwardResponseMessage
-	forward_CoordinatorService_ClusterStatus_0          = runtime.ForwardResponseMessage
+	forward_CoordinatorService_GetMembers_0        = runtime.ForwardResponseMessage
+	forward_CoordinatorService_AddMember_0         = runtime.ForwardResponseMessage
+	forward_CoordinatorService_RemoveMember_0      = runtime.ForwardResponseMessage
+	forward_CoordinatorService_JoinCluster_0       = runtime.ForwardResponseMessage
+	forward_CoordinatorService_RemoveFromCluster_0 = runtime.ForwardResponseMessage
+	forward_CoordinatorService_ClusterStatus_0     = runtime.ForwardResponseMessage
 )
