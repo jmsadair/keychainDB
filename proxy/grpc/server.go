@@ -5,7 +5,7 @@ import (
 
 	"github.com/jmsadair/keychain/internal/transport"
 	pb "github.com/jmsadair/keychain/proto/proxy"
-	"github.com/jmsadair/keychain/proxy/node"
+	proxynode "github.com/jmsadair/keychain/proxy/node"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/health"
@@ -13,20 +13,17 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// Server is the gRPC proxy service.
+// Server is the gRPC proxy server.
 type Server struct {
 	pb.ProxyServiceServer
 	*transport.Server
 	Address string
-	Node    *node.Proxy
+	Proxy   *proxynode.Proxy
 }
 
 // NewServer creates a new server.
-func NewServer(address string, node *node.Proxy) *Server {
-	s := &Server{
-		Address: address,
-		Node:    node,
-	}
+func NewServer(address string, p *proxynode.Proxy) *Server {
+	s := &Server{Address: address, Proxy: p}
 	s.Server = transport.NewServer(address, func(grpcServer *grpc.Server) {
 		pb.RegisterProxyServiceServer(grpcServer, s)
 		grpc_health_v1.RegisterHealthServer(grpcServer, health.NewServer())
@@ -35,21 +32,13 @@ func NewServer(address string, node *node.Proxy) *Server {
 }
 
 // Get handles requests for reading key-value pairs.
-func (s *Server) Get(ctx context.Context, req *pb.GetRequest) (*pb.GetResponse, error) {
-	value, err := s.Node.GetValue(ctx, req.GetKey())
-	if err != nil {
-		return nil, err
-	}
-	return &pb.GetResponse{Value: value}, nil
+func (s *Server) Get(ctx context.Context, request *pb.GetRequest) (*pb.GetResponse, error) {
+	return s.Proxy.Get(ctx, request)
 }
 
 // Set handles requests for setting key-value pairs.
-func (s *Server) Set(ctx context.Context, req *pb.SetRequest) (*pb.SetResponse, error) {
-	err := s.Node.SetValue(ctx, req.GetKey(), req.GetValue())
-	if err != nil {
-		return nil, err
-	}
-	return &pb.SetResponse{}, nil
+func (s *Server) Set(ctx context.Context, request *pb.SetRequest) (*pb.SetResponse, error) {
+	return s.Proxy.Set(ctx, request)
 }
 
 // Check implements the gRPC health check protocol.

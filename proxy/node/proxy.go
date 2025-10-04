@@ -7,7 +7,9 @@ import (
 	"sync/atomic"
 
 	chainnode "github.com/jmsadair/keychain/chain/node"
-	coordinatornode "github.com/jmsadair/keychain/coordinator/node"
+	chainpb "github.com/jmsadair/keychain/proto/chain"
+	coordinatorpb "github.com/jmsadair/keychain/proto/coordinator"
+	proxypb "github.com/jmsadair/keychain/proto/proxy"
 )
 
 var (
@@ -16,17 +18,16 @@ var (
 )
 
 type ChainTransport interface {
-	Read(ctx context.Context, target string, request *chainnode.ReadRequest, response *chainnode.ReadResponse) error
-	Replicate(ctx context.Context, target string, request *chainnode.ReplicateRequest, response *chainnode.ReplicateResponse) error
+	Read(ctx context.Context, target string, request *chainpb.ReadRequest) (*chainpb.ReadResponse, error)
+	Replicate(ctx context.Context, target string, request *chainpb.ReplicateRequest) (*chainpb.ReplicateResponse, error)
 }
 
 type CoordinatorTransport interface {
 	ReadChainConfiguration(
 		ctx context.Context,
 		address string,
-		request *coordinatornode.ReadChainConfigurationRequest,
-		response *coordinatornode.ReadChainConfigurationResponse,
-	) error
+		request *coordinatorpb.ReadChainConfigurationRequest,
+	) (*coordinatorpb.ReadChainConfigurationResponse, error)
 }
 
 type Proxy struct {
@@ -40,7 +41,7 @@ func NewProxy(raftMembers []string, coordinatorTn CoordinatorTransport, chainTn 
 	return &Proxy{chainTn: chainTn, coordinatorTn: coordinatorTn, raftMembers: raftMembers}
 }
 
-func (p *Proxy) GetValue(ctx context.Context, key string) ([]byte, error) {
+func (p *Proxy) Get(ctx context.Context, request *proxypb.GetRequest) (*proxypb.GetResponse, error) {
 	config, err := p.getChainConfiguration(ctx, false)
 	if err != nil {
 		return nil, err
@@ -50,9 +51,8 @@ func (p *Proxy) GetValue(ctx context.Context, key string) ([]byte, error) {
 		return nil, ErrNoMembers
 	}
 
-	req := &chainnode.ReadRequest{Key: key, ConfigVersion: config.Version}
-	var resp chainnode.ReadResponse
-	err = p.chainTn.Read(ctx, tail.Address, req, &resp)
+	readReq := &chainpb.ReadRequest{Key: request.GetKey(), ConfigVersion: config.Version}
+	readResp, err := p.chainTn.Read(ctx, tail.Address, readReq)
 	if err != nil && errors.Is(err, chainnode.ErrInvalidConfigVersion) {
 		config, err := p.getChainConfiguration(ctx, true)
 		if err != nil {
@@ -62,47 +62,51 @@ func (p *Proxy) GetValue(ctx context.Context, key string) ([]byte, error) {
 		if tail == nil {
 			return nil, ErrNoMembers
 		}
-		req.ConfigVersion = config.Version
-		err = p.chainTn.Read(ctx, tail.Address, req, &resp)
+		readReq.ConfigVersion = config.Version
+		readResp, err = p.chainTn.Read(ctx, tail.Address, readReq)
 		if err != nil {
 			return nil, err
 		}
-		return resp.Value, nil
+		return &proxypb.GetResponse{Value: readResp.GetValue()}, nil
 	}
 	if err != nil {
 		return nil, err
 	}
 
-	return resp.Value, nil
+	return &proxypb.GetResponse{Value: readResp.GetValue()}, nil
 }
 
-func (p *Proxy) SetValue(ctx context.Context, key string, value []byte) error {
+func (p *Proxy) Set(ctx context.Context, request *proxypb.SetRequest) (*proxypb.SetResponse, error) {
 	config, err := p.getChainConfiguration(ctx, false)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	head := config.Head()
 	if head == nil {
-		return ErrNoMembers
+		return nil, ErrNoMembers
 	}
 
-	req := &chainnode.ReplicateRequest{Key: key, Value: value, ConfigVersion: config.Version}
-	var resp chainnode.ReplicateResponse
-	err = p.chainTn.Replicate(ctx, head.Address, req, &resp)
+	replicateReq := &chainpb.ReplicateRequest{Key: request.GetKey(), Value: request.GetValue(), ConfigVersion: config.Version}
+	_, err = p.chainTn.Replicate(ctx, head.Address, replicateReq)
 	if err != nil && errors.Is(err, chainnode.ErrInvalidConfigVersion) {
 		config, err := p.getChainConfiguration(ctx, true)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		head := config.Head()
 		if head == nil {
-			return ErrNoMembers
+			return nil, ErrNoMembers
 		}
-		req.ConfigVersion = config.Version
-		return p.chainTn.Replicate(ctx, head.Address, req, &resp)
+		replicateReq.ConfigVersion = config.Version
+		if _, err := p.chainTn.Replicate(ctx, head.Address, replicateReq); err != nil {
+			return nil, err
+		}
+	}
+	if err != nil {
+		return nil, err
 	}
 
-	return err
+	return &proxypb.SetResponse{}, nil
 }
 
 func (p *Proxy) getChainConfiguration(ctx context.Context, forceRefresh bool) (*chainnode.Configuration, error) {
@@ -118,13 +122,12 @@ func (p *Proxy) getChainConfiguration(ctx context.Context, forceRefresh bool) (*
 	for _, member := range p.raftMembers {
 		go func() {
 			defer wg.Done()
-			var req coordinatornode.ReadChainConfigurationRequest
-			var resp coordinatornode.ReadChainConfigurationResponse
-			err := p.coordinatorTn.ReadChainConfiguration(ctx, member, &req, &resp)
+			var req coordinatorpb.ReadChainConfigurationRequest
+			resp, err := p.coordinatorTn.ReadChainConfiguration(ctx, member, &req)
 			mu.Lock()
 			memberToConfig[member] = nil
 			if err == nil {
-				memberToConfig[member] = resp.Configuration
+				memberToConfig[member] = chainnode.NewConfigurationFromProto(resp.GetConfiguration())
 			}
 			mu.Unlock()
 		}()
