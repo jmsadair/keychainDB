@@ -23,9 +23,9 @@ type Transport interface {
 }
 
 type RaftProtocol interface {
-	AddChainMember(ctx context.Context, id, address string) (*chainnode.Configuration, error)
-	RemoveChainMember(ctx context.Context, id string) (*chainnode.Configuration, *chainnode.ChainMember, error)
-	ReadChainConfiguration(ctx context.Context) (*chainnode.Configuration, error)
+	AddMember(ctx context.Context, id, address string) (*chainnode.Configuration, error)
+	RemoveMember(ctx context.Context, id string) (*chainnode.Configuration, *chainnode.ChainMember, error)
+	GetMembers(ctx context.Context) (*chainnode.Configuration, error)
 	LeaderCh() <-chan bool
 	ChainConfiguration() *chainnode.Configuration
 	JoinCluster(ctx context.Context, id, address string) error
@@ -88,7 +88,7 @@ func (c *Coordinator) Run(ctx context.Context) error {
 }
 
 func (c *Coordinator) AddMember(ctx context.Context, request *pb.AddMemberRequest) (*pb.AddMemberResponse, error) {
-	config, err := c.Raft.AddChainMember(ctx, request.GetId(), request.GetAddress())
+	config, err := c.Raft.AddMember(ctx, request.GetId(), request.GetAddress())
 	if err != nil {
 		return nil, err
 	}
@@ -96,19 +96,19 @@ func (c *Coordinator) AddMember(ctx context.Context, request *pb.AddMemberReques
 }
 
 func (c *Coordinator) RemoveMember(ctx context.Context, request *pb.RemoveMemberRequest) (*pb.RemoveMemberResponse, error) {
-	config, removed, err := c.Raft.RemoveChainMember(ctx, request.GetId())
+	config, removed, err := c.Raft.RemoveMember(ctx, request.GetId())
 	if err != nil {
 		return nil, err
 	}
 	return &pb.RemoveMemberResponse{}, c.updateChainMemberConfigurations(ctx, config, removed)
 }
 
-func (c *Coordinator) ReadMembershipConfiguration(ctx context.Context, request *pb.ReadChainConfigurationRequest) (*pb.ReadChainConfigurationResponse, error) {
-	config, err := c.Raft.ReadChainConfiguration(ctx)
+func (c *Coordinator) GetMembers(ctx context.Context, request *pb.GetMembersRequest) (*pb.GetMembersResponse, error) {
+	config, err := c.Raft.GetMembers(ctx)
 	if err != nil {
 		return nil, err
 	}
-	return &pb.ReadChainConfigurationResponse{Configuration: config.Proto()}, nil
+	return &pb.GetMembersResponse{Configuration: config.Proto()}, nil
 }
 
 func (c *Coordinator) JoinCluster(ctx context.Context, request *pb.JoinClusterRequest) (*pb.JoinClusterResponse, error) {
@@ -205,8 +205,8 @@ func (c *Coordinator) onConfigSync(ctx context.Context) error {
 	}
 	c.mu.Unlock()
 
-	req := &pb.ReadChainConfigurationRequest{}
-	resp, err := c.ReadMembershipConfiguration(ctx, req)
+	req := &pb.GetMembersRequest{}
+	resp, err := c.GetMembers(ctx, req)
 	if err != nil {
 		return err
 	}

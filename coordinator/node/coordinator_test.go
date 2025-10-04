@@ -26,18 +26,18 @@ func (m *mockRaft) RemoveFromCluster(ctx context.Context, id string) error {
 	return m.MethodCalled("RemoveFromCluster", ctx, id).Error(0)
 }
 
-func (m *mockRaft) AddChainMember(ctx context.Context, id, address string) (*chainnode.Configuration, error) {
-	args := m.MethodCalled("AddChainMember", ctx, id, address)
+func (m *mockRaft) AddMember(ctx context.Context, id, address string) (*chainnode.Configuration, error) {
+	args := m.MethodCalled("AddMember", ctx, id, address)
 	return args.Get(0).(*chainnode.Configuration), args.Error(1)
 }
 
-func (m *mockRaft) RemoveChainMember(ctx context.Context, id string) (*chainnode.Configuration, *chainnode.ChainMember, error) {
-	args := m.MethodCalled("RemoveChainMember", ctx, id)
+func (m *mockRaft) RemoveMember(ctx context.Context, id string) (*chainnode.Configuration, *chainnode.ChainMember, error) {
+	args := m.MethodCalled("RemoveMember", ctx, id)
 	return args.Get(0).(*chainnode.Configuration), args.Get(1).(*chainnode.ChainMember), args.Error(2)
 }
 
-func (m *mockRaft) ReadChainConfiguration(ctx context.Context) (*chainnode.Configuration, error) {
-	args := m.MethodCalled("ReadChainConfiguration", ctx)
+func (m *mockRaft) GetMembers(ctx context.Context) (*chainnode.Configuration, error) {
+	args := m.MethodCalled("GetMembers", ctx)
 	return args.Get(0).(*chainnode.Configuration), args.Error(1)
 }
 
@@ -107,7 +107,7 @@ func TestAddMember(t *testing.T) {
 	member := &chainnode.ChainMember{ID: memberID, Address: memberAddr}
 	config := chainnode.NewConfiguration([]*chainnode.ChainMember{member}, 0)
 
-	raft.On("AddChainMember", mock.Anything, memberID, memberAddr).Return(config, nil).Once()
+	raft.On("AddMember", mock.Anything, memberID, memberAddr).Return(config, nil).Once()
 	tn.On("UpdateConfiguration", mock.Anything, memberAddr, mock.MatchedBy(func(r *chainpb.UpdateConfigurationRequest) bool {
 		return config.Equal(chainnode.NewConfigurationFromProto(r.GetConfiguration()))
 	})).Return(&chainpb.UpdateConfigurationResponse{}, nil).Once()
@@ -131,7 +131,7 @@ func TestRemoveMember(t *testing.T) {
 	member2 := &chainnode.ChainMember{ID: "member-2", Address: "127.0.0.3:9000"}
 	config := chainnode.NewConfiguration([]*chainnode.ChainMember{member1}, 1)
 
-	raft.On("RemoveChainMember", mock.Anything, member2.ID).Return(config, member2, nil).Once()
+	raft.On("RemoveMember", mock.Anything, member2.ID).Return(config, member2, nil).Once()
 	tn.On(
 		"UpdateConfiguration",
 		mock.Anything,
@@ -152,7 +152,7 @@ func TestRemoveMember(t *testing.T) {
 	tn.AssertExpectations(t)
 }
 
-func TestReadMembershipConfiguration(t *testing.T) {
+func TestGetMembers(t *testing.T) {
 	tn := new(mockTransport)
 	raft := new(mockRaft)
 	addr := "127.0.0.1:9000"
@@ -164,9 +164,9 @@ func TestReadMembershipConfiguration(t *testing.T) {
 	member2 := &chainnode.ChainMember{ID: "member-2", Address: "127.0.0.2:9000"}
 
 	expectedConfig := chainnode.NewConfiguration([]*chainnode.ChainMember{member1, member2}, 0)
-	raft.On("ReadChainConfiguration", mock.Anything).Return(expectedConfig, nil).Once()
-	req := &pb.ReadChainConfigurationRequest{}
-	resp, err := coordinator.ReadMembershipConfiguration(context.Background(), req)
+	raft.On("GetMembers", mock.Anything).Return(expectedConfig, nil).Once()
+	req := &pb.GetMembersRequest{}
+	resp, err := coordinator.GetMembers(context.Background(), req)
 	require.NoError(t, err)
 	require.NotNil(t, resp)
 	require.Equal(t, expectedConfig, chainnode.NewConfigurationFromProto(resp.GetConfiguration()))
@@ -259,7 +259,7 @@ func TestOnFailedChainMember(t *testing.T) {
 		member3.ID: {lastContact: time.Now()},
 	}
 	config := chainnode.NewConfiguration([]*chainnode.ChainMember{member1, member3}, 0)
-	raft.On("RemoveChainMember", mock.Anything, member2.ID).Return(config, member2, nil)
+	raft.On("RemoveMember", mock.Anything, member2.ID).Return(config, member2, nil)
 	tn.On("UpdateConfiguration", mock.Anything, member1.Address, mock.MatchedBy(func(r *chainpb.UpdateConfigurationRequest) bool {
 		return config.Equal(chainnode.NewConfigurationFromProto(r.GetConfiguration()))
 	})).Return(&chainpb.UpdateConfigurationResponse{}, nil)
@@ -318,7 +318,7 @@ func TestOnConfigSync(t *testing.T) {
 
 	// This coordinator is the leader and all chain members have the correct chain configuration version.
 	// It should not attempt to update any of their configurations.
-	raft.On("ReadChainConfiguration", mock.Anything).Return(config, nil).Once()
+	raft.On("GetMembers", mock.Anything).Return(config, nil).Once()
 	coordinator.isLeader = true
 	coordinator.memberStates = map[string]*memberState{
 		member1.ID: {lastContact: time.Now(), configVersion: version},
@@ -330,7 +330,7 @@ func TestOnConfigSync(t *testing.T) {
 
 	// This coordinator is the leader and one of the chain members has an out-of-date configuration.
 	// It should attempt to update that member's configuration.
-	raft.On("ReadChainConfiguration", mock.Anything).Return(config, nil).Once()
+	raft.On("GetMembers", mock.Anything).Return(config, nil).Once()
 	tn.On("UpdateConfiguration", mock.Anything, member2.Address, mock.MatchedBy(func(r *chainpb.UpdateConfigurationRequest) bool {
 		return config.Equal(chainnode.NewConfigurationFromProto(r.GetConfiguration()))
 	})).Return(&chainpb.UpdateConfigurationResponse{}, nil)

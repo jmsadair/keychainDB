@@ -17,14 +17,14 @@ type mockCoordinatorClient struct {
 	mock.Mock
 }
 
-func (m *mockCoordinatorClient) ReadChainConfiguration(
+func (m *mockCoordinatorClient) GetMembers(
 	ctx context.Context,
 	target string,
-	request *coordinatorpb.ReadChainConfigurationRequest,
-) (*coordinatorpb.ReadChainConfigurationResponse, error) {
-	args := m.MethodCalled("ReadChainConfiguration", ctx, target, request)
+	request *coordinatorpb.GetMembersRequest,
+) (*coordinatorpb.GetMembersResponse, error) {
+	args := m.MethodCalled("GetMembers", ctx, target, request)
 	if resp := args.Get(0); resp != nil {
-		return resp.(*coordinatorpb.ReadChainConfigurationResponse), nil
+		return resp.(*coordinatorpb.GetMembersResponse), nil
 	}
 	return nil, args.Error(1)
 }
@@ -70,22 +70,22 @@ func TestSetValue(t *testing.T) {
 	).Return(&chainpb.ReplicateResponse{}, nil).Once()
 
 	coordinatorClient.On(
-		"ReadChainConfiguration",
+		"GetMembers",
 		mock.Anything,
 		members[0],
-		&coordinatorpb.ReadChainConfigurationRequest{},
+		&coordinatorpb.GetMembersRequest{},
 	).Return(nil, errors.New("not leader")).Once()
 	coordinatorClient.On(
-		"ReadChainConfiguration",
+		"GetMembers",
 		mock.Anything,
 		members[1],
-		&coordinatorpb.ReadChainConfigurationRequest{},
-	).Return(&coordinatorpb.ReadChainConfigurationResponse{Configuration: config.Proto()}, nil).Once()
+		&coordinatorpb.GetMembersRequest{},
+	).Return(&coordinatorpb.GetMembersResponse{Configuration: config.Proto()}, nil).Once()
 	coordinatorClient.On(
-		"ReadChainConfiguration",
+		"GetMembers",
 		mock.Anything,
 		members[2],
-		&coordinatorpb.ReadChainConfigurationRequest{},
+		&coordinatorpb.GetMembersRequest{},
 	).Return(nil, errors.New("not leader")).Once()
 
 	// Proxy initially does not have a chain configuration cached.
@@ -132,22 +132,22 @@ func TestGetValue(t *testing.T) {
 	).Return(&chainpb.ReadResponse{Value: value}, nil).Once()
 
 	coordinatorClient.On(
-		"ReadChainConfiguration",
+		"GetMembers",
 		mock.Anything,
 		members[0],
-		&coordinatorpb.ReadChainConfigurationRequest{},
+		&coordinatorpb.GetMembersRequest{},
 	).Return(nil, errors.New("not leader")).Once()
 	coordinatorClient.On(
-		"ReadChainConfiguration",
+		"GetMembers",
 		mock.Anything,
 		members[1],
-		&coordinatorpb.ReadChainConfigurationRequest{},
-	).Return(&coordinatorpb.ReadChainConfigurationResponse{Configuration: config.Proto()}, nil).Once()
+		&coordinatorpb.GetMembersRequest{},
+	).Return(&coordinatorpb.GetMembersResponse{Configuration: config.Proto()}, nil).Once()
 	coordinatorClient.On(
-		"ReadChainConfiguration",
+		"GetMembers",
 		mock.Anything,
 		members[2],
-		&coordinatorpb.ReadChainConfigurationRequest{},
+		&coordinatorpb.GetMembersRequest{},
 	).Return(nil, errors.New("not leader")).Once()
 
 	// Proxy initially does not have a chain configuration cached.

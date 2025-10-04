@@ -18,17 +18,17 @@ func NewClient(dialOpts ...grpc.DialOption) (*Client, error) {
 	return &Client{cache: transport.NewClientCache(pb.NewCoordinatorServiceClient, dialOpts...)}, nil
 }
 
-// ReadChainConfiguration reads the chain configuration.
-func (c *Client) ReadChainConfiguration(
+// GetMembers reads the chain configuration.
+func (c *Client) GetMembers(
 	ctx context.Context,
 	address string,
-	request *pb.ReadChainConfigurationRequest,
-) (*pb.ReadChainConfigurationResponse, error) {
+	request *pb.GetMembersRequest,
+) (*pb.GetMembersResponse, error) {
 	client, err := c.cache.GetOrCreate(address)
 	if err != nil {
 		return nil, err
 	}
-	return client.ReadChainConfiguration(ctx, request)
+	return client.GetMembers(ctx, request)
 }
 
 // JoinCluster adds a node to the coordinator cluster.

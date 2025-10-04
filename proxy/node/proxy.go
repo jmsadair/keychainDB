@@ -23,11 +23,11 @@ type ChainTransport interface {
 }
 
 type CoordinatorTransport interface {
-	ReadChainConfiguration(
+	GetMembers(
 		ctx context.Context,
 		address string,
-		request *coordinatorpb.ReadChainConfigurationRequest,
-	) (*coordinatorpb.ReadChainConfigurationResponse, error)
+		request *coordinatorpb.GetMembersRequest,
+	) (*coordinatorpb.GetMembersResponse, error)
 }
 
 type Proxy struct {
@@ -122,8 +122,8 @@ func (p *Proxy) getChainConfiguration(ctx context.Context, forceRefresh bool) (*
 	for _, member := range p.raftMembers {
 		go func() {
 			defer wg.Done()
-			var req coordinatorpb.ReadChainConfigurationRequest
-			resp, err := p.coordinatorTn.ReadChainConfiguration(ctx, member, &req)
+			var req coordinatorpb.GetMembersRequest
+			resp, err := p.coordinatorTn.GetMembers(ctx, member, &req)
 			mu.Lock()
 			memberToConfig[member] = nil
 			if err == nil {

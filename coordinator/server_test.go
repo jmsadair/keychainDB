@@ -287,8 +287,8 @@ func TestAddToChainThenRemoveRPC(t *testing.T) {
 	_, err = client.AddMember(ctx, cluster.leader.GRPCServer.Address, addMemberReq)
 	require.NoError(t, err)
 
-	var readChainConfigReq pb.ReadChainConfigurationRequest
-	readChainConfigResp, err := client.ReadChainConfiguration(ctx, cluster.leader.GRPCServer.Address, &readChainConfigReq)
+	var readChainConfigReq pb.GetMembersRequest
+	readChainConfigResp, err := client.GetMembers(ctx, cluster.leader.GRPCServer.Address, &readChainConfigReq)
 	require.NoError(t, err)
 	config := chainnode.NewConfigurationFromProto(readChainConfigResp.GetConfiguration())
 	expectedConfig := chainnode.NewConfiguration([]*chainnode.ChainMember{member1, member2}, 2)
@@ -297,7 +297,7 @@ func TestAddToChainThenRemoveRPC(t *testing.T) {
 	removeMemberReq := &pb.RemoveMemberRequest{Id: srv2.Node.ID}
 	_, err = client.RemoveMember(ctx, cluster.leader.GRPCServer.Address, removeMemberReq)
 	require.NoError(t, err)
-	readChainConfigResp, err = client.ReadChainConfiguration(ctx, cluster.leader.GRPCServer.Address, &readChainConfigReq)
+	readChainConfigResp, err = client.GetMembers(ctx, cluster.leader.GRPCServer.Address, &readChainConfigReq)
 	require.NoError(t, err)
 	config = chainnode.NewConfigurationFromProto(readChainConfigResp.GetConfiguration())
 	expectedConfig = chainnode.NewConfiguration([]*chainnode.ChainMember{member1}, 3)
@@ -310,7 +310,6 @@ func TestAddToChainThenRemoveHTTP(t *testing.T) {
 	tc := makeTestChain(t, 2)
 	defer tc.stop()
 
-	chainConfigURL := fmt.Sprintf("http://%s/v1/chain/configuration", cluster.leader.HTTPServer.Address)
 	chainMembersURL := fmt.Sprintf("http://%s/v1/chain/members", cluster.leader.HTTPServer.Address)
 
 	ids := slices.Collect(maps.Keys(tc.idToServer))
@@ -334,10 +333,10 @@ func TestAddToChainThenRemoveHTTP(t *testing.T) {
 	defer resp2.Body.Close()
 	require.Equal(t, http.StatusOK, resp2.StatusCode)
 
-	resp3, err := http.Get(chainConfigURL)
+	resp3, err := http.Get(chainMembersURL)
 	require.NoError(t, err)
 	defer resp3.Body.Close()
-	var readChainConfigResp pb.ReadChainConfigurationResponse
+	var readChainConfigResp pb.GetMembersResponse
 	b, err = io.ReadAll(resp3.Body)
 	require.NoError(t, err)
 	require.NoError(t, protojson.Unmarshal(b, &readChainConfigResp))
@@ -354,8 +353,8 @@ func TestAddToChainThenRemoveHTTP(t *testing.T) {
 	defer resp4.Body.Close()
 	require.Equal(t, http.StatusOK, resp4.StatusCode)
 
-	readChainConfigResp = pb.ReadChainConfigurationResponse{}
-	resp5, err := http.Get(chainConfigURL)
+	readChainConfigResp = pb.GetMembersResponse{}
+	resp5, err := http.Get(chainMembersURL)
 	require.NoError(t, err)
 	defer resp5.Body.Close()
 	b, err = io.ReadAll(resp5.Body)

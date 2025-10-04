@@ -34,9 +34,9 @@ func NewServer(address string, node *node.Coordinator) *Server {
 	return s
 }
 
-// ReadChainConfiguration handles requests for reading the chain configuration.
-func (s *Server) ReadChainConfiguration(ctx context.Context, request *pb.ReadChainConfigurationRequest) (*pb.ReadChainConfigurationResponse, error) {
-	return s.Node.ReadMembershipConfiguration(ctx, request)
+// GetMembers handles requests for reading the chain configuration.
+func (s *Server) GetMembers(ctx context.Context, request *pb.GetMembersRequest) (*pb.GetMembersResponse, error) {
+	return s.Node.GetMembers(ctx, request)
 }
 
 // AddMember handles requests for adding a member to the chain.
