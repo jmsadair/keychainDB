@@ -21,12 +21,14 @@ import (
 )
 
 const (
-	defaultTimeout = 3 * time.Second
-	defaultTick    = 10 * time.Millisecond
+	eventuallyTimeout = 3 * time.Second
+	eventuallyTick    = 10 * time.Millisecond
 )
 
+var creds = grpc.WithTransportCredentials(insecure.NewCredentials())
+
 func makeServer(t *testing.T, id string, port int, bootstrapConfig bool) (*Server, func()) {
-	srv, err := NewServer(id, fmt.Sprintf(":%d", port), t.TempDir(), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	srv, err := NewServer(id, fmt.Sprintf(":%d", port), t.TempDir(), creds)
 	require.NoError(t, err)
 
 	var wg sync.WaitGroup
@@ -60,15 +62,13 @@ func updateConfiguration(t *testing.T, config *node.Configuration, srvs ...*Serv
 func waitForActiveStatus(t *testing.T, c *chaingrpc.Client, srvs ...*Server) {
 	var req pb.PingRequest
 	for _, srv := range srvs {
-		isActive := func() bool {
+		require.Eventually(t, func() bool {
 			resp, err := c.Ping(context.Background(), srv.Node.Address, &req)
 			if err != nil {
 				return false
 			}
 			return node.Status(resp.GetStatus()) == node.Active
-		}
-
-		require.Eventually(t, isActive, defaultTimeout, defaultTick)
+		}, eventuallyTimeout, eventuallyTick)
 	}
 }
 
@@ -87,11 +87,12 @@ func TestPing(t *testing.T) {
 	defer cancel()
 	config := srv.Node.Configuration()
 
-	client, err := chaingrpc.NewClient(grpc.WithTransportCredentials(insecure.NewCredentials()))
+	ctx := context.Background()
+	client, err := chaingrpc.NewClient(creds)
 	require.NoError(t, err)
 
 	var req pb.PingRequest
-	resp, err := client.Ping(context.TODO(), srv.Node.Address, &req)
+	resp, err := client.Ping(ctx, srv.Node.Address, &req)
 	require.NoError(t, err)
 	require.Equal(t, int32(node.Active), resp.GetStatus())
 	require.Equal(t, config.Version, resp.GetConfigVersion())
@@ -102,17 +103,18 @@ func TestReplicateReadSingleMember(t *testing.T) {
 	defer cancel()
 	config := srv.Node.Configuration()
 
-	client, err := chaingrpc.NewClient(grpc.WithTransportCredentials(insecure.NewCredentials()))
+	ctx := context.Background()
+	client, err := chaingrpc.NewClient(creds)
 	require.NoError(t, err)
 	head := config.Head()
 	require.NotNil(t, head)
 
 	req1 := &pb.ReplicateRequest{Key: "key-1", Value: []byte("value-1"), ConfigVersion: config.Version}
-	_, err = client.Replicate(context.Background(), head.Address, req1)
+	_, err = client.Replicate(ctx, head.Address, req1)
 	require.NoError(t, err)
 
 	req2 := &pb.ReadRequest{Key: "key-1", ConfigVersion: config.Version}
-	resp2, err := client.Read(context.Background(), head.Address, req2)
+	resp2, err := client.Read(ctx, head.Address, req2)
 	require.NoError(t, err)
 	require.Equal(t, []byte("value-1"), resp2.GetValue())
 }
@@ -125,7 +127,8 @@ func TestDirtyKeysNotRead(t *testing.T) {
 	srv3, cancel3 := makeServer(t, "chain-node-3", 8082, false)
 	defer cancel3()
 
-	client, err := chaingrpc.NewClient(grpc.WithTransportCredentials(insecure.NewCredentials()))
+	ctx := context.Background()
+	client, err := chaingrpc.NewClient(creds)
 	require.NoError(t, err)
 
 	config := srv1.Node.Configuration()
@@ -143,11 +146,11 @@ func TestDirtyKeysNotRead(t *testing.T) {
 
 	// Reads of dirty keys should be forwarded to the tail of the chain.
 	req1 := &pb.ReadRequest{Key: "key-1", ConfigVersion: config.Version}
-	resp1, err := client.Read(context.Background(), srv1.Node.Address, req1)
+	resp1, err := client.Read(ctx, srv1.Node.Address, req1)
 	require.NoError(t, err)
 	require.Equal(t, []byte("value-2"), resp1.GetValue())
 	req2 := &pb.ReadRequest{Key: "key-1", ConfigVersion: config.Version}
-	resp2, err := client.Read(context.Background(), srv2.Node.Address, req2)
+	resp2, err := client.Read(ctx, srv2.Node.Address, req2)
 	require.NoError(t, err)
 	require.Equal(t, []byte("value-2"), resp2.GetValue())
 }
@@ -160,7 +163,8 @@ func TestReplicateReadMultipleMembers(t *testing.T) {
 	srv3, cancel3 := makeServer(t, "chain-node-3", 8082, false)
 	defer cancel3()
 
-	client, err := chaingrpc.NewClient(grpc.WithTransportCredentials(insecure.NewCredentials()))
+	ctx := context.Background()
+	client, err := chaingrpc.NewClient(creds)
 	require.NoError(t, err)
 
 	config := srv1.Node.Configuration()
@@ -173,12 +177,12 @@ func TestReplicateReadMultipleMembers(t *testing.T) {
 	require.NotNil(t, head)
 
 	req := &pb.ReplicateRequest{Key: "key-1", Value: []byte("value-1"), ConfigVersion: config.Version}
-	_, err = client.Replicate(context.Background(), head.Address, req)
+	_, err = client.Replicate(ctx, head.Address, req)
 	require.NoError(t, err)
 
 	for _, srv := range []*Server{srv1, srv2, srv3} {
 		req := &pb.ReadRequest{Key: "key-1", ConfigVersion: config.Version}
-		resp, err := client.Read(context.Background(), srv.Node.Address, req)
+		resp, err := client.Read(ctx, srv.Node.Address, req)
 		require.NoError(t, err)
 		require.Equal(t, []byte("value-1"), resp.GetValue())
 	}
@@ -192,7 +196,8 @@ func TestReplicateReadMultipleMembersConcurrent(t *testing.T) {
 	srv3, cancel3 := makeServer(t, "chain-node-3", 8082, false)
 	defer cancel3()
 
-	client, err := chaingrpc.NewClient(grpc.WithTransportCredentials(insecure.NewCredentials()))
+	ctx := context.Background()
+	client, err := chaingrpc.NewClient(creds)
 	require.NoError(t, err)
 
 	config := srv1.Node.Configuration()
@@ -218,7 +223,7 @@ func TestReplicateReadMultipleMembersConcurrent(t *testing.T) {
 			for _, key := range keys {
 				value := kvPairs[key]
 				req := &pb.ReplicateRequest{Key: key, Value: value, ConfigVersion: config.Version}
-				_, err := client.Replicate(context.Background(), head.Address, req)
+				_, err := client.Replicate(ctx, head.Address, req)
 				require.NoError(t, err)
 			}
 		}(keys[i*100 : (i+1)*100])
@@ -230,7 +235,7 @@ func TestReplicateReadMultipleMembersConcurrent(t *testing.T) {
 	for _, srv := range []*Server{srv1, srv2, srv3} {
 		for key, value := range kvPairs {
 			req := &pb.ReadRequest{Key: key, ConfigVersion: config.Version}
-			resp, err := client.Read(context.Background(), srv.Node.Address, req)
+			resp, err := client.Read(ctx, srv.Node.Address, req)
 			require.NoError(t, err)
 			require.Equal(t, value, resp.GetValue())
 		}
@@ -245,7 +250,8 @@ func TestAddNewMember(t *testing.T) {
 	srv3, cancel3 := makeServer(t, "chain-node-3", 8082, false)
 	defer cancel3()
 
-	client, err := chaingrpc.NewClient(grpc.WithTransportCredentials(insecure.NewCredentials()))
+	ctx := context.Background()
+	client, err := chaingrpc.NewClient(creds)
 	require.NoError(t, err)
 
 	config := srv1.Node.Configuration()
@@ -263,7 +269,7 @@ func TestAddNewMember(t *testing.T) {
 	for i := range 500 {
 		key := keys[i]
 		req := &pb.ReplicateRequest{Key: key, Value: kvPairs[key], ConfigVersion: config.Version}
-		_, err := client.Replicate(context.Background(), head.Address, req)
+		_, err := client.Replicate(ctx, head.Address, req)
 		require.NoError(t, err)
 	}
 
@@ -277,14 +283,14 @@ func TestAddNewMember(t *testing.T) {
 	for i := 500; i < 1000; i++ {
 		key := keys[i]
 		req := &pb.ReplicateRequest{Key: key, Value: kvPairs[key], ConfigVersion: config.Version}
-		_, err := client.Replicate(context.Background(), head.Address, req)
+		_, err := client.Replicate(ctx, head.Address, req)
 		require.NoError(t, err)
 	}
 	waitForActiveStatus(t, client, srv4)
 	for i := range 1000 {
 		key := keys[i]
 		req := &pb.ReadRequest{Key: key, ConfigVersion: config.Version}
-		resp, err := client.Read(context.Background(), srv4.Node.Address, req)
+		resp, err := client.Read(ctx, srv4.Node.Address, req)
 		require.NoError(t, err)
 		require.Equal(t, kvPairs[key], resp.GetValue())
 	}
@@ -295,19 +301,20 @@ func TestAddNewMember(t *testing.T) {
 	for i := 1000; i < numKeys; i++ {
 		key := keys[i]
 		req := &pb.ReplicateRequest{Key: key, Value: kvPairs[key], ConfigVersion: config.Version}
-		_, err := client.Replicate(context.Background(), head.Address, req)
+		_, err := client.Replicate(ctx, head.Address, req)
 		require.NoError(t, err)
 	}
 	waitForActiveStatus(t, client, srv5)
 	for key, value := range kvPairs {
 		req := &pb.ReadRequest{Key: key, ConfigVersion: config.Version}
-		resp, err := client.Read(context.Background(), srv4.Node.Address, req)
+		resp, err := client.Read(ctx, srv4.Node.Address, req)
 		require.NoError(t, err)
 		require.Equal(t, value, resp.GetValue())
 	}
 }
 
 func TestRemoveMember(t *testing.T) {
+	ctx := context.Background()
 
 	runTest := func(ids []string, toRemove string) {
 		require.Len(t, ids, 3, "Only chains of length 3 supported")
@@ -319,7 +326,7 @@ func TestRemoveMember(t *testing.T) {
 		srv3, cancel3 := makeServer(t, ids[2], 8082, false)
 		defer cancel3()
 
-		client, err := chaingrpc.NewClient(grpc.WithTransportCredentials(insecure.NewCredentials()))
+		client, err := chaingrpc.NewClient(creds)
 		require.NoError(t, err)
 
 		var atomicConfig atomic.Pointer[node.Configuration]
@@ -349,9 +356,9 @@ func TestRemoveMember(t *testing.T) {
 						Value:         value,
 						ConfigVersion: configVersion,
 					}
-					_, err := client.Replicate(context.Background(), head.Address, req)
+					_, err := client.Replicate(ctx, head.Address, req)
 					return err == nil
-				}, defaultTimeout, defaultTick)
+				}, eventuallyTimeout, eventuallyTick)
 			}
 		}()
 
@@ -390,7 +397,8 @@ func TestRemoveMultiple(t *testing.T) {
 	srv3, cancel3 := makeServer(t, "chain-node-3", 8082, false)
 	defer cancel3()
 
-	client, err := chaingrpc.NewClient(grpc.WithTransportCredentials(insecure.NewCredentials()))
+	ctx := context.Background()
+	client, err := chaingrpc.NewClient(creds)
 	require.NoError(t, err)
 
 	var atomicConfig atomic.Pointer[node.Configuration]
@@ -420,9 +428,9 @@ func TestRemoveMultiple(t *testing.T) {
 					Value:         value,
 					ConfigVersion: configVersion,
 				}
-				_, err := client.Replicate(context.Background(), head.Address, req)
+				_, err := client.Replicate(ctx, head.Address, req)
 				return err == nil
-			}, defaultTimeout, defaultTick)
+			}, eventuallyTimeout, eventuallyTick)
 		}
 	}()
 
@@ -437,7 +445,7 @@ func TestRemoveMultiple(t *testing.T) {
 
 	for key, value := range kvPairs {
 		req := &pb.ReadRequest{Key: key, ConfigVersion: config.Version}
-		resp, err := client.Read(context.Background(), srv1.Node.Address, req)
+		resp, err := client.Read(ctx, srv1.Node.Address, req)
 		require.NoError(t, err)
 		require.Equal(t, value, resp.GetValue())
 	}
@@ -448,7 +456,8 @@ func TestPropagate(t *testing.T) {
 	defer cancel()
 	config := srv.Node.Configuration()
 
-	client, err := chaingrpc.NewClient(grpc.WithTransportCredentials(insecure.NewCredentials()))
+	ctx := context.Background()
+	client, err := chaingrpc.NewClient(creds)
 	require.NoError(t, err)
 	head := config.Head()
 	require.NotNil(t, head)
@@ -474,7 +483,7 @@ func TestPropagate(t *testing.T) {
 
 	runTest := func(filter storage.KeyFilter, expectedKvPairs map[string][]byte) {
 		req := &pb.PropagateRequest{KeyType: filter.Proto(), ConfigVersion: config.Version}
-		s, err := client.Propagate(context.Background(), head.Address, req)
+		s, err := client.Propagate(ctx, head.Address, req)
 		require.NoError(t, err)
 		numKeysFiltered := 0
 		for {

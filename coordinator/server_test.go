@@ -30,6 +30,8 @@ const (
 	eventuallyTick    = 100 * time.Millisecond
 )
 
+var creds = grpc.WithTransportCredentials(insecure.NewCredentials())
+
 func verifyClusterStatus(t *testing.T, members map[string]string, expectedMembers map[string]*Server, leader, expectedleader string) {
 	require.Len(t, members, len(expectedMembers))
 	for id, srv := range expectedMembers {
@@ -52,22 +54,13 @@ type testCluster struct {
 }
 
 func newTestCoordinatorClient(t *testing.T) *coordinatorgrpc.Client {
-	client, err := coordinatorgrpc.NewClient(grpc.WithTransportCredentials(insecure.NewCredentials()))
+	client, err := coordinatorgrpc.NewClient(creds)
 	require.NoError(t, err)
 	return client
 }
 
 func makeCoordinator(t *testing.T, id string, httpAddr string, grpcAddr string, raftAddr string, bootstrap bool) (*Server, func()) {
-	srv, err := NewServer(
-		id,
-		httpAddr,
-		grpcAddr,
-		raftAddr,
-		t.TempDir(),
-		t.TempDir(),
-		bootstrap,
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
-	)
+	srv, err := NewServer(id, httpAddr, grpcAddr, raftAddr, t.TempDir(), t.TempDir(), bootstrap, creds)
 	require.NoError(t, err)
 
 	var wg sync.WaitGroup
@@ -125,12 +118,7 @@ type testChain struct {
 }
 
 func makeChainServer(t *testing.T, id string, address string) (*chain.Server, func()) {
-	srv, err := chain.NewServer(
-		id,
-		address,
-		t.TempDir(),
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
-	)
+	srv, err := chain.NewServer(id, address, t.TempDir(), creds)
 	require.NoError(t, err)
 
 	var wg sync.WaitGroup
