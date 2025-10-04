@@ -12,16 +12,21 @@ import (
 	"github.com/jmsadair/keychain/api"
 	"github.com/jmsadair/keychain/chain"
 	"github.com/jmsadair/keychain/coordinator"
-	coordinatornode "github.com/jmsadair/keychain/coordinator/node"
+	coordinatorpb "github.com/jmsadair/keychain/proto/coordinator"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
 
 const (
-	defaultTimeout = 5 * time.Second
-	defaultTick    = 100 * time.Millisecond
+	eventuallyTimeout = 5 * time.Second
+	eventuallyTick    = 100 * time.Millisecond
+	clusterAddress    = "127.0.0.1"
+	chainAddress      = "127.0.0.2"
+	proxyAddress      = "127.0.0.3"
 )
+
+var creds = grpc.WithTransportCredentials(insecure.NewCredentials())
 
 type testCluster struct {
 	coordinators []*coordinator.Server
@@ -39,20 +44,11 @@ func makeCluster(t *testing.T, clusterSize int) *testCluster {
 	tc.wg.Add(clusterSize)
 	for i := range clusterSize {
 		id := fmt.Sprintf("coordinator-%d", i+1)
-		rpcAddr := fmt.Sprintf("127.0.0.1:%d", basePort)
-		raftAddr := fmt.Sprintf("127.0.0.1:%d", basePort+1)
-		httpAddr := fmt.Sprintf("127.0.0.1:%d", basePort+2)
+		rpcAddr := fmt.Sprintf("%s:%d", clusterAddress, basePort)
+		raftAddr := fmt.Sprintf("%s:%d", clusterAddress, basePort+1)
+		httpAddr := fmt.Sprintf("%s:%d", clusterAddress, basePort+2)
 		basePort += 3
-		c, err := coordinator.NewServer(
-			id,
-			httpAddr,
-			rpcAddr,
-			raftAddr,
-			t.TempDir(),
-			t.TempDir(),
-			i == 0,
-			grpc.WithTransportCredentials(insecure.NewCredentials()),
-		)
+		c, err := coordinator.NewServer(id, httpAddr, rpcAddr, raftAddr, t.TempDir(), t.TempDir(), i == 0, creds)
 		require.NoError(t, err)
 		tc.coordinators = append(tc.coordinators, c)
 		go func() {
@@ -61,6 +57,7 @@ func makeCluster(t *testing.T, clusterSize int) *testCluster {
 		}()
 	}
 
+	// Wait for the bootstrapped coordinator to elect itself leader.
 	require.Eventually(t, func() bool {
 		bootstrapped := tc.coordinators[0]
 		status, err := bootstrapped.Raft.ClusterStatus()
@@ -69,13 +66,14 @@ func makeCluster(t *testing.T, clusterSize int) *testCluster {
 			return true
 		}
 		return false
-	}, defaultTimeout, defaultTick)
+	}, eventuallyTimeout, eventuallyTick)
 
+	// Add the other coordinators to the cluster.
 	for _, srv := range tc.coordinators {
 		if srv == tc.leader {
 			continue
 		}
-		require.NoError(t, tc.leader.Coordinator.Raft.JoinCluster(context.Background(), srv.Raft.ID, srv.Raft.Address))
+		require.NoError(t, tc.leader.Coordinator.Raft.JoinCluster(ctx, srv.Raft.ID, srv.Raft.Address))
 	}
 
 	return tc
@@ -87,15 +85,15 @@ func (tc *testCluster) stop() {
 }
 
 func (tc *testCluster) addChainMember(t *testing.T, id string, addr string) {
-	req := &coordinatornode.AddMemberRequest{ID: id, Address: addr}
-	var resp coordinatornode.AddMemberResponse
-	require.NoError(t, tc.leader.Coordinator.AddMember(context.Background(), req, &resp))
+	req := &coordinatorpb.AddMemberRequest{Id: id, Address: addr}
+	_, err := tc.leader.Coordinator.AddMember(context.Background(), req)
+	require.NoError(t, err)
 }
 
 func (tc *testCluster) removeChainMember(t *testing.T, id string) {
-	req := &coordinatornode.RemoveMemberRequest{ID: id}
-	var resp coordinatornode.RemoveMemberResponse
-	require.NoError(t, tc.leader.Coordinator.RemoveMember(context.Background(), req, &resp))
+	req := &coordinatorpb.RemoveMemberRequest{Id: id}
+	_, err := tc.leader.Coordinator.RemoveMember(context.Background(), req)
+	require.NoError(t, err)
 }
 
 func (tc *testCluster) members() []string {
@@ -118,12 +116,7 @@ func makeTestChain(cluster *testCluster) *testChain {
 }
 
 func (tc *testChain) addMember(t *testing.T, id string) {
-	c, err := chain.NewServer(
-		id,
-		fmt.Sprintf("127.0.0.2:%d", 8080+len(tc.nodes)),
-		t.TempDir(),
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
-	)
+	c, err := chain.NewServer(id, fmt.Sprintf("%s:%d", chainAddress, 8080+len(tc.nodes)), t.TempDir(), creds)
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -150,12 +143,7 @@ func (tc *testChain) stop() {
 }
 
 func makeProxy(t *testing.T, clusterMembers []string) (*Server, func()) {
-	srv, err := NewServer(
-		"127.0.0.3:8080",
-		"127.0.0.3:8081",
-		clusterMembers,
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
-	)
+	srv, err := NewServer(fmt.Sprintf("%s:8080", proxyAddress), fmt.Sprintf("%s:8081", proxyAddress), clusterMembers, creds)
 	require.NoError(t, err)
 
 	var wg sync.WaitGroup
@@ -167,6 +155,7 @@ func makeProxy(t *testing.T, clusterMembers []string) (*Server, func()) {
 		require.NoError(t, srv.Run(ctx))
 	}()
 
+	// Wait for HTTP server to be healthy.
 	require.Eventually(t, func() bool {
 		resp, err := http.Get(fmt.Sprintf("http://%s/healthz", srv.HTTPServer.Address))
 		if err != nil {
@@ -174,7 +163,7 @@ func makeProxy(t *testing.T, clusterMembers []string) (*Server, func()) {
 		}
 		defer resp.Body.Close()
 		return resp.StatusCode == http.StatusOK
-	}, defaultTimeout, defaultTick)
+	}, eventuallyTimeout, eventuallyTick)
 
 	return srv, func() {
 		cancel()
@@ -193,15 +182,16 @@ func TestSetGetValue(t *testing.T) {
 	proxy, cancel := makeProxy(t, cluster.members())
 	defer cancel()
 
-	client, err := api.NewClient(proxy.GRPCServer.Address, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	client, err := api.NewClient(proxy.GRPCServer.Address, creds)
 	require.NoError(t, err)
 
+	ctx := context.Background()
 	key := "key-1"
 	value := []byte("value-1")
 
-	require.NoError(t, client.Set(context.Background(), key, value))
+	require.NoError(t, client.Set(ctx, key, value))
 
-	v, err := client.Get(context.Background(), key)
+	v, err := client.Get(ctx, key)
 	require.NoError(t, err)
 	require.Equal(t, value, v)
 }
@@ -217,13 +207,14 @@ func TestRemoveMemberThenGetValue(t *testing.T) {
 	proxy, cancel := makeProxy(t, cluster.members())
 	defer cancel()
 
-	client, err := api.NewClient(proxy.GRPCServer.Address, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	ctx := context.Background()
+	client, err := api.NewClient(proxy.GRPCServer.Address, creds)
 	require.NoError(t, err)
 
 	key := "key-1"
 	value := []byte("value-1")
 
-	require.NoError(t, client.Set(context.Background(), key, value))
+	require.NoError(t, client.Set(ctx, key, value))
 
 	// Remove the tail.
 	chain.removeMember(t, "chain-node-3")
@@ -231,7 +222,7 @@ func TestRemoveMemberThenGetValue(t *testing.T) {
 	// This may fail due to new tail not yet having committed all of its key-value pairs.
 	// It should succeed eventually, though.
 	require.Eventually(t, func() bool {
-		v, err := client.Get(context.Background(), key)
+		v, err := client.Get(ctx, key)
 		return err == nil && bytes.Equal(v, value)
 	}, 1*time.Second, 50*time.Millisecond)
 }
@@ -246,20 +237,21 @@ func TestAddMemberThenGetValue(t *testing.T) {
 	proxy, cancel := makeProxy(t, cluster.members())
 	defer cancel()
 
-	client, err := api.NewClient(proxy.GRPCServer.Address, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	client, err := api.NewClient(proxy.GRPCServer.Address, creds)
 	require.NoError(t, err)
 
+	ctx := context.Background()
 	key := "key-1"
 	value := []byte("value-1")
 
-	require.NoError(t, client.Set(context.Background(), key, value))
+	require.NoError(t, client.Set(ctx, key, value))
 
 	// Add a member to the tail.
 	chain.addMember(t, "chain-node-3")
 
 	// This should succeed since the newly added node should just forward the request to
 	// its predecessor if it is still catching up.
-	v, err := client.Get(context.Background(), key)
+	v, err := client.Get(ctx, key)
 	require.NoError(t, err)
 	require.Equal(t, value, v)
 }

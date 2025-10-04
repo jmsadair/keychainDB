@@ -35,8 +35,8 @@ type operation interface {
 }
 
 type Status struct {
-	Members map[string]string `json:"members"`
-	Leader  string            `json:"leader"`
+	Members map[string]string
+	Leader  string
 }
 
 type RaftBackend struct {
@@ -91,7 +91,7 @@ func (rb *RaftBackend) Shutdown() error {
 	return future.Error()
 }
 
-func (rb *RaftBackend) AddChainMember(ctx context.Context, id, address string) (*chainnode.Configuration, error) {
+func (rb *RaftBackend) AddMember(ctx context.Context, id, address string) (*chainnode.Configuration, error) {
 	op := &AddMemberOperation{ID: id, Address: address}
 	applied, err := rb.apply(ctx, op)
 	if err != nil {
@@ -101,7 +101,7 @@ func (rb *RaftBackend) AddChainMember(ctx context.Context, id, address string) (
 	return opResult.Config, nil
 }
 
-func (rb *RaftBackend) RemoveChainMember(ctx context.Context, id string) (*chainnode.Configuration, *chainnode.ChainMember, error) {
+func (rb *RaftBackend) RemoveMember(ctx context.Context, id string) (*chainnode.Configuration, *chainnode.ChainMember, error) {
 	op := &RemoveMemberOperation{ID: id}
 	applied, err := rb.apply(ctx, op)
 	if err != nil {
@@ -111,7 +111,7 @@ func (rb *RaftBackend) RemoveChainMember(ctx context.Context, id string) (*chain
 	return opResult.Config, opResult.Removed, nil
 }
 
-func (rb *RaftBackend) ReadChainConfiguration(ctx context.Context) (*chainnode.Configuration, error) {
+func (rb *RaftBackend) GetMembers(ctx context.Context) (*chainnode.Configuration, error) {
 	op := &ReadMembershipOperation{}
 	applied, err := rb.apply(ctx, op)
 	if err != nil {

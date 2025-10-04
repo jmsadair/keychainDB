@@ -19,12 +19,12 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	CoordinatorService_ReadChainConfiguration_FullMethodName = "/coordinator.CoordinatorService/ReadChainConfiguration"
-	CoordinatorService_AddMember_FullMethodName              = "/coordinator.CoordinatorService/AddMember"
-	CoordinatorService_RemoveMember_FullMethodName           = "/coordinator.CoordinatorService/RemoveMember"
-	CoordinatorService_JoinCluster_FullMethodName            = "/coordinator.CoordinatorService/JoinCluster"
-	CoordinatorService_RemoveFromCluster_FullMethodName      = "/coordinator.CoordinatorService/RemoveFromCluster"
-	CoordinatorService_ClusterStatus_FullMethodName          = "/coordinator.CoordinatorService/ClusterStatus"
+	CoordinatorService_GetMembers_FullMethodName        = "/coordinator.CoordinatorService/GetMembers"
+	CoordinatorService_AddMember_FullMethodName         = "/coordinator.CoordinatorService/AddMember"
+	CoordinatorService_RemoveMember_FullMethodName      = "/coordinator.CoordinatorService/RemoveMember"
+	CoordinatorService_JoinCluster_FullMethodName       = "/coordinator.CoordinatorService/JoinCluster"
+	CoordinatorService_RemoveFromCluster_FullMethodName = "/coordinator.CoordinatorService/RemoveFromCluster"
+	CoordinatorService_ClusterStatus_FullMethodName     = "/coordinator.CoordinatorService/ClusterStatus"
 )
 
 // CoordinatorServiceClient is the client API for CoordinatorService service.
@@ -33,8 +33,8 @@ const (
 //
 // CoordinatorService is used to communicate with the coordinator cluster.
 type CoordinatorServiceClient interface {
-	// ReadChainConfiguration handles requests to read the chain configuration.
-	ReadChainConfiguration(ctx context.Context, in *ReadChainConfigurationRequest, opts ...grpc.CallOption) (*ReadChainConfigurationResponse, error)
+	// GetMembers handles requests to read the chain configuration.
+	GetMembers(ctx context.Context, in *GetMembersRequest, opts ...grpc.CallOption) (*GetMembersResponse, error)
 	// AddMember handles requests to add a member to the chain.
 	AddMember(ctx context.Context, in *AddMemberRequest, opts ...grpc.CallOption) (*AddMemberResponse, error)
 	// RemoveMember handles requests to remove a member from the chain.
@@ -55,10 +55,10 @@ func NewCoordinatorServiceClient(cc grpc.ClientConnInterface) CoordinatorService
 	return &coordinatorServiceClient{cc}
 }
 
-func (c *coordinatorServiceClient) ReadChainConfiguration(ctx context.Context, in *ReadChainConfigurationRequest, opts ...grpc.CallOption) (*ReadChainConfigurationResponse, error) {
+func (c *coordinatorServiceClient) GetMembers(ctx context.Context, in *GetMembersRequest, opts ...grpc.CallOption) (*GetMembersResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(ReadChainConfigurationResponse)
-	err := c.cc.Invoke(ctx, CoordinatorService_ReadChainConfiguration_FullMethodName, in, out, cOpts...)
+	out := new(GetMembersResponse)
+	err := c.cc.Invoke(ctx, CoordinatorService_GetMembers_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -121,8 +121,8 @@ func (c *coordinatorServiceClient) ClusterStatus(ctx context.Context, in *Cluste
 //
 // CoordinatorService is used to communicate with the coordinator cluster.
 type CoordinatorServiceServer interface {
-	// ReadChainConfiguration handles requests to read the chain configuration.
-	ReadChainConfiguration(context.Context, *ReadChainConfigurationRequest) (*ReadChainConfigurationResponse, error)
+	// GetMembers handles requests to read the chain configuration.
+	GetMembers(context.Context, *GetMembersRequest) (*GetMembersResponse, error)
 	// AddMember handles requests to add a member to the chain.
 	AddMember(context.Context, *AddMemberRequest) (*AddMemberResponse, error)
 	// RemoveMember handles requests to remove a member from the chain.
@@ -143,8 +143,8 @@ type CoordinatorServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedCoordinatorServiceServer struct{}
 
-func (UnimplementedCoordinatorServiceServer) ReadChainConfiguration(context.Context, *ReadChainConfigurationRequest) (*ReadChainConfigurationResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ReadChainConfiguration not implemented")
+func (UnimplementedCoordinatorServiceServer) GetMembers(context.Context, *GetMembersRequest) (*GetMembersResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetMembers not implemented")
 }
 func (UnimplementedCoordinatorServiceServer) AddMember(context.Context, *AddMemberRequest) (*AddMemberResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AddMember not implemented")
@@ -182,20 +182,20 @@ func RegisterCoordinatorServiceServer(s grpc.ServiceRegistrar, srv CoordinatorSe
 	s.RegisterService(&CoordinatorService_ServiceDesc, srv)
 }
 
-func _CoordinatorService_ReadChainConfiguration_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ReadChainConfigurationRequest)
+func _CoordinatorService_GetMembers_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetMembersRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(CoordinatorServiceServer).ReadChainConfiguration(ctx, in)
+		return srv.(CoordinatorServiceServer).GetMembers(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: CoordinatorService_ReadChainConfiguration_FullMethodName,
+		FullMethod: CoordinatorService_GetMembers_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(CoordinatorServiceServer).ReadChainConfiguration(ctx, req.(*ReadChainConfigurationRequest))
+		return srv.(CoordinatorServiceServer).GetMembers(ctx, req.(*GetMembersRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -298,8 +298,8 @@ var CoordinatorService_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*CoordinatorServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "ReadChainConfiguration",
-			Handler:    _CoordinatorService_ReadChainConfiguration_Handler,
+			MethodName: "GetMembers",
+			Handler:    _CoordinatorService_GetMembers_Handler,
 		},
 		{
 			MethodName: "AddMember",

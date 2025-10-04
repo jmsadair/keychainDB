@@ -13,3 +13,25 @@ message ObjectMetadata {
 	// A list of the versions of the key sorted in ascending order.
 	repeated uint64 versions = 3;
 }
+
+// KeyType contains all key types that can be propagated.
+enum KeyType {
+	// All key-value pairs will be listed.
+	KEYTYPE_ALL = 0;
+	// Only committed key-value pairs will be listed.
+	KEYTYPE_COMMITTED = 1;
+	// Only dirty key-value pairs will be listed.
+	KEYTYPE_DIRTY = 2;
+}
+
+// KeyValuePair is a key-value pair stored by a node of a chain.
+message KeyValuePair {
+	// The key.
+	string key = 1;
+	// The value associated with the key.
+	bytes value = 2;
+	// The version of the key.
+	uint64 version = 3;
+	// Whether or not this version of the key has been committed.
+	bool is_committed = 4;
+}

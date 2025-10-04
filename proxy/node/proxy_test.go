@@ -6,7 +6,9 @@ import (
 	"testing"
 
 	chainnode "github.com/jmsadair/keychain/chain/node"
-	coordinatornode "github.com/jmsadair/keychain/coordinator/node"
+	chainpb "github.com/jmsadair/keychain/proto/chain"
+	coordinatorpb "github.com/jmsadair/keychain/proto/coordinator"
+	proxypb "github.com/jmsadair/keychain/proto/proxy"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
@@ -15,47 +17,36 @@ type mockCoordinatorClient struct {
 	mock.Mock
 }
 
-func (m *mockCoordinatorClient) ReadChainConfiguration(
+func (m *mockCoordinatorClient) GetMembers(
 	ctx context.Context,
 	target string,
-	request *coordinatornode.ReadChainConfigurationRequest,
-	response *coordinatornode.ReadChainConfigurationResponse,
-) error {
-	args := m.MethodCalled("ReadChainConfiguration", ctx, target, request)
+	request *coordinatorpb.GetMembersRequest,
+) (*coordinatorpb.GetMembersResponse, error) {
+	args := m.MethodCalled("GetMembers", ctx, target, request)
 	if resp := args.Get(0); resp != nil {
-		*response = *resp.(*coordinatornode.ReadChainConfigurationResponse)
+		return resp.(*coordinatorpb.GetMembersResponse), nil
 	}
-	return args.Error(1)
+	return nil, args.Error(1)
 }
 
 type mockChainClient struct {
 	mock.Mock
 }
 
-func (m *mockChainClient) Read(
-	ctx context.Context,
-	target string,
-	request *chainnode.ReadRequest,
-	response *chainnode.ReadResponse,
-) error {
+func (m *mockChainClient) Read(ctx context.Context, target string, request *chainpb.ReadRequest) (*chainpb.ReadResponse, error) {
 	args := m.MethodCalled("Read", ctx, target, request)
 	if resp := args.Get(0); resp != nil {
-		*response = *resp.(*chainnode.ReadResponse)
+		return resp.(*chainpb.ReadResponse), nil
 	}
-	return args.Error(1)
+	return nil, args.Error(1)
 }
 
-func (m *mockChainClient) Replicate(
-	ctx context.Context,
-	target string,
-	request *chainnode.ReplicateRequest,
-	response *chainnode.ReplicateResponse,
-) error {
+func (m *mockChainClient) Replicate(ctx context.Context, target string, request *chainpb.ReplicateRequest) (*chainpb.ReplicateResponse, error) {
 	args := m.MethodCalled("Replicate", ctx, target, request)
 	if resp := args.Get(0); resp != nil {
-		*response = *resp.(*chainnode.ReplicateResponse)
+		return resp.(*chainpb.ReplicateResponse), nil
 	}
-	return args.Error(1)
+	return nil, args.Error(1)
 }
 
 func TestSetValue(t *testing.T) {
@@ -64,6 +55,7 @@ func TestSetValue(t *testing.T) {
 	coordinatorClient := new(mockCoordinatorClient)
 	p := NewProxy(members, coordinatorClient, chainClient)
 
+	ctx := context.Background()
 	key := "key"
 	value := []byte("value")
 	head := chainnode.ChainMember{Address: "node-1.chain.local", ID: "node-1"}
@@ -74,31 +66,34 @@ func TestSetValue(t *testing.T) {
 		"Replicate",
 		mock.Anything,
 		head.Address,
-		&chainnode.ReplicateRequest{Key: key, Value: value},
-	).Return(&chainnode.ReplicateResponse{}, nil).Once()
+		&chainpb.ReplicateRequest{Key: key, Value: value},
+	).Return(&chainpb.ReplicateResponse{}, nil).Once()
 
 	coordinatorClient.On(
-		"ReadChainConfiguration",
+		"GetMembers",
 		mock.Anything,
 		members[0],
-		&coordinatornode.ReadChainConfigurationRequest{},
+		&coordinatorpb.GetMembersRequest{},
 	).Return(nil, errors.New("not leader")).Once()
 	coordinatorClient.On(
-		"ReadChainConfiguration",
+		"GetMembers",
 		mock.Anything,
 		members[1],
-		&coordinatornode.ReadChainConfigurationRequest{},
-	).Return(&coordinatornode.ReadChainConfigurationResponse{Configuration: config}, nil).Once()
+		&coordinatorpb.GetMembersRequest{},
+	).Return(&coordinatorpb.GetMembersResponse{Configuration: config.Proto()}, nil).Once()
 	coordinatorClient.On(
-		"ReadChainConfiguration",
+		"GetMembers",
 		mock.Anything,
 		members[2],
-		&coordinatornode.ReadChainConfigurationRequest{},
+		&coordinatorpb.GetMembersRequest{},
 	).Return(nil, errors.New("not leader")).Once()
 
 	// Proxy initially does not have a chain configuration cached.
 	// It should read it from the coordinator and then set the key-value pair on the head of the chain.
-	require.NoError(t, p.SetValue(context.Background(), key, value))
+	req := &proxypb.SetRequest{Key: key, Value: value}
+	resp, err := p.Set(ctx, req)
+	require.NoError(t, err)
+	require.NotNil(t, resp)
 	chainClient.AssertExpectations(t)
 	coordinatorClient.AssertExpectations(t)
 
@@ -106,11 +101,13 @@ func TestSetValue(t *testing.T) {
 		"Replicate",
 		mock.Anything,
 		head.Address,
-		&chainnode.ReplicateRequest{Key: key, Value: value},
-	).Return(&chainnode.ReplicateResponse{}, nil).Once()
+		&chainpb.ReplicateRequest{Key: key, Value: value},
+	).Return(&chainpb.ReplicateResponse{}, nil).Once()
 
 	// Next request should use the cached chain configuration.
-	require.NoError(t, p.SetValue(context.Background(), key, value))
+	resp, err = p.Set(ctx, req)
+	require.NoError(t, err)
+	require.NotNil(t, resp)
 	chainClient.AssertExpectations(t)
 }
 
@@ -120,6 +117,7 @@ func TestGetValue(t *testing.T) {
 	coordinatorClient := new(mockCoordinatorClient)
 	p := NewProxy(members, coordinatorClient, chainClient)
 
+	ctx := context.Background()
 	key := "key"
 	value := []byte("value")
 	head := chainnode.ChainMember{Address: "node-1.chain.local", ID: "node-1"}
@@ -130,33 +128,34 @@ func TestGetValue(t *testing.T) {
 		"Read",
 		mock.Anything,
 		tail.Address,
-		&chainnode.ReadRequest{Key: key},
-	).Return(&chainnode.ReadResponse{Value: value}, nil).Once()
+		&chainpb.ReadRequest{Key: key},
+	).Return(&chainpb.ReadResponse{Value: value}, nil).Once()
 
 	coordinatorClient.On(
-		"ReadChainConfiguration",
+		"GetMembers",
 		mock.Anything,
 		members[0],
-		&coordinatornode.ReadChainConfigurationRequest{},
+		&coordinatorpb.GetMembersRequest{},
 	).Return(nil, errors.New("not leader")).Once()
 	coordinatorClient.On(
-		"ReadChainConfiguration",
+		"GetMembers",
 		mock.Anything,
 		members[1],
-		&coordinatornode.ReadChainConfigurationRequest{},
-	).Return(&coordinatornode.ReadChainConfigurationResponse{Configuration: config}, nil).Once()
+		&coordinatorpb.GetMembersRequest{},
+	).Return(&coordinatorpb.GetMembersResponse{Configuration: config.Proto()}, nil).Once()
 	coordinatorClient.On(
-		"ReadChainConfiguration",
+		"GetMembers",
 		mock.Anything,
 		members[2],
-		&coordinatornode.ReadChainConfigurationRequest{},
+		&coordinatorpb.GetMembersRequest{},
 	).Return(nil, errors.New("not leader")).Once()
 
 	// Proxy initially does not have a chain configuration cached.
 	// It should read it from the coordinator and then get the key-value pair from the tail of the chain.
-	v, err := p.GetValue(context.Background(), key)
+	req := &proxypb.GetRequest{Key: key}
+	resp, err := p.Get(ctx, req)
 	require.NoError(t, err)
-	require.Equal(t, value, v)
+	require.Equal(t, value, resp.GetValue())
 	chainClient.AssertExpectations(t)
 	coordinatorClient.AssertExpectations(t)
 
@@ -164,12 +163,12 @@ func TestGetValue(t *testing.T) {
 		"Read",
 		mock.Anything,
 		tail.Address,
-		&chainnode.ReadRequest{Key: key},
-	).Return(&chainnode.ReadResponse{Value: value}, nil).Once()
+		&chainpb.ReadRequest{Key: key},
+	).Return(&chainpb.ReadResponse{Value: value}, nil).Once()
 
 	// Next request should use the cached chain configuration.
-	v, err = p.GetValue(context.Background(), key)
+	resp, err = p.Get(ctx, req)
 	require.NoError(t, err)
-	require.Equal(t, value, v)
+	require.Equal(t, value, resp.GetValue())
 	chainClient.AssertExpectations(t)
 }
