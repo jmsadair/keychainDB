@@ -2,12 +2,13 @@ package node
 
 import (
 	"context"
-	"fmt"
 	"sync"
 	"time"
 
 	chainnode "github.com/jmsadair/keychain/chain/node"
 	"github.com/jmsadair/keychain/coordinator/raft"
+	chainpb "github.com/jmsadair/keychain/proto/chain"
+	pb "github.com/jmsadair/keychain/proto/coordinator"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -17,8 +18,8 @@ const (
 )
 
 type Transport interface {
-	UpdateConfiguration(ctx context.Context, address string, request *chainnode.UpdateConfigurationRequest, response *chainnode.UpdateConfigurationResponse) error
-	Ping(ctx context.Context, address string, request *chainnode.PingRequest, response *chainnode.PingResponse) error
+	UpdateConfiguration(ctx context.Context, address string, request *chainpb.UpdateConfigurationRequest) (*chainpb.UpdateConfigurationResponse, error)
+	Ping(ctx context.Context, address string, request *chainpb.PingRequest) (*chainpb.PingResponse, error)
 }
 
 type RaftProtocol interface {
@@ -86,47 +87,50 @@ func (c *Coordinator) Run(ctx context.Context) error {
 	return c.Raft.Shutdown()
 }
 
-func (c *Coordinator) AddMember(ctx context.Context, request *AddMemberRequest, response *AddMemberResponse) error {
-	config, err := c.Raft.AddChainMember(ctx, request.ID, request.Address)
+func (c *Coordinator) AddMember(ctx context.Context, request *pb.AddMemberRequest) (*pb.AddMemberResponse, error) {
+	config, err := c.Raft.AddChainMember(ctx, request.GetId(), request.GetAddress())
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return c.updateChainMemberConfigurations(ctx, config, nil)
+	return &pb.AddMemberResponse{}, c.updateChainMemberConfigurations(ctx, config, nil)
 }
 
-func (c *Coordinator) RemoveMember(ctx context.Context, request *RemoveMemberRequest, response *RemoveMemberResponse) error {
-	config, removed, err := c.Raft.RemoveChainMember(ctx, request.ID)
+func (c *Coordinator) RemoveMember(ctx context.Context, request *pb.RemoveMemberRequest) (*pb.RemoveMemberResponse, error) {
+	config, removed, err := c.Raft.RemoveChainMember(ctx, request.GetId())
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return c.updateChainMemberConfigurations(ctx, config, removed)
+	return &pb.RemoveMemberResponse{}, c.updateChainMemberConfigurations(ctx, config, removed)
 }
 
-func (c *Coordinator) ReadMembershipConfiguration(ctx context.Context, request *ReadChainConfigurationRequest, response *ReadChainConfigurationResponse) error {
+func (c *Coordinator) ReadMembershipConfiguration(ctx context.Context, request *pb.ReadChainConfigurationRequest) (*pb.ReadChainConfigurationResponse, error) {
 	config, err := c.Raft.ReadChainConfiguration(ctx)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	response.Configuration = config
-	fmt.Println(config.Members())
-	return nil
+	return &pb.ReadChainConfigurationResponse{Configuration: config.Proto()}, nil
 }
 
-func (c *Coordinator) JoinCluster(ctx context.Context, request *JoinClusterRequest, response *JoinClusterResponse) error {
-	return c.Raft.JoinCluster(ctx, request.ID, request.Address)
+func (c *Coordinator) JoinCluster(ctx context.Context, request *pb.JoinClusterRequest) (*pb.JoinClusterResponse, error) {
+	if err := c.Raft.JoinCluster(ctx, request.GetId(), request.GetAddress()); err != nil {
+		return nil, err
+	}
+	return &pb.JoinClusterResponse{}, nil
 }
 
-func (c *Coordinator) RemoveFromCluster(ctx context.Context, request *RemoveFromClusterRequest, response *RemoveFromClusterResponse) error {
-	return c.Raft.RemoveFromCluster(ctx, request.ID)
+func (c *Coordinator) RemoveFromCluster(ctx context.Context, request *pb.RemoveFromClusterRequest) (*pb.RemoveFromClusterResponse, error) {
+	if err := c.Raft.RemoveFromCluster(ctx, request.GetId()); err != nil {
+		return nil, err
+	}
+	return &pb.RemoveFromClusterResponse{}, nil
 }
 
-func (c *Coordinator) ClusterStatus(ctx context.Context, request *ClusterStatusRequest, response *ClusterStatusResponse) error {
+func (c *Coordinator) ClusterStatus(ctx context.Context, request *pb.ClusterStatusRequest) (*pb.ClusterStatusResponse, error) {
 	status, err := c.Raft.ClusterStatus()
 	if err != nil {
-		return err
+		return nil, err
 	}
-	response.Status = status
-	return nil
+	return &pb.ClusterStatusResponse{Leader: status.Leader, Members: status.Members}, nil
 }
 
 func (c *Coordinator) updateChainMemberConfigurations(ctx context.Context, config *chainnode.Configuration, removed *chainnode.ChainMember) error {
@@ -137,9 +141,8 @@ func (c *Coordinator) updateChainMemberConfigurations(ctx context.Context, confi
 	}
 	for _, member := range members {
 		g.Go(func() error {
-			req := &chainnode.UpdateConfigurationRequest{Configuration: config}
-			var resp chainnode.UpdateConfigurationResponse
-			err := c.tn.UpdateConfiguration(ctx, member.Address, req, &resp)
+			req := &chainpb.UpdateConfigurationRequest{Configuration: config.Proto()}
+			_, err := c.tn.UpdateConfiguration(ctx, member.Address, req)
 			if removed != nil && member.Address == removed.Address {
 				return nil
 			}
@@ -202,13 +205,12 @@ func (c *Coordinator) onConfigSync(ctx context.Context) error {
 	}
 	c.mu.Unlock()
 
-	req := &ReadChainConfigurationRequest{}
-	var resp ReadChainConfigurationResponse
-	err := c.ReadMembershipConfiguration(ctx, req, &resp)
+	req := &pb.ReadChainConfigurationRequest{}
+	resp, err := c.ReadMembershipConfiguration(ctx, req)
 	if err != nil {
 		return err
 	}
-	config := resp.Configuration
+	config := chainnode.NewConfigurationFromProto(resp.GetConfiguration())
 
 	c.mu.Lock()
 	needSync := []string{}
@@ -225,9 +227,11 @@ func (c *Coordinator) onConfigSync(ctx context.Context) error {
 		if member == nil {
 			continue
 		}
-		req := chainnode.UpdateConfigurationRequest{Configuration: config}
-		var resp chainnode.UpdateConfigurationResponse
-		g.Go(func() error { return c.tn.UpdateConfiguration(ctx, member.Address, &req, &resp) })
+		req := &chainpb.UpdateConfigurationRequest{Configuration: config.Proto()}
+		g.Go(func() error {
+			_, err := c.tn.UpdateConfiguration(ctx, member.Address, req)
+			return err
+		})
 	}
 
 	return g.Wait()
@@ -258,9 +262,9 @@ func (c *Coordinator) onFailedChainMember(ctx context.Context) error {
 	g, ctx := errgroup.WithContext(ctx)
 	for _, memberID := range toRemove {
 		g.Go(func() error {
-			req := &RemoveMemberRequest{ID: memberID}
-			var resp RemoveMemberResponse
-			return c.RemoveMember(ctx, req, &resp)
+			req := &pb.RemoveMemberRequest{Id: memberID}
+			_, err := c.RemoveMember(ctx, req)
+			return err
 		})
 	}
 
@@ -303,19 +307,18 @@ func (c *Coordinator) sendHeartbeats(ctx context.Context, config *chainnode.Conf
 
 	for _, member := range config.Members() {
 		g.Go(func() error {
-			req := &chainnode.PingRequest{}
-			var resp chainnode.PingResponse
-			err := c.tn.Ping(ctx, member.Address, req, &resp)
+			req := &chainpb.PingRequest{}
+			resp, err := c.tn.Ping(ctx, member.Address, req)
 			if err == nil {
 				c.mu.Lock()
 				state, ok := c.memberStates[member.ID]
 				if ok {
 					state.lastContact = time.Now()
-					state.configVersion = resp.Version
-					state.status = resp.Status
+					state.configVersion = resp.GetConfigVersion()
+					state.status = chainnode.Status(resp.GetStatus())
 				}
 				c.mu.Unlock()
-				if resp.Version != config.Version {
+				if resp.GetConfigVersion() != config.Version {
 					select {
 					case c.configSyncCh <- struct{}{}:
 					default:

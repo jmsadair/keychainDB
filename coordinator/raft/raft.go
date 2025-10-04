@@ -35,8 +35,8 @@ type operation interface {
 }
 
 type Status struct {
-	Members map[string]string `json:"members"`
-	Leader  string            `json:"leader"`
+	Members map[string]string
+	Leader  string
 }
 
 type RaftBackend struct {

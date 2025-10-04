@@ -35,74 +35,33 @@ func NewServer(address string, node *node.Coordinator) *Server {
 }
 
 // ReadChainConfiguration handles requests for reading the chain configuration.
-func (s *Server) ReadChainConfiguration(ctx context.Context, pbRequest *pb.ReadChainConfigurationRequest) (*pb.ReadChainConfigurationResponse, error) {
-	req := &node.ReadChainConfigurationRequest{}
-	var resp node.ReadChainConfigurationResponse
-	err := s.Node.ReadMembershipConfiguration(ctx, req, &resp)
-	if err != nil {
-		return nil, err
-	}
-	return &pb.ReadChainConfigurationResponse{Configuration: resp.Configuration.Proto()}, nil
+func (s *Server) ReadChainConfiguration(ctx context.Context, request *pb.ReadChainConfigurationRequest) (*pb.ReadChainConfigurationResponse, error) {
+	return s.Node.ReadMembershipConfiguration(ctx, request)
 }
 
 // AddMember handles requests for adding a member to the chain.
-func (s *Server) AddMember(ctx context.Context, pbRequest *pb.AddMemberRequest) (*pb.AddMemberResponse, error) {
-	req := &node.AddMemberRequest{}
-	req.FromProto(pbRequest)
-	var resp node.AddMemberResponse
-	err := s.Node.AddMember(ctx, req, &resp)
-	if err != nil {
-		return nil, err
-	}
-	return resp.Proto(), nil
+func (s *Server) AddMember(ctx context.Context, request *pb.AddMemberRequest) (*pb.AddMemberResponse, error) {
+	return s.Node.AddMember(ctx, request)
 }
 
 // RemoveMember handles requests for removing a member from the chain.
-func (s *Server) RemoveMember(ctx context.Context, pbRequest *pb.RemoveMemberRequest) (*pb.RemoveMemberResponse, error) {
-	req := &node.RemoveMemberRequest{}
-	req.FromProto(pbRequest)
-	var resp node.RemoveMemberResponse
-	err := s.Node.RemoveMember(ctx, req, &resp)
-	if err != nil {
-		return nil, err
-	}
-	return resp.Proto(), nil
+func (s *Server) RemoveMember(ctx context.Context, request *pb.RemoveMemberRequest) (*pb.RemoveMemberResponse, error) {
+	return s.Node.RemoveMember(ctx, request)
 }
 
 // JoinCluster handles requests for joining the coordinator cluster.
-func (s *Server) JoinCluster(ctx context.Context, pbRequest *pb.JoinClusterRequest) (*pb.JoinClusterResponse, error) {
-	req := &node.JoinClusterRequest{}
-	req.FromProto(pbRequest)
-	var resp node.JoinClusterResponse
-	err := s.Node.JoinCluster(ctx, req, &resp)
-	if err != nil {
-		return nil, err
-	}
-	return resp.Proto(), nil
+func (s *Server) JoinCluster(ctx context.Context, request *pb.JoinClusterRequest) (*pb.JoinClusterResponse, error) {
+	return s.Node.JoinCluster(ctx, request)
 }
 
 // RemoveFromCluster handles requests for removing a node from the coordinator cluster.
-func (s *Server) RemoveFromCluster(ctx context.Context, pbRequest *pb.RemoveFromClusterRequest) (*pb.RemoveFromClusterResponse, error) {
-	req := &node.RemoveFromClusterRequest{}
-	req.FromProto(pbRequest)
-	var resp node.RemoveFromClusterResponse
-	err := s.Node.RemoveFromCluster(ctx, req, &resp)
-	if err != nil {
-		return nil, err
-	}
-	return resp.Proto(), nil
+func (s *Server) RemoveFromCluster(ctx context.Context, request *pb.RemoveFromClusterRequest) (*pb.RemoveFromClusterResponse, error) {
+	return s.Node.RemoveFromCluster(ctx, request)
 }
 
 // ClusterStatus handles requests for getting the coordinator cluster status.
-func (s *Server) ClusterStatus(ctx context.Context, pbRequest *pb.ClusterStatusRequest) (*pb.ClusterStatusResponse, error) {
-	req := &node.ClusterStatusRequest{}
-	req.FromProto(pbRequest)
-	var resp node.ClusterStatusResponse
-	err := s.Node.ClusterStatus(ctx, req, &resp)
-	if err != nil {
-		return nil, err
-	}
-	return resp.Proto(), nil
+func (s *Server) ClusterStatus(ctx context.Context, request *pb.ClusterStatusRequest) (*pb.ClusterStatusResponse, error) {
+	return s.Node.ClusterStatus(ctx, request)
 }
 
 // Check implements the gRPC health check protocol.

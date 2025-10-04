@@ -8,6 +8,7 @@ package chain
 
 import (
 	context "context"
+	storage "github.com/jmsadair/keychain/proto/storage"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -44,7 +45,7 @@ type ChainServiceClient interface {
 	Commit(ctx context.Context, in *CommitRequest, opts ...grpc.CallOption) (*CommitResponse, error)
 	// Propagate handles requests to list all key-value pairs that match the specified criterion.
 	// This is useful when a new node is added to chain and needs to receive all of the key-value pairs it is missing.
-	Propagate(ctx context.Context, in *PropagateRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[KeyValuePair], error)
+	Propagate(ctx context.Context, in *PropagateRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[storage.KeyValuePair], error)
 	// UpdateConfiguration handles requests to update the chain membership configuration.
 	UpdateConfiguration(ctx context.Context, in *UpdateConfigurationRequest, opts ...grpc.CallOption) (*UpdateConfigurationResponse, error)
 	// Ping handles requests to check if the node is alive.
@@ -99,13 +100,13 @@ func (c *chainServiceClient) Commit(ctx context.Context, in *CommitRequest, opts
 	return out, nil
 }
 
-func (c *chainServiceClient) Propagate(ctx context.Context, in *PropagateRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[KeyValuePair], error) {
+func (c *chainServiceClient) Propagate(ctx context.Context, in *PropagateRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[storage.KeyValuePair], error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	stream, err := c.cc.NewStream(ctx, &ChainService_ServiceDesc.Streams[0], ChainService_Propagate_FullMethodName, cOpts...)
 	if err != nil {
 		return nil, err
 	}
-	x := &grpc.GenericClientStream[PropagateRequest, KeyValuePair]{ClientStream: stream}
+	x := &grpc.GenericClientStream[PropagateRequest, storage.KeyValuePair]{ClientStream: stream}
 	if err := x.ClientStream.SendMsg(in); err != nil {
 		return nil, err
 	}
@@ -116,7 +117,7 @@ func (c *chainServiceClient) Propagate(ctx context.Context, in *PropagateRequest
 }
 
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
-type ChainService_PropagateClient = grpc.ServerStreamingClient[KeyValuePair]
+type ChainService_PropagateClient = grpc.ServerStreamingClient[storage.KeyValuePair]
 
 func (c *chainServiceClient) UpdateConfiguration(ctx context.Context, in *UpdateConfigurationRequest, opts ...grpc.CallOption) (*UpdateConfigurationResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
@@ -154,7 +155,7 @@ type ChainServiceServer interface {
 	Commit(context.Context, *CommitRequest) (*CommitResponse, error)
 	// Propagate handles requests to list all key-value pairs that match the specified criterion.
 	// This is useful when a new node is added to chain and needs to receive all of the key-value pairs it is missing.
-	Propagate(*PropagateRequest, grpc.ServerStreamingServer[KeyValuePair]) error
+	Propagate(*PropagateRequest, grpc.ServerStreamingServer[storage.KeyValuePair]) error
 	// UpdateConfiguration handles requests to update the chain membership configuration.
 	UpdateConfiguration(context.Context, *UpdateConfigurationRequest) (*UpdateConfigurationResponse, error)
 	// Ping handles requests to check if the node is alive.
@@ -181,7 +182,7 @@ func (UnimplementedChainServiceServer) Read(context.Context, *ReadRequest) (*Rea
 func (UnimplementedChainServiceServer) Commit(context.Context, *CommitRequest) (*CommitResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Commit not implemented")
 }
-func (UnimplementedChainServiceServer) Propagate(*PropagateRequest, grpc.ServerStreamingServer[KeyValuePair]) error {
+func (UnimplementedChainServiceServer) Propagate(*PropagateRequest, grpc.ServerStreamingServer[storage.KeyValuePair]) error {
 	return status.Errorf(codes.Unimplemented, "method Propagate not implemented")
 }
 func (UnimplementedChainServiceServer) UpdateConfiguration(context.Context, *UpdateConfigurationRequest) (*UpdateConfigurationResponse, error) {
@@ -288,11 +289,11 @@ func _ChainService_Propagate_Handler(srv interface{}, stream grpc.ServerStream) 
 	if err := stream.RecvMsg(m); err != nil {
 		return err
 	}
-	return srv.(ChainServiceServer).Propagate(m, &grpc.GenericServerStream[PropagateRequest, KeyValuePair]{ServerStream: stream})
+	return srv.(ChainServiceServer).Propagate(m, &grpc.GenericServerStream[PropagateRequest, storage.KeyValuePair]{ServerStream: stream})
 }
 
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
-type ChainService_PropagateServer = grpc.ServerStreamingServer[KeyValuePair]
+type ChainService_PropagateServer = grpc.ServerStreamingServer[storage.KeyValuePair]
 
 func _ChainService_UpdateConfiguration_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(UpdateConfigurationRequest)
