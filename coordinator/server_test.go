@@ -71,6 +71,16 @@ func makeCoordinator(t *testing.T, id string, httpAddr string, grpcAddr string, 
 		srv.Run(ctx)
 	}()
 
+	// Wait for HTTP server to be healthy.
+	require.Eventually(t, func() bool {
+		resp, err := http.Get(fmt.Sprintf("http://%s/healthz", srv.HTTPServer.Address))
+		if err != nil {
+			return false
+		}
+		defer resp.Body.Close()
+		return resp.StatusCode == http.StatusOK
+	}, eventuallyTimeout, eventuallyTick)
+
 	return srv, func() {
 		cancel()
 		wg.Wait()
