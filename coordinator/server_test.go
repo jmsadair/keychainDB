@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log/slog"
 	"maps"
 	"net/http"
 	"net/url"
@@ -128,7 +129,14 @@ type testChain struct {
 }
 
 func makeChainServer(t *testing.T, id string, address string) (*chain.Server, func()) {
-	srv, err := chain.NewServer(id, address, t.TempDir(), creds)
+	serverConfig := chain.ServerConfig{
+		ID:          id,
+		ListenAddr:  address,
+		StoragePath: t.TempDir(),
+		DialOptions: []grpc.DialOption{creds},
+		Log:         slog.Default(),
+	}
+	srv, err := chain.NewServer(serverConfig)
 	require.NoError(t, err)
 
 	var wg sync.WaitGroup

@@ -3,6 +3,7 @@ package node
 import (
 	"context"
 	"io"
+	"log/slog"
 	"testing"
 
 	"github.com/jmsadair/keychain/chain/storage"
@@ -110,7 +111,7 @@ func TestReplicate(t *testing.T) {
 
 	transport := new(mockTransport)
 	store := new(mockStorage)
-	node := NewChainNode(member1.ID, member1.Address, store, transport)
+	node := NewChainNode(member1.ID, member1.Address, store, transport, slog.Default())
 
 	// Node is not a member of a chain.
 	request := &pb.ReplicateRequest{Key: "key", Value: []byte("value")}
@@ -165,7 +166,7 @@ func TestWriteWithVersion(t *testing.T) {
 
 	store := new(mockStorage)
 	transport := new(mockTransport)
-	node := NewChainNode(member1.ID, member1.Address, store, transport)
+	node := NewChainNode(member1.ID, member1.Address, store, transport, slog.Default())
 
 	// Node is not a member of a chain.
 	key := "key"
@@ -214,7 +215,7 @@ func TestRead(t *testing.T) {
 
 	store := new(mockStorage)
 	transport := new(mockTransport)
-	node := NewChainNode(member1.ID, member1.Address, store, transport)
+	node := NewChainNode(member1.ID, member1.Address, store, transport, slog.Default())
 
 	// Node is not a member of a chain.
 	key := "key"
@@ -257,7 +258,7 @@ func TestCommit(t *testing.T) {
 
 	store := new(mockStorage)
 	transport := new(mockTransport)
-	node := NewChainNode(member1.ID, member1.Address, store, transport)
+	node := NewChainNode(member1.ID, member1.Address, store, transport, slog.Default())
 
 	// Node is not a member of a chain.
 	key := "key"
@@ -294,7 +295,7 @@ func TestRequestPropagation(t *testing.T) {
 
 	store := new(mockStorage)
 	transport := new(mockTransport)
-	node := NewChainNode(member1.ID, member1.Address, store, transport)
+	node := NewChainNode(member1.ID, member1.Address, store, transport, slog.Default())
 
 	stream := new(mockClientStream)
 	kv1 := storage.KeyValuePair{Key: "key-1", Value: []byte("value-1"), Committed: false}
@@ -310,7 +311,7 @@ func TestRequestPropagation(t *testing.T) {
 	transport.On("Propagate", mock.Anything, member2.Address, &pb.PropagateRequest{KeyType: storage.AllKeys.Proto(), ConfigVersion: 0}).Return(stream, nil).Once()
 	store.On("UncommittedWrite", kv1.Key, kv1.Value, kv1.Version).Return(nil).Once()
 	store.On("CommittedWrite", kv2.Key, kv2.Value, kv2.Version).Return(nil).Once()
-	require.NoError(t, node.requestPropagation(context.Background(), member2.Address, storage.AllKeys, config))
+	require.NoError(t, node.requestPropagation(context.Background(), member2, storage.AllKeys, config))
 	stream.AssertExpectations(t)
 	transport.AssertExpectations(t)
 	store.AssertExpectations(t)
@@ -325,7 +326,7 @@ func TestRequestPropagation(t *testing.T) {
 	transport.On("Propagate", mock.Anything, member2.Address, &pb.PropagateRequest{KeyType: storage.AllKeys.Proto(), ConfigVersion: 0}).Return(stream, nil).Once()
 	store.On("CommittedWrite", kv1.Key, kv1.Value, kv1.Version).Return(nil).Once()
 	store.On("CommittedWrite", kv2.Key, kv2.Value, kv2.Version).Return(nil).Once()
-	require.NoError(t, node.requestPropagation(context.Background(), member2.Address, storage.AllKeys, config))
+	require.NoError(t, node.requestPropagation(context.Background(), member2, storage.AllKeys, config))
 	stream.AssertExpectations(t)
 	transport.AssertExpectations(t)
 	store.AssertExpectations(t)
@@ -338,7 +339,7 @@ func TestOnNewPredecessor(t *testing.T) {
 
 	store := new(mockStorage)
 	transport := new(mockTransport)
-	node := NewChainNode(member1.ID, member1.Address, store, transport)
+	node := NewChainNode(member1.ID, member1.Address, store, transport, slog.Default())
 
 	stream := new(mockClientStream)
 	kv1 := storage.KeyValuePair{Key: "key-1", Value: []byte("value-1"), Committed: false}
@@ -386,7 +387,7 @@ func TestOnNewSuccessor(t *testing.T) {
 
 	store := new(mockStorage)
 	transport := new(mockTransport)
-	node := NewChainNode(member1.ID, member1.Address, store, transport)
+	node := NewChainNode(member1.ID, member1.Address, store, transport, slog.Default())
 
 	stream := new(mockClientStream)
 	kv1 := storage.KeyValuePair{Key: "key-1", Value: []byte("value-1"), Committed: false}
@@ -438,7 +439,7 @@ func TestPing(t *testing.T) {
 
 	store := new(mockStorage)
 	transport := new(mockTransport)
-	node := NewChainNode(member1.ID, member1.Address, store, transport)
+	node := NewChainNode(member1.ID, member1.Address, store, transport, slog.Default())
 
 	version := uint64(3)
 	status := Syncing

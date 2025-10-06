@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log/slog"
 	"maps"
 	"slices"
 	"sync"
@@ -28,7 +29,14 @@ const (
 var creds = grpc.WithTransportCredentials(insecure.NewCredentials())
 
 func makeServer(t *testing.T, id string, port int, bootstrapConfig bool) (*Server, func()) {
-	srv, err := NewServer(id, fmt.Sprintf(":%d", port), t.TempDir(), creds)
+	serverConfig := ServerConfig{
+		ID:          id,
+		ListenAddr:  fmt.Sprintf(":%d", port),
+		StoragePath: t.TempDir(),
+		DialOptions: []grpc.DialOption{creds},
+		Log:         slog.Default(),
+	}
+	srv, err := NewServer(serverConfig)
 	require.NoError(t, err)
 
 	var wg sync.WaitGroup
