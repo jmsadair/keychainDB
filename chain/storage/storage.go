@@ -28,6 +28,19 @@ const (
 	CommittedKeys
 )
 
+func (kf KeyFilter) String() string {
+	switch kf {
+	case AllKeys:
+		return "ALL_KEYS"
+	case DirtyKeys:
+		return "DIRTY_KEYS"
+	case CommittedKeys:
+		return "COMMITTED_KEYS"
+	default:
+		panic("unknown key filter type")
+	}
+}
+
 func (kf KeyFilter) Proto() pb.KeyType {
 	switch kf {
 	case AllKeys:

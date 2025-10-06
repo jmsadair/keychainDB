@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"log/slog"
 	"sync"
 	"sync/atomic"
 
@@ -16,7 +17,7 @@ import (
 
 var (
 	// Indicates a node is in the syncing state. Nodes that are syncing are unable to serve reads.
-	ErrSyncing = errors.New("cannot serve reads while sycning")
+	ErrSyncing = errors.New("cannot serve reads while syncing")
 	// Indicates that a node is not a member of any chain.
 	ErrNotMemberOfChain = errors.New("not member of chain")
 	// Indicates that the client provided configuration version does not match the configuration
@@ -137,6 +138,7 @@ type ChainNode struct {
 	// The address for this node.
 	Address string
 
+	log              *slog.Logger
 	store            Storage
 	tn               Transport
 	onCommitCh       chan onCommitMessage
@@ -145,13 +147,13 @@ type ChainNode struct {
 	state            atomic.Pointer[State]
 }
 
-// NewChainNode creates a new ChainNode instance with the given ID, address, storage, and transport.
-// The node starts with an inactive status and an empty chain configuration.
-func NewChainNode(id, address string, store Storage, tn Transport) *ChainNode {
+// NewChainNode creates a new ChainNode.
+func NewChainNode(id, address string, store Storage, tn Transport, log *slog.Logger) *ChainNode {
 	state := &State{Config: EmptyChain, Status: Inactive}
 	node := &ChainNode{
 		ID:               id,
 		Address:          address,
+		log:              log.With("local-id", id),
 		store:            store,
 		tn:               tn,
 		onCommitCh:       make(chan onCommitMessage, defaultBufferedChSize),
@@ -162,7 +164,7 @@ func NewChainNode(id, address string, store Storage, tn Transport) *ChainNode {
 	return node
 }
 
-// Run will start this node.
+// Run will run the node.
 func (c *ChainNode) Run(ctx context.Context) {
 	g, ctx := errgroup.WithContext(ctx)
 	g.Go(func() error {
@@ -363,13 +365,25 @@ func (c *ChainNode) Store() Storage {
 	return c.store
 }
 
-func (c *ChainNode) requestPropagation(ctx context.Context, address string, keyFilter storage.KeyFilter, config *Configuration) error {
+func (c *ChainNode) requestPropagation(ctx context.Context, member *ChainMember, keyFilter storage.KeyFilter, config *Configuration) error {
 	req := &pb.PropagateRequest{KeyType: keyFilter.Proto(), ConfigVersion: config.Version}
 	isTail := config.IsTail(c.ID)
-	stream, err := c.tn.Propagate(ctx, address, req)
+
+	stream, err := c.tn.Propagate(ctx, member.Address, req)
 	if err != nil {
 		return err
 	}
+
+	c.log.InfoContext(
+		ctx,
+		"initiating propagation of keys",
+		"key-filter",
+		keyFilter.String(),
+		"remote-id",
+		member.ID,
+		"remote-address",
+		member.Address,
+	)
 
 	for {
 		kvPair, err := stream.Recv()
@@ -377,6 +391,18 @@ func (c *ChainNode) requestPropagation(ctx context.Context, address string, keyF
 			break
 		}
 		if err != nil {
+			c.log.ErrorContext(
+				ctx,
+				"key propagation failed",
+				"error",
+				err.Error(),
+				"key-filter",
+				keyFilter.String(),
+				"remote-id",
+				member.ID,
+				"remote-address",
+				member.Address,
+			)
 			return err
 		}
 
@@ -396,9 +422,32 @@ func (c *ChainNode) requestPropagation(ctx context.Context, address string, keyF
 		}
 
 		if err != nil {
+			c.log.ErrorContext(
+				ctx,
+				"key propagation failed",
+				"error",
+				err.Error(),
+				"key-filter",
+				keyFilter.String(),
+				"remote-id",
+				member.ID,
+				"remote-address",
+				member.Address,
+			)
 			return err
 		}
 	}
+
+	c.log.InfoContext(
+		ctx,
+		"key propagation succeeded",
+		"key-filter",
+		keyFilter.String(),
+		"remote-id",
+		member.ID,
+		"remote-address",
+		member.Address,
+	)
 
 	return nil
 }
@@ -475,6 +524,7 @@ func (c *ChainNode) onConfigChangeRoutine(ctx context.Context) {
 			state := c.state.Load()
 			newState := &State{Config: state.Config, Status: Active}
 			c.state.Store(newState)
+			c.log.InfoContext(ctx, "done syncing, entering the active state")
 		case msg, ok := <-c.onConfigChangeCh:
 			if !ok {
 				return
@@ -494,6 +544,7 @@ func (c *ChainNode) onConfigChangeRoutine(ctx context.Context) {
 
 			// Node has lost chain membership. Cancel any ongoing syncing and become inactive.
 			if lostMembership {
+				c.log.InfoContext(ctx, "lost chain membership, entering the inactive state")
 				onNewPredTask.cancelAndWait()
 				onNewSuccTask.cancelAndWait()
 				newState.Config = EmptyChain
@@ -505,11 +556,13 @@ func (c *ChainNode) onConfigChangeRoutine(ctx context.Context) {
 			// Node is a new member of a chain. Cancel any ongoing syncing. Enter the active state
 			// if this node is the sole member of the chain.
 			if isNewMember {
+				c.log.InfoContext(ctx, "gained chain membership, entering the the syncing state")
 				onNewPredTask.cancelAndWait()
 				onNewSuccTask.cancelAndWait()
 				newState.Status = Syncing
 				if !hasNewPred && !hasNewSucc {
 					newState.Status = Active
+					c.log.InfoContext(ctx, "no predecessor or successor, entering the the active state")
 				}
 			}
 			// Node has a new predecessor. Cancel any syncing that was taking place with the prior
@@ -542,10 +595,11 @@ func (c *ChainNode) onNewSuccessor(ctx context.Context, config *Configuration, i
 				keyFilter = storage.AllKeys
 			}
 			if succ := config.Successor(c.ID); succ != nil {
-				if err := c.requestPropagation(ctx, succ.Address, keyFilter, config); err != nil {
+				if err := c.requestPropagation(ctx, succ, keyFilter, config); err != nil {
 					continue
 				}
 			} else {
+				c.log.InfoContext(ctx, "no successor found, committing all keys now")
 				onCommit := func(ctx context.Context, key string, version uint64) error {
 					select {
 					case <-ctx.Done():
@@ -580,7 +634,7 @@ func (c *ChainNode) onNewPredecessor(ctx context.Context, config *Configuration,
 				keyFilter = storage.AllKeys
 			}
 			if pred := config.Predecessor(c.ID); pred != nil {
-				err := c.requestPropagation(ctx, pred.Address, keyFilter, config)
+				err := c.requestPropagation(ctx, pred, keyFilter, config)
 				if err != nil {
 					continue
 				}

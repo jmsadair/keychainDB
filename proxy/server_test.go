@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"sync"
 	"testing"
@@ -116,19 +117,26 @@ func makeTestChain(cluster *testCluster) *testChain {
 }
 
 func (tc *testChain) addMember(t *testing.T, id string) {
-	c, err := chain.NewServer(id, fmt.Sprintf("%s:%d", chainAddress, 8080+len(tc.nodes)), t.TempDir(), creds)
+	serverConfig := chain.ServerConfig{
+		ID:          id,
+		ListenAddr:  fmt.Sprintf("%s:%d", chainAddress, 8080+len(tc.nodes)),
+		StoragePath: t.TempDir(),
+		DialOptions: []grpc.DialOption{creds},
+		Log:         slog.Default(),
+	}
+	srv, err := chain.NewServer(serverConfig)
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	tc.cancels = append(tc.cancels, cancel)
-	tc.nodes = append(tc.nodes, c)
+	tc.nodes = append(tc.nodes, srv)
 	tc.wg.Add(1)
 	go func() {
 		defer tc.wg.Done()
-		require.NoError(t, c.Run(ctx))
+		require.NoError(t, srv.Run(ctx))
 	}()
 
-	tc.cluster.addChainMember(t, c.Node.ID, c.Node.Address)
+	tc.cluster.addChainMember(t, srv.Node.ID, srv.Node.Address)
 }
 
 func (tc *testChain) removeMember(t *testing.T, id string) {
