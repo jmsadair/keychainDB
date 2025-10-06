@@ -31,6 +31,8 @@ type Server struct {
 	GRPCServer *chaingrpc.Server
 	// Chain node implementation.
 	Node *node.ChainNode
+	// The configuration for this server.
+	Config ServerConfig
 	// Storage for the chain node.
 	store *storage.PersistentStorage
 }
@@ -47,7 +49,7 @@ func NewServer(cfg ServerConfig) (*Server, error) {
 	}
 	node := node.NewChainNode(cfg.ID, cfg.ListenAddr, store, tn, cfg.Log)
 	grpcServer := chaingrpc.NewServer(cfg.ListenAddr, node)
-	return &Server{GRPCServer: grpcServer, Node: node, store: store}, nil
+	return &Server{GRPCServer: grpcServer, Node: node, Config: cfg, store: store}, nil
 }
 
 // Run runs the server.
@@ -59,5 +61,6 @@ func (s *Server) Run(ctx context.Context) error {
 		return nil
 	})
 	g.Go(func() error { return s.GRPCServer.Run(ctx) })
+	s.Config.Log.InfoContext(ctx, "running chain server", "local-id", s.Config.ID, "listen", s.Config.ListenAddr)
 	return g.Wait()
 }
