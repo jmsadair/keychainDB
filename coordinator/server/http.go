@@ -1,4 +1,4 @@
-package http
+package server
 
 import (
 	"context"
@@ -14,13 +14,13 @@ import (
 
 const defaultShutdownTimeout = 500 * time.Millisecond
 
-type Server struct {
+type HTTPServer struct {
 	GRPCAddress string
 	Address     string
 	DialOptions []grpc.DialOption
 }
 
-func (s *Server) Run(ctx context.Context) error {
+func (s *HTTPServer) Run(ctx context.Context) error {
 	cc, err := grpc.NewClient(s.GRPCAddress, s.DialOptions...)
 	if err != nil {
 		return err
