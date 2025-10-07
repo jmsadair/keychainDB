@@ -1,4 +1,4 @@
-package grpc
+package server
 
 import (
 	"context"
@@ -13,8 +13,8 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// Server is the gRPC proxy server.
-type Server struct {
+// RPCServer is the gRPC proxy server.
+type RPCServer struct {
 	pb.ProxyServiceServer
 	*transport.Server
 	Address string
@@ -22,8 +22,8 @@ type Server struct {
 }
 
 // NewServer creates a new server.
-func NewServer(address string, p *proxynode.Proxy) *Server {
-	s := &Server{Address: address, Proxy: p}
+func NewServer(address string, p *proxynode.Proxy) *RPCServer {
+	s := &RPCServer{Address: address, Proxy: p}
 	s.Server = transport.NewServer(address, func(grpcServer *grpc.Server) {
 		pb.RegisterProxyServiceServer(grpcServer, s)
 		grpc_health_v1.RegisterHealthServer(grpcServer, health.NewServer())
@@ -32,21 +32,21 @@ func NewServer(address string, p *proxynode.Proxy) *Server {
 }
 
 // Get handles requests for reading key-value pairs.
-func (s *Server) Get(ctx context.Context, request *pb.GetRequest) (*pb.GetResponse, error) {
+func (s *RPCServer) Get(ctx context.Context, request *pb.GetRequest) (*pb.GetResponse, error) {
 	return s.Proxy.Get(ctx, request)
 }
 
 // Set handles requests for setting key-value pairs.
-func (s *Server) Set(ctx context.Context, request *pb.SetRequest) (*pb.SetResponse, error) {
+func (s *RPCServer) Set(ctx context.Context, request *pb.SetRequest) (*pb.SetResponse, error) {
 	return s.Proxy.Set(ctx, request)
 }
 
 // Check implements the gRPC health check protocol.
-func (s *Server) Check(ctx context.Context, req *grpc_health_v1.HealthCheckRequest) (*grpc_health_v1.HealthCheckResponse, error) {
+func (s *RPCServer) Check(ctx context.Context, req *grpc_health_v1.HealthCheckRequest) (*grpc_health_v1.HealthCheckResponse, error) {
 	return &grpc_health_v1.HealthCheckResponse{Status: grpc_health_v1.HealthCheckResponse_SERVING}, nil
 }
 
 // Watch implements the gRPC health check protocol.
-func (s *Server) Watch(req *grpc_health_v1.HealthCheckRequest, _ grpc_health_v1.Health_WatchServer) error {
+func (s *RPCServer) Watch(req *grpc_health_v1.HealthCheckRequest, _ grpc_health_v1.Health_WatchServer) error {
 	return status.Error(codes.Unimplemented, "unimplemented")
 }
