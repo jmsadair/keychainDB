@@ -1,4 +1,4 @@
-package http
+package server
 
 import (
 	"context"
@@ -14,13 +14,15 @@ import (
 
 const defaultShutdownTimeout = 500 * time.Millisecond
 
-type Server struct {
+// HTTPServer is the HTTP proxy server.
+type HTTPServer struct {
 	GRPCAddress string
 	Address     string
 	DialOptions []grpc.DialOption
 }
 
-func (s *Server) Run(ctx context.Context) error {
+// Run runs the server.
+func (s *HTTPServer) Run(ctx context.Context) error {
 	cc, err := grpc.NewClient(s.GRPCAddress, s.DialOptions...)
 	if err != nil {
 		return err

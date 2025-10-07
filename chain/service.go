@@ -4,15 +4,16 @@ import (
 	"context"
 	"log/slog"
 
-	chaingrpc "github.com/jmsadair/keychain/chain/grpc"
+	"github.com/jmsadair/keychain/chain/client"
 	"github.com/jmsadair/keychain/chain/node"
+	"github.com/jmsadair/keychain/chain/server"
 	"github.com/jmsadair/keychain/chain/storage"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 )
 
-// ServerConfig contains the server configurations for a chain server.
-type ServerConfig struct {
+// ServiceConfig contains the configurations for a chain service.
+type ServiceConfig struct {
 	// Unique ID that identifies the server.
 	ID string
 	// Address tht a server will listen for incoming requests on.
@@ -25,21 +26,21 @@ type ServerConfig struct {
 	Log *slog.Logger
 }
 
-// Server is the chain service.
-type Server struct {
+// Service is the chain service.
+type Service struct {
 	// A gRPC server.
-	GRPCServer *chaingrpc.Server
+	GRPCServer *server.RPCServer
 	// Chain node implementation.
 	Node *node.ChainNode
 	// The configuration for this server.
-	Config ServerConfig
+	Config ServiceConfig
 	// Storage for the chain node.
 	store *storage.PersistentStorage
 }
 
-// NewServer creates a new server.
-func NewServer(cfg ServerConfig) (*Server, error) {
-	tn, err := chaingrpc.NewClient(cfg.DialOptions...)
+// NewService creates a new chain service.
+func NewService(cfg ServiceConfig) (*Service, error) {
+	tn, err := client.NewClient(cfg.DialOptions...)
 	if err != nil {
 		return nil, err
 	}
@@ -48,12 +49,12 @@ func NewServer(cfg ServerConfig) (*Server, error) {
 		return nil, err
 	}
 	node := node.NewChainNode(cfg.ID, cfg.ListenAddr, store, tn, cfg.Log)
-	grpcServer := chaingrpc.NewServer(cfg.ListenAddr, node)
-	return &Server{GRPCServer: grpcServer, Node: node, Config: cfg, store: store}, nil
+	gRPCServer := server.NewServer(cfg.ListenAddr, node)
+	return &Service{GRPCServer: gRPCServer, Node: node, Config: cfg, store: store}, nil
 }
 
-// Run runs the server.
-func (s *Server) Run(ctx context.Context) error {
+// Run runs the service.
+func (s *Service) Run(ctx context.Context) error {
 	defer s.store.Close()
 	g, ctx := errgroup.WithContext(ctx)
 	g.Go(func() error {
