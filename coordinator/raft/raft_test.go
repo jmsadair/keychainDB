@@ -17,11 +17,11 @@ func waitForLeader(t *testing.T, expectedLeader *RaftBackend) {
 	}, 5*time.Second, 100*time.Millisecond)
 }
 
-func newTestRaftBackend(t *testing.T, nodeID string, address string, bootstrap bool) *RaftBackend {
+func newTestRaftBackend(t *testing.T, nodeID string, bind string, advertise string, bootstrap bool) *RaftBackend {
 	storeDir := t.TempDir()
 	snapshotDir := t.TempDir()
 
-	rb, err := NewRaftBackend(nodeID, address, storeDir, snapshotDir, bootstrap)
+	rb, err := NewRaftBackend(nodeID, bind, advertise, storeDir, snapshotDir, bootstrap)
 	require.NoError(t, err)
 
 	return rb
@@ -30,21 +30,21 @@ func newTestRaftBackend(t *testing.T, nodeID string, address string, bootstrap b
 func TestJoinCluster(t *testing.T) {
 	nodeID1 := "leader"
 	addr1 := "127.0.0.1:9001"
-	leader := newTestRaftBackend(t, nodeID1, addr1, true)
+	leader := newTestRaftBackend(t, nodeID1, addr1, addr1, true)
 	defer func() {
 		require.NoError(t, leader.Shutdown())
 	}()
 
 	nodeID2 := "follower-1"
-	addr2 := "127.0.0.2:9001"
-	follower1 := newTestRaftBackend(t, nodeID2, addr2, false)
+	addr2 := "127.0.0.1:9002"
+	follower1 := newTestRaftBackend(t, nodeID2, addr2, addr2, false)
 	defer func() {
 		require.NoError(t, follower1.Shutdown())
 	}()
 
 	nodeID3 := "follower-3"
-	addr3 := "127.0.0.3:9001"
-	follower2 := newTestRaftBackend(t, nodeID3, addr3, false)
+	addr3 := "127.0.0.1:9003"
+	follower2 := newTestRaftBackend(t, nodeID3, addr3, addr3, false)
 	defer func() {
 		require.NoError(t, follower2.Shutdown())
 	}()
@@ -104,8 +104,8 @@ func TestJoinCluster(t *testing.T) {
 
 func TestAddRemoveMember(t *testing.T) {
 	nodeID1 := "leader"
-	addr1 := "127.0.0.1:8080"
-	leader := newTestRaftBackend(t, nodeID1, addr1, true)
+	addr1 := "127.0.0.1:9001"
+	leader := newTestRaftBackend(t, nodeID1, addr1, addr1, true)
 	defer func() {
 		require.NoError(t, leader.Shutdown())
 	}()

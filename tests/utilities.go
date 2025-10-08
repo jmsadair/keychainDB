@@ -190,7 +190,7 @@ func (tc *testCluster) addServerToClusterRPC(t *testing.T, client *coordinatorcl
 	tc.srvs = append(tc.srvs, srv)
 	tc.members[id] = srv
 
-	req := &coordinatorpb.JoinClusterRequest{Id: srv.server.Raft.ID, Address: srv.server.Raft.Address}
+	req := &coordinatorpb.JoinClusterRequest{Id: srv.server.Coordinator.ID, Address: srv.server.Coordinator.Address}
 	_, err := client.JoinCluster(context.Background(), tc.leader.server.GRPCServer.Address, req)
 	require.NoError(t, err)
 }
@@ -228,7 +228,7 @@ func (tc *testCluster) addServerToClusterHTTP(t *testing.T, id string) {
 	tc.members[id] = srv
 
 	clusterMembersURL := fmt.Sprintf("http://%s/v1/cluster/members", tc.leader.server.HTTPServer.Address)
-	req := &coordinatorpb.JoinClusterRequest{Id: srv.server.Raft.ID, Address: srv.server.Raft.Address}
+	req := &coordinatorpb.JoinClusterRequest{Id: srv.server.Coordinator.ID, Address: srv.server.Coordinator.Address}
 	b, err := protojson.Marshal(req)
 	require.NoError(t, err)
 	resp1, err := http.Post(clusterMembersURL, "application/json", bytes.NewReader(b))
@@ -319,7 +319,7 @@ func (tc *testCluster) getChainMembersHTTP(t *testing.T) *coordinatorpb.GetMembe
 func (tc *testCluster) clusterMembers() map[string]string {
 	members := make(map[string]string, len(tc.members))
 	for id, srv := range tc.members {
-		members[id] = srv.server.Raft.Address
+		members[id] = srv.server.Coordinator.Address
 	}
 	return members
 }
@@ -333,7 +333,7 @@ func (tc *testCluster) rpcAddresses() []string {
 }
 
 func (tc *testCluster) leaderID() string {
-	return tc.leader.server.Raft.ID
+	return tc.leader.server.Coordinator.ID
 }
 
 func (tc *testCluster) stop() {
@@ -348,16 +348,19 @@ type testCoordinator struct {
 }
 
 func newTestCoordinator(t *testing.T, id string, httpPort int, gRPCPort int, raftPort int, bootstrap bool) *testCoordinator {
-	srv, err := coordinator.NewService(
-		id,
-		fmt.Sprintf("%s:%d", clusterAddress, httpPort),
-		fmt.Sprintf("%s:%d", clusterAddress, gRPCPort),
-		fmt.Sprintf("%s:%d", clusterAddress, raftPort),
-		t.TempDir(),
-		t.TempDir(),
-		bootstrap,
-		creds,
-	)
+	config := coordinator.ServiceConfig{
+		ID:                  id,
+		HTTPListen:          fmt.Sprintf("%s:%d", clusterAddress, httpPort),
+		GRPCListen:          fmt.Sprintf("%s:%d", clusterAddress, gRPCPort),
+		RaftListen:          fmt.Sprintf("%s:%d", clusterAddress, raftPort),
+		RaftAdvertise:       fmt.Sprintf("%s:%d", clusterAddress, raftPort),
+		StoragePath:         t.TempDir(),
+		SnapshotStoragePath: t.TempDir(),
+		Bootstrap:           bootstrap,
+		DialOptions:         []grpc.DialOption{creds},
+		Log:                 slog.Default(),
+	}
+	srv, err := coordinator.NewService(config)
 	require.NoError(t, err)
 
 	runner := newServerRunner(t)
