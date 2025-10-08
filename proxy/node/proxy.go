@@ -3,6 +3,7 @@ package node
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"sync"
 	"sync/atomic"
 
@@ -35,10 +36,11 @@ type Proxy struct {
 	coordinatorTn CoordinatorTransport
 	raftMembers   []string
 	chainConfig   atomic.Pointer[chainnode.Configuration]
+	log           *slog.Logger
 }
 
-func NewProxy(raftMembers []string, coordinatorTn CoordinatorTransport, chainTn ChainTransport) *Proxy {
-	return &Proxy{chainTn: chainTn, coordinatorTn: coordinatorTn, raftMembers: raftMembers}
+func NewProxy(raftMembers []string, coordinatorTn CoordinatorTransport, chainTn ChainTransport, log *slog.Logger) *Proxy {
+	return &Proxy{chainTn: chainTn, coordinatorTn: coordinatorTn, raftMembers: raftMembers, log: log}
 }
 
 func (p *Proxy) Get(ctx context.Context, request *proxypb.GetRequest) (*proxypb.GetResponse, error) {
@@ -54,6 +56,7 @@ func (p *Proxy) Get(ctx context.Context, request *proxypb.GetRequest) (*proxypb.
 	readReq := &chainpb.ReadRequest{Key: request.GetKey(), ConfigVersion: config.Version}
 	readResp, err := p.chainTn.Read(ctx, tail.Address, readReq)
 	if err != nil && errors.Is(err, chainnode.ErrInvalidConfigVersion) {
+		p.log.WarnContext(ctx, "proxy configuration version does not match chain configuration version")
 		config, err := p.getChainConfiguration(ctx, true)
 		if err != nil {
 			return nil, err
@@ -89,6 +92,7 @@ func (p *Proxy) Set(ctx context.Context, request *proxypb.SetRequest) (*proxypb.
 	replicateReq := &chainpb.ReplicateRequest{Key: request.GetKey(), Value: request.GetValue(), ConfigVersion: config.Version}
 	_, err = p.chainTn.Replicate(ctx, head.Address, replicateReq)
 	if err != nil && errors.Is(err, chainnode.ErrInvalidConfigVersion) {
+		p.log.WarnContext(ctx, "proxy configuration version does not match chain configuration version")
 		config, err := p.getChainConfiguration(ctx, true)
 		if err != nil {
 			return nil, err
@@ -142,5 +146,6 @@ func (p *Proxy) getChainConfiguration(ctx context.Context, forceRefresh bool) (*
 		return config, nil
 	}
 
+	p.log.ErrorContext(ctx, "failed to contact coordinator")
 	return nil, ErrConfigReadFailure
 }

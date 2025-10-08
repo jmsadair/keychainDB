@@ -454,12 +454,14 @@ type testProxyServer struct {
 }
 
 func newTestProxyServer(t *testing.T, clusterMembers []string) *testProxyServer {
-	srv, err := proxy.NewService(
-		fmt.Sprintf("%s:8080", proxyAddress),
-		fmt.Sprintf("%s:8081", proxyAddress),
-		clusterMembers,
-		creds,
-	)
+	cfg := proxy.ServiceConfig{
+		HTTPListen:   fmt.Sprintf("%s:8080", proxyAddress),
+		GRPCListen:   fmt.Sprintf("%s:8081", proxyAddress),
+		Coordinators: clusterMembers,
+		DialOptions:  []grpc.DialOption{creds},
+		Log:          slog.Default(),
+	}
+	srv, err := proxy.NewService(cfg)
 	require.NoError(t, err)
 
 	runner := newServerRunner(t)
