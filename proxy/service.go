@@ -14,7 +14,7 @@ import (
 
 // ServiceConfig contains the configurations for a proxy service.
 type ServiceConfig struct {
-	// Addresses of the coordinators that the proxy is able make requests to.
+	// Addresses of the coordinators that the proxy is able to make requests to.
 	Coordinators []string
 	// Address that the service will listen for incoming HTTP requests on.
 	HTTPListen string
