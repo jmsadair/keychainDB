@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"bytes"
 	"context"
 	"testing"
 
@@ -60,9 +61,11 @@ func TestRemoveMemberThenGetValue(t *testing.T) {
 
 	chain.removeServer(t, clusterClient, "chain-node-3")
 
-	v, err := client.Get(ctx, key)
-	require.NoError(t, err)
-	require.Equal(t, value, v)
+	// This can fail since the new tail may still be committing its uncommitted keys.
+	require.Eventually(t, func() bool {
+		v, err := client.Get(ctx, key)
+		return err == nil && bytes.Equal(value, v)
+	}, eventuallyTimeout, eventuallyTick)
 }
 
 func TestAddMemberThenGetValue(t *testing.T) {
