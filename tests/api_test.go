@@ -16,10 +16,12 @@ func TestSetGetValue(t *testing.T) {
 	cluster.addServerToClusterRPC(t, clusterClient, "coordinator-3")
 
 	chain := newTestChain(cluster)
+	chainClient := newTestChainClient(t)
 	defer chain.stop()
 	chain.addServer(t, clusterClient, "chain-node-1")
 	chain.addServer(t, clusterClient, "chain-node-2")
 	chain.addServer(t, clusterClient, "chain-node-3")
+	waitForActiveChainStatus(t, chainClient, chain.srvs...)
 
 	proxy := newTestProxyServer(t, cluster.rpcAddresses())
 	defer proxy.stop()
@@ -44,10 +46,12 @@ func TestRemoveMemberThenGetValue(t *testing.T) {
 	cluster.addServerToClusterRPC(t, clusterClient, "coordinator-3")
 
 	chain := newTestChain(cluster)
+	chainClient := newTestChainClient(t)
 	defer chain.stop()
 	chain.addServer(t, clusterClient, "chain-node-1")
 	chain.addServer(t, clusterClient, "chain-node-2")
 	chain.addServer(t, clusterClient, "chain-node-3")
+	waitForActiveChainStatus(t, chainClient, chain.srvs...)
 
 	proxy := newTestProxyServer(t, cluster.rpcAddresses())
 	defer proxy.stop()
@@ -76,10 +80,12 @@ func TestAddMemberThenGetValue(t *testing.T) {
 	cluster.addServerToClusterRPC(t, clusterClient, "coordinator-3")
 
 	chain := newTestChain(cluster)
+	chainClient := newTestChainClient(t)
 	defer chain.stop()
 	chain.addServer(t, clusterClient, "chain-node-1")
 	chain.addServer(t, clusterClient, "chain-node-2")
 	chain.addServer(t, clusterClient, "chain-node-3")
+	waitForActiveChainStatus(t, chainClient, chain.srvs...)
 
 	proxy := newTestProxyServer(t, cluster.rpcAddresses())
 	defer proxy.stop()

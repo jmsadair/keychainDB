@@ -3,6 +3,7 @@ package node
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"testing"
 
 	chainnode "github.com/jmsadair/keychain/chain/node"
@@ -53,7 +54,8 @@ func TestSetValue(t *testing.T) {
 	members := []string{"coordinator-0.cluster.local", "coordinator-1.cluster.local", "coordinator-2.cluster.local"}
 	chainClient := new(mockChainClient)
 	coordinatorClient := new(mockCoordinatorClient)
-	p := NewProxy(members, coordinatorClient, chainClient)
+	log := slog.Default()
+	p := NewProxy(members, coordinatorClient, chainClient, log)
 
 	ctx := context.Background()
 	key := "key"
@@ -115,7 +117,8 @@ func TestGetValue(t *testing.T) {
 	members := []string{"coordinator-0.cluster.local", "coordinator-1.cluster.local", "coordinator-2.cluster.local"}
 	chainClient := new(mockChainClient)
 	coordinatorClient := new(mockCoordinatorClient)
-	p := NewProxy(members, coordinatorClient, chainClient)
+	log := slog.Default()
+	p := NewProxy(members, coordinatorClient, chainClient, log)
 
 	ctx := context.Background()
 	key := "key"
