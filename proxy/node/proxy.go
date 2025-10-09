@@ -8,9 +8,9 @@ import (
 	"sync/atomic"
 
 	chainnode "github.com/jmsadair/keychain/chain/node"
+	apipb "github.com/jmsadair/keychain/proto/api"
 	chainpb "github.com/jmsadair/keychain/proto/chain"
 	coordinatorpb "github.com/jmsadair/keychain/proto/coordinator"
-	proxypb "github.com/jmsadair/keychain/proto/proxy"
 )
 
 var (
@@ -43,7 +43,7 @@ func NewProxy(raftMembers []string, coordinatorTn CoordinatorTransport, chainTn 
 	return &Proxy{chainTn: chainTn, coordinatorTn: coordinatorTn, raftMembers: raftMembers, log: log}
 }
 
-func (p *Proxy) Get(ctx context.Context, request *proxypb.GetRequest) (*proxypb.GetResponse, error) {
+func (p *Proxy) Get(ctx context.Context, request *apipb.GetRequest) (*apipb.GetResponse, error) {
 	config, err := p.getChainConfiguration(ctx, false)
 	if err != nil {
 		return nil, err
@@ -70,16 +70,16 @@ func (p *Proxy) Get(ctx context.Context, request *proxypb.GetRequest) (*proxypb.
 		if err != nil {
 			return nil, err
 		}
-		return &proxypb.GetResponse{Value: readResp.GetValue()}, nil
+		return &apipb.GetResponse{Value: readResp.GetValue()}, nil
 	}
 	if err != nil {
 		return nil, err
 	}
 
-	return &proxypb.GetResponse{Value: readResp.GetValue()}, nil
+	return &apipb.GetResponse{Value: readResp.GetValue()}, nil
 }
 
-func (p *Proxy) Set(ctx context.Context, request *proxypb.SetRequest) (*proxypb.SetResponse, error) {
+func (p *Proxy) Set(ctx context.Context, request *apipb.SetRequest) (*apipb.SetResponse, error) {
 	config, err := p.getChainConfiguration(ctx, false)
 	if err != nil {
 		return nil, err
@@ -110,7 +110,7 @@ func (p *Proxy) Set(ctx context.Context, request *proxypb.SetRequest) (*proxypb.
 		return nil, err
 	}
 
-	return &proxypb.SetResponse{}, nil
+	return &apipb.SetResponse{}, nil
 }
 
 func (p *Proxy) getChainConfiguration(ctx context.Context, forceRefresh bool) (*chainnode.Configuration, error) {

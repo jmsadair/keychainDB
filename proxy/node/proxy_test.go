@@ -7,9 +7,9 @@ import (
 	"testing"
 
 	chainnode "github.com/jmsadair/keychain/chain/node"
+	apipb "github.com/jmsadair/keychain/proto/api"
 	chainpb "github.com/jmsadair/keychain/proto/chain"
 	coordinatorpb "github.com/jmsadair/keychain/proto/coordinator"
-	proxypb "github.com/jmsadair/keychain/proto/proxy"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
@@ -92,7 +92,7 @@ func TestSetValue(t *testing.T) {
 
 	// Proxy initially does not have a chain configuration cached.
 	// It should read it from the coordinator and then set the key-value pair on the head of the chain.
-	req := &proxypb.SetRequest{Key: key, Value: value}
+	req := &apipb.SetRequest{Key: key, Value: value}
 	resp, err := p.Set(ctx, req)
 	require.NoError(t, err)
 	require.NotNil(t, resp)
@@ -155,7 +155,7 @@ func TestGetValue(t *testing.T) {
 
 	// Proxy initially does not have a chain configuration cached.
 	// It should read it from the coordinator and then get the key-value pair from the tail of the chain.
-	req := &proxypb.GetRequest{Key: key}
+	req := &apipb.GetRequest{Key: key}
 	resp, err := p.Get(ctx, req)
 	require.NoError(t, err)
 	require.Equal(t, value, resp.GetValue())

@@ -4,19 +4,20 @@ import (
 	"context"
 
 	"github.com/jmsadair/keychain/internal/transport"
-	pb "github.com/jmsadair/keychain/proto/proxy"
+	apipb "github.com/jmsadair/keychain/proto/api"
+	proxypb "github.com/jmsadair/keychain/proto/proxy"
 	"google.golang.org/grpc"
 )
 
 // Client exposes the main keychain API.
 type Client struct {
 	endpoint string
-	cache    *transport.ClientCache[pb.ProxyServiceClient]
+	cache    *transport.ClientCache[proxypb.ProxyServiceClient]
 }
 
 // NewClient creates a new client.
 func NewClient(endpoint string, dialOpts ...grpc.DialOption) (*Client, error) {
-	return &Client{endpoint: endpoint, cache: transport.NewClientCache(pb.NewProxyServiceClient, dialOpts...)}, nil
+	return &Client{endpoint: endpoint, cache: transport.NewClientCache(proxypb.NewProxyServiceClient, dialOpts...)}, nil
 }
 
 // Set sets the value of a key.
@@ -25,7 +26,7 @@ func (c *Client) Set(ctx context.Context, key string, value []byte) error {
 	if err != nil {
 		return err
 	}
-	req := &pb.SetRequest{Key: key, Value: value}
+	req := &apipb.SetRequest{Key: key, Value: value}
 	_, err = client.Set(ctx, req)
 	if err != nil {
 		return err
@@ -39,7 +40,7 @@ func (c *Client) Get(ctx context.Context, key string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	req := &pb.GetRequest{Key: key}
+	req := &apipb.GetRequest{Key: key}
 	resp, err := client.Get(ctx, req)
 	if err != nil {
 		return nil, err

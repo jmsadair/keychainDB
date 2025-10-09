@@ -7,11 +7,11 @@
 package proxy
 
 import (
+	api "github.com/jmsadair/keychain/proto/api"
 	_ "google.golang.org/genproto/googleapis/api/annotations"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
-	sync "sync"
 	unsafe "unsafe"
 )
 
@@ -22,233 +22,26 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// GetRequest is a request to read a key-value pair.
-type GetRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// The key to read.
-	Key           string `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *GetRequest) Reset() {
-	*x = GetRequest{}
-	mi := &file_proto_proxy_proxy_proto_msgTypes[0]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *GetRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*GetRequest) ProtoMessage() {}
-
-func (x *GetRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_proxy_proxy_proto_msgTypes[0]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use GetRequest.ProtoReflect.Descriptor instead.
-func (*GetRequest) Descriptor() ([]byte, []int) {
-	return file_proto_proxy_proxy_proto_rawDescGZIP(), []int{0}
-}
-
-func (x *GetRequest) GetKey() string {
-	if x != nil {
-		return x.Key
-	}
-	return ""
-}
-
-// GetResponse is a response to a GetRequest.
-type GetResponse struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// The value read.
-	Value         []byte `protobuf:"bytes,1,opt,name=value,proto3" json:"value,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *GetResponse) Reset() {
-	*x = GetResponse{}
-	mi := &file_proto_proxy_proxy_proto_msgTypes[1]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *GetResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*GetResponse) ProtoMessage() {}
-
-func (x *GetResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_proxy_proxy_proto_msgTypes[1]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use GetResponse.ProtoReflect.Descriptor instead.
-func (*GetResponse) Descriptor() ([]byte, []int) {
-	return file_proto_proxy_proxy_proto_rawDescGZIP(), []int{1}
-}
-
-func (x *GetResponse) GetValue() []byte {
-	if x != nil {
-		return x.Value
-	}
-	return nil
-}
-
-// SetRequest is a request to set the value for a key.
-type SetRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// The key to set the value for.
-	Key string `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
-	// The value.
-	Value         []byte `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *SetRequest) Reset() {
-	*x = SetRequest{}
-	mi := &file_proto_proxy_proxy_proto_msgTypes[2]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *SetRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*SetRequest) ProtoMessage() {}
-
-func (x *SetRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_proxy_proxy_proto_msgTypes[2]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use SetRequest.ProtoReflect.Descriptor instead.
-func (*SetRequest) Descriptor() ([]byte, []int) {
-	return file_proto_proxy_proxy_proto_rawDescGZIP(), []int{2}
-}
-
-func (x *SetRequest) GetKey() string {
-	if x != nil {
-		return x.Key
-	}
-	return ""
-}
-
-func (x *SetRequest) GetValue() []byte {
-	if x != nil {
-		return x.Value
-	}
-	return nil
-}
-
-// SetResponse is a response to a SetRequest.
-type SetResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *SetResponse) Reset() {
-	*x = SetResponse{}
-	mi := &file_proto_proxy_proxy_proto_msgTypes[3]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *SetResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*SetResponse) ProtoMessage() {}
-
-func (x *SetResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_proxy_proxy_proto_msgTypes[3]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use SetResponse.ProtoReflect.Descriptor instead.
-func (*SetResponse) Descriptor() ([]byte, []int) {
-	return file_proto_proxy_proxy_proto_rawDescGZIP(), []int{3}
-}
-
 var File_proto_proxy_proxy_proto protoreflect.FileDescriptor
 
 const file_proto_proxy_proxy_proto_rawDesc = "" +
 	"\n" +
-	"\x17proto/proxy/proxy.proto\x12\x05proxy\x1a\x1cgoogle/api/annotations.proto\"\x1e\n" +
-	"\n" +
-	"GetRequest\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\"#\n" +
-	"\vGetResponse\x12\x14\n" +
-	"\x05value\x18\x01 \x01(\fR\x05value\"4\n" +
-	"\n" +
-	"SetRequest\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\fR\x05value\"\r\n" +
-	"\vSetResponse2\x97\x01\n" +
-	"\fProxyService\x12D\n" +
-	"\x03Get\x12\x11.proxy.GetRequest\x1a\x12.proxy.GetResponse\"\x16\x82\xd3\xe4\x93\x02\x10\x12\x0e/v1/keys/{key}\x12A\n" +
-	"\x03Set\x12\x11.proxy.SetRequest\x1a\x12.proxy.SetResponse\"\x13\x82\xd3\xe4\x93\x02\r:\x01*\"\b/v1/keysB*Z(github.com/jmsadair/keychain/proto/proxyb\x06proto3"
+	"\x17proto/proxy/proxy.proto\x12\x05proxy\x1a\x13proto/api/api.proto\x1a\x1cgoogle/api/annotations.proto2\x8f\x01\n" +
+	"\fProxyService\x12@\n" +
+	"\x03Get\x12\x0f.api.GetRequest\x1a\x10.api.GetResponse\"\x16\x82\xd3\xe4\x93\x02\x10\x12\x0e/v1/keys/{key}\x12=\n" +
+	"\x03Set\x12\x0f.api.SetRequest\x1a\x10.api.SetResponse\"\x13\x82\xd3\xe4\x93\x02\r:\x01*\"\b/v1/keysB*Z(github.com/jmsadair/keychain/proto/proxyb\x06proto3"
 
-var (
-	file_proto_proxy_proxy_proto_rawDescOnce sync.Once
-	file_proto_proxy_proxy_proto_rawDescData []byte
-)
-
-func file_proto_proxy_proxy_proto_rawDescGZIP() []byte {
-	file_proto_proxy_proxy_proto_rawDescOnce.Do(func() {
-		file_proto_proxy_proxy_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_proto_proxy_proxy_proto_rawDesc), len(file_proto_proxy_proxy_proto_rawDesc)))
-	})
-	return file_proto_proxy_proxy_proto_rawDescData
-}
-
-var file_proto_proxy_proxy_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
 var file_proto_proxy_proxy_proto_goTypes = []any{
-	(*GetRequest)(nil),  // 0: proxy.GetRequest
-	(*GetResponse)(nil), // 1: proxy.GetResponse
-	(*SetRequest)(nil),  // 2: proxy.SetRequest
-	(*SetResponse)(nil), // 3: proxy.SetResponse
+	(*api.GetRequest)(nil),  // 0: api.GetRequest
+	(*api.SetRequest)(nil),  // 1: api.SetRequest
+	(*api.GetResponse)(nil), // 2: api.GetResponse
+	(*api.SetResponse)(nil), // 3: api.SetResponse
 }
 var file_proto_proxy_proxy_proto_depIdxs = []int32{
-	0, // 0: proxy.ProxyService.Get:input_type -> proxy.GetRequest
-	2, // 1: proxy.ProxyService.Set:input_type -> proxy.SetRequest
-	1, // 2: proxy.ProxyService.Get:output_type -> proxy.GetResponse
-	3, // 3: proxy.ProxyService.Set:output_type -> proxy.SetResponse
+	0, // 0: proxy.ProxyService.Get:input_type -> api.GetRequest
+	1, // 1: proxy.ProxyService.Set:input_type -> api.SetRequest
+	2, // 2: proxy.ProxyService.Get:output_type -> api.GetResponse
+	3, // 3: proxy.ProxyService.Set:output_type -> api.SetResponse
 	2, // [2:4] is the sub-list for method output_type
 	0, // [0:2] is the sub-list for method input_type
 	0, // [0:0] is the sub-list for extension type_name
@@ -267,13 +60,12 @@ func file_proto_proxy_proxy_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_proxy_proxy_proto_rawDesc), len(file_proto_proxy_proxy_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   4,
+			NumMessages:   0,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
 		GoTypes:           file_proto_proxy_proxy_proto_goTypes,
 		DependencyIndexes: file_proto_proxy_proxy_proto_depIdxs,
-		MessageInfos:      file_proto_proxy_proxy_proto_msgTypes,
 	}.Build()
 	File_proto_proxy_proxy_proto = out.File
 	file_proto_proxy_proxy_proto_goTypes = nil

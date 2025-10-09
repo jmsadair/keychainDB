@@ -16,6 +16,7 @@ import (
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/utilities"
+	"github.com/jmsadair/keychain/proto/api"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/grpclog"
@@ -37,7 +38,7 @@ var (
 
 func request_ProxyService_Get_0(ctx context.Context, marshaler runtime.Marshaler, client ProxyServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var (
-		protoReq GetRequest
+		protoReq api.GetRequest
 		metadata runtime.ServerMetadata
 		err      error
 	)
@@ -58,7 +59,7 @@ func request_ProxyService_Get_0(ctx context.Context, marshaler runtime.Marshaler
 
 func local_request_ProxyService_Get_0(ctx context.Context, marshaler runtime.Marshaler, server ProxyServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var (
-		protoReq GetRequest
+		protoReq api.GetRequest
 		metadata runtime.ServerMetadata
 		err      error
 	)
@@ -76,7 +77,7 @@ func local_request_ProxyService_Get_0(ctx context.Context, marshaler runtime.Mar
 
 func request_ProxyService_Set_0(ctx context.Context, marshaler runtime.Marshaler, client ProxyServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var (
-		protoReq SetRequest
+		protoReq api.SetRequest
 		metadata runtime.ServerMetadata
 	)
 	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
@@ -91,7 +92,7 @@ func request_ProxyService_Set_0(ctx context.Context, marshaler runtime.Marshaler
 
 func local_request_ProxyService_Set_0(ctx context.Context, marshaler runtime.Marshaler, server ProxyServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var (
-		protoReq SetRequest
+		protoReq api.SetRequest
 		metadata runtime.ServerMetadata
 	)
 	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
