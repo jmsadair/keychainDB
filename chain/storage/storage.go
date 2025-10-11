@@ -9,13 +9,6 @@ import (
 	pb "github.com/jmsadair/keychain/proto/storage"
 )
 
-var (
-	// ErrDirtyRead is returned when a committed read is performed and there are one or more uncommitted writes.
-	ErrDirtyRead = errors.New("latest object version is dirty")
-	// ErrKeyDoesNotExist is returned when there is an attempt to read a non-existent key.
-	ErrKeyDoesNotExist = errors.New("key does not exist")
-)
-
 // KeyFilter is a filter for selecting specific keys when listing keys from storage.
 type KeyFilter int
 
@@ -119,23 +112,23 @@ func (ps *PersistentStorage) UncommittedWriteNewVersion(key string, value []byte
 		return err
 	})
 
-	return version, err
+	return version, handleError(err)
 }
 
 // UncommittedWrite will transactionally write the provided version of key to storage but will not commit it.
 func (ps *PersistentStorage) UncommittedWrite(key string, value []byte, version uint64) error {
-	return ps.db.Update(func(txn *badger.Txn) error {
+	return handleError(ps.db.Update(func(txn *badger.Txn) error {
 		_, err := write(txn, key, value, version, false, false)
 		return err
-	})
+	}))
 }
 
 // CommittedWrite will transactionally write the provided version of key to storage and will immediately commit it.
 func (ps *PersistentStorage) CommittedWrite(key string, value []byte, version uint64) error {
-	return ps.db.Update(func(txn *badger.Txn) error {
+	return handleError(ps.db.Update(func(txn *badger.Txn) error {
 		_, err := write(txn, key, value, version, true, false)
 		return err
-	})
+	}))
 }
 
 // CommittedWriteNewVersion will transactionally generate a new version of the key, write the key-value pair to storage,
@@ -149,16 +142,16 @@ func (ps *PersistentStorage) CommittedWriteNewVersion(key string, value []byte) 
 		return err
 	})
 
-	return version, err
+	return version, handleError(err)
 }
 
 // CommitVersion will transactionally commit the provided version of the key.
 // All versions of the key earlier than the committed version will be deleted.
 // Commiting a version earlier than the currently committed version is a no-op.
 func (ps *PersistentStorage) CommitVersion(key string, version uint64) error {
-	return ps.db.Update(func(txn *badger.Txn) error {
+	return handleError(ps.db.Update(func(txn *badger.Txn) error {
 		return commit(txn, key, version)
-	})
+	}))
 }
 
 // CommittedRead will transactionally read the value of the key.
@@ -172,7 +165,7 @@ func (ps *PersistentStorage) CommittedRead(key string) ([]byte, error) {
 		return err
 	})
 
-	return value, err
+	return value, handleError(err)
 }
 
 // SendKeyValuePairs will iterate over the key-value pairs in storage that satisfy the provided keyFilter, group them
@@ -213,7 +206,7 @@ func (ps *PersistentStorage) SendKeyValuePairs(ctx context.Context, sendFunc fun
 		return !internalKey(item.Key()).isMetadata()
 	}
 
-	return stream.Orchestrate(ctx)
+	return handleError(stream.Orchestrate(ctx))
 }
 
 // CommitAll will commit all dirty keys from the current snapshot of the storage immediately.
@@ -246,7 +239,7 @@ func (ps *PersistentStorage) CommitAll(ctx context.Context, onCommit func(ctx co
 		return !internalKey(item.Key()).isMetadata()
 	}
 
-	return stream.Orchestrate(ctx)
+	return handleError(stream.Orchestrate(ctx))
 }
 
 func commit(txn *badger.Txn, key string, version uint64) error {
@@ -299,14 +292,14 @@ func commit(txn *badger.Txn, key string, version uint64) error {
 
 func read(txn *badger.Txn, key string) ([]byte, error) {
 	md, err := getMetadata(txn, key)
-	if err == badger.ErrKeyNotFound {
-		return nil, ErrKeyDoesNotExist
+	if errors.Is(err, badger.ErrKeyNotFound) {
+		return nil, err
 	}
 	if err != nil {
 		return nil, err
 	}
 	if md.isDirty() {
-		return nil, ErrDirtyRead
+		return nil, ErrUncommittedRead
 	}
 
 	committedKey := newCommittedKey(key, md.lastCommitted)

@@ -8,6 +8,8 @@ import (
 	"google.golang.org/grpc"
 )
 
+var defaultCallOps = []grpc.CallOption{grpc.WaitForReady(true)}
+
 // Client is a gRPC client for the coordinator service.
 type Client struct {
 	cache *transport.ClientCache[pb.CoordinatorServiceClient]
@@ -28,7 +30,7 @@ func (c *Client) GetMembers(
 	if err != nil {
 		return nil, err
 	}
-	return client.GetMembers(ctx, request)
+	return client.GetMembers(ctx, request, defaultCallOps...)
 }
 
 // JoinCluster adds a node to the coordinator cluster.
@@ -41,7 +43,7 @@ func (c *Client) JoinCluster(
 	if err != nil {
 		return nil, err
 	}
-	return client.JoinCluster(ctx, request)
+	return client.JoinCluster(ctx, request, defaultCallOps...)
 }
 
 // RemoveFromCluster removes a node from the coordinator cluster.
@@ -54,7 +56,7 @@ func (c *Client) RemoveFromCluster(
 	if err != nil {
 		return nil, err
 	}
-	return client.RemoveFromCluster(ctx, request)
+	return client.RemoveFromCluster(ctx, request, defaultCallOps...)
 }
 
 // AddMember adds a node to a chain.
@@ -67,7 +69,7 @@ func (c *Client) AddMember(
 	if err != nil {
 		return nil, err
 	}
-	return client.AddMember(ctx, request)
+	return client.AddMember(ctx, request, defaultCallOps...)
 }
 
 // RemoveMember removes a node from a chain.
@@ -80,7 +82,7 @@ func (c *Client) RemoveMember(
 	if err != nil {
 		return nil, err
 	}
-	return client.RemoveMember(ctx, request)
+	return client.RemoveMember(ctx, request, defaultCallOps...)
 }
 
 // ClusterStatus gets the status of the coordinator cluster.
@@ -93,5 +95,5 @@ func (c *Client) ClusterStatus(
 	if err != nil {
 		return nil, err
 	}
-	return client.ClusterStatus(ctx, request)
+	return client.ClusterStatus(ctx, request, defaultCallOps...)
 }

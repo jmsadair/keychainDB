@@ -30,6 +30,7 @@ func NewServer(address string, node *node.Coordinator) *RPCServer {
 	s.Server = transport.NewServer(address, func(grpcServer *grpc.Server) {
 		pb.RegisterCoordinatorServiceServer(grpcServer, s)
 		grpc_health_v1.RegisterHealthServer(grpcServer, health.NewServer())
+
 	})
 	return s
 }

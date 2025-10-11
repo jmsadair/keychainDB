@@ -157,6 +157,16 @@ func (c *Coordinator) updateChainMemberConfigurations(ctx context.Context, confi
 			req := &chainpb.UpdateConfigurationRequest{Configuration: config.Proto()}
 			_, err := c.tn.UpdateConfiguration(ctx, member.Address, req)
 			if err != nil {
+				c.log.ErrorContext(
+					ctx,
+					"failed to update chain member configuration",
+					"error",
+					err.Error(),
+					"member-id",
+					member.ID,
+					"member-address",
+					member.Address,
+				)
 				updateFailed.Store(true)
 			}
 		}()

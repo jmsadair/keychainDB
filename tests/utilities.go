@@ -100,7 +100,12 @@ func newTestChainClient(t *testing.T) *chainclient.Client {
 }
 
 func newTestAPIClient(t *testing.T, endpoint string) *api.Client {
-	client, err := api.NewClient(endpoint, creds)
+	cfg := api.Config{
+		Endpoint:    endpoint,
+		Credentials: insecure.NewCredentials(),
+		MaxRetries:  5,
+	}
+	client, err := api.NewClient(cfg)
 	require.NoError(t, err)
 	return client
 }

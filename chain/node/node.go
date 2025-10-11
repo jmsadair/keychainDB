@@ -16,21 +16,10 @@ import (
 )
 
 var (
-	// Indicates a node is in the syncing state. Nodes that are syncing are unable to serve reads.
-	ErrSyncing = errors.New("cannot serve reads while syncing")
-	// Indicates that a node is not a member of any chain.
-	ErrNotMemberOfChain = errors.New("not member of chain")
-	// Indicates that the client provided configuration version does not match the configuration
-	// that this node has. This could mean that the client has an out-of-date configuration or
-	// that this node does.
-	ErrInvalidConfigVersion = errors.New("configuration version mismatch")
-	// Indicates that this node is not the head of the chain. Only the head of a chain
-	// is allowed to serve writes.
-	ErrNotHead = errors.New("chain head must serve writes")
-	// Indicates that the provided key does not exist.
-	ErrKeyDoesNotExist = errors.New("key does not exist")
-	// Indicates that a read of a key-value pair failed because it was not yet committed.
-	ErrNotCommitted = errors.New("key not committed")
+	ErrSyncing              = errors.New("chainserver: cannot serve reads while syncing")
+	ErrNotMemberOfChain     = errors.New("chainserver: not member of chain")
+	ErrInvalidConfigVersion = errors.New("chainserver: configuration version mismatch")
+	ErrNotHead              = errors.New("chainserver: chain head must serve writes")
 )
 
 const (
@@ -280,21 +269,18 @@ func (c *ChainNode) Read(ctx context.Context, request *pb.ReadRequest) (*pb.Read
 	value, err := c.store.CommittedRead(request.Key)
 
 	// If the key-value pair is dirty, forward the request to the tail.
-	if err != nil && errors.Is(err, storage.ErrDirtyRead) {
+	if err != nil && errors.Is(err, storage.ErrUncommittedRead) {
 		// Do not forward to the tail if this request was already forwarded.
 		// This is necessary to prevent a recursive RPC loop where the tail
 		// is syncing and forwards the request to its predecessor, but the
 		// predecessor has yet to commit the key-value pair so it forwards
 		// the request to the tail.
 		if state.Config.IsTail(c.ID) || request.Forwarded {
-			return nil, ErrNotCommitted
+			return nil, err
 		}
 		tail := state.Config.Tail()
 		req := &pb.ReadRequest{Key: request.Key, ConfigVersion: state.Config.Version, Forwarded: true}
 		return c.tn.Read(ctx, tail.Address, req)
-	}
-	if err != nil && errors.Is(err, storage.ErrKeyDoesNotExist) {
-		return nil, ErrKeyDoesNotExist
 	}
 	if err != nil {
 		return nil, err

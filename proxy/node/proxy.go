@@ -7,6 +7,7 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/jmsadair/keychain/api"
 	chainnode "github.com/jmsadair/keychain/chain/node"
 	apipb "github.com/jmsadair/keychain/proto/api"
 	chainpb "github.com/jmsadair/keychain/proto/chain"
@@ -14,9 +15,43 @@ import (
 )
 
 var (
-	ErrNoMembers         = errors.New("chain has no members")
-	ErrConfigReadFailure = errors.New("failed to read chain configuration from coordinator")
+	ErrNoMembers              = errors.New("chain has no members")
+	ErrCoordinatorUnavailable = errors.New("failed to read chain configuration from coordinator")
 )
+
+func forwardToLeader[T any](clusterMembers []string, fn func(target string) (T, error)) (T, error) {
+	var wg sync.WaitGroup
+	var mu sync.Mutex
+	var success bool
+	var successResp T
+
+	wg.Add(len(clusterMembers))
+	for _, m := range clusterMembers {
+		go func() {
+			defer wg.Done()
+			resp, err := fn(m)
+			if err != nil {
+				return
+			}
+			mu.Lock()
+			defer mu.Unlock()
+			if success {
+				return
+			}
+			success = true
+			successResp = resp
+		}()
+	}
+
+	wg.Wait()
+
+	var zero T
+	if !success {
+		return zero, ErrCoordinatorUnavailable
+	}
+
+	return successResp, nil
+}
 
 type ChainTransport interface {
 	Read(ctx context.Context, target string, request *chainpb.ReadRequest) (*chainpb.ReadResponse, error)
@@ -44,7 +79,7 @@ func NewProxy(raftMembers []string, coordinatorTn CoordinatorTransport, chainTn 
 }
 
 func (p *Proxy) Get(ctx context.Context, request *apipb.GetRequest) (*apipb.GetResponse, error) {
-	config, err := p.getChainConfiguration(ctx, false)
+	config, err := p.getChainMembership(ctx, false)
 	if err != nil {
 		return nil, err
 	}
@@ -55,9 +90,9 @@ func (p *Proxy) Get(ctx context.Context, request *apipb.GetRequest) (*apipb.GetR
 
 	readReq := &chainpb.ReadRequest{Key: request.GetKey(), ConfigVersion: config.Version}
 	readResp, err := p.chainTn.Read(ctx, tail.Address, readReq)
-	if err != nil && errors.Is(err, chainnode.ErrInvalidConfigVersion) {
+	if err != nil && errors.Is(err, api.ErrGRPCInvalidConfigVersion) {
 		p.log.WarnContext(ctx, "proxy configuration version does not match chain configuration version")
-		config, err := p.getChainConfiguration(ctx, true)
+		config, err := p.getChainMembership(ctx, true)
 		if err != nil {
 			return nil, err
 		}
@@ -80,7 +115,7 @@ func (p *Proxy) Get(ctx context.Context, request *apipb.GetRequest) (*apipb.GetR
 }
 
 func (p *Proxy) Set(ctx context.Context, request *apipb.SetRequest) (*apipb.SetResponse, error) {
-	config, err := p.getChainConfiguration(ctx, false)
+	config, err := p.getChainMembership(ctx, false)
 	if err != nil {
 		return nil, err
 	}
@@ -93,7 +128,7 @@ func (p *Proxy) Set(ctx context.Context, request *apipb.SetRequest) (*apipb.SetR
 	_, err = p.chainTn.Replicate(ctx, head.Address, replicateReq)
 	if err != nil && errors.Is(err, chainnode.ErrInvalidConfigVersion) {
 		p.log.WarnContext(ctx, "proxy configuration version does not match chain configuration version")
-		config, err := p.getChainConfiguration(ctx, true)
+		config, err := p.getChainMembership(ctx, true)
 		if err != nil {
 			return nil, err
 		}
@@ -113,39 +148,23 @@ func (p *Proxy) Set(ctx context.Context, request *apipb.SetRequest) (*apipb.SetR
 	return &apipb.SetResponse{}, nil
 }
 
-func (p *Proxy) getChainConfiguration(ctx context.Context, forceRefresh bool) (*chainnode.Configuration, error) {
+func (p *Proxy) getChainMembership(ctx context.Context, forceRefresh bool) (*chainnode.Configuration, error) {
 	config := p.chainConfig.Load()
 	if !forceRefresh && config != nil {
 		return config, nil
 	}
 
-	var wg sync.WaitGroup
-	var mu sync.Mutex
-	memberToConfig := make(map[string]*chainnode.Configuration, len(p.raftMembers))
-	wg.Add(len(p.raftMembers))
-	for _, member := range p.raftMembers {
-		go func() {
-			defer wg.Done()
-			var req coordinatorpb.GetMembersRequest
-			resp, err := p.coordinatorTn.GetMembers(ctx, member, &req)
-			mu.Lock()
-			memberToConfig[member] = nil
-			if err == nil {
-				memberToConfig[member] = chainnode.NewConfigurationFromProto(resp.GetConfiguration())
-			}
-			mu.Unlock()
-		}()
+	resp, err := forwardToLeader(p.raftMembers, func(target string) (*coordinatorpb.GetMembersResponse, error) {
+		var req coordinatorpb.GetMembersRequest
+		return p.coordinatorTn.GetMembers(ctx, target, &req)
+	})
+	if err != nil {
+		p.log.ErrorContext(ctx, "failed to contact coordinator")
+		return nil, err
 	}
 
-	wg.Wait()
-	for _, config := range memberToConfig {
-		if config == nil {
-			continue
-		}
-		p.chainConfig.Store(config)
-		return config, nil
-	}
+	config = chainnode.NewConfigurationFromProto(resp.GetConfiguration())
+	p.chainConfig.Store(config)
 
-	p.log.ErrorContext(ctx, "failed to contact coordinator")
-	return nil, ErrConfigReadFailure
+	return config, nil
 }

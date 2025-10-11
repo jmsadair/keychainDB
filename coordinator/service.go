@@ -30,7 +30,7 @@ type ServiceConfig struct {
 	SnapshotStoragePath string
 	// Whether or not to bootstrap a new raft cluster.
 	Bootstrap bool
-	// gRPC Dial options a service will use when making RPCs to other servers.
+	// gRPC dial options a service will use when making RPCs to other servers.
 	DialOptions []grpc.DialOption
 	// Logger that a server will use for logging.
 	Log *slog.Logger
