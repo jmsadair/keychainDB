@@ -8,7 +8,6 @@ import (
 	apipb "github.com/jmsadair/keychain/proto/api"
 	proxypb "github.com/jmsadair/keychain/proto/proxy"
 	"github.com/jmsadair/keychain/proxy/node"
-	proxynode "github.com/jmsadair/keychain/proxy/node"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/health"
@@ -26,11 +25,11 @@ type RPCServer struct {
 	proxypb.ProxyServiceServer
 	*transport.Server
 	Address string
-	Proxy   *proxynode.Proxy
+	Proxy   *node.Proxy
 }
 
 // NewServer creates a new server.
-func NewServer(address string, p *proxynode.Proxy) *RPCServer {
+func NewServer(address string, p *node.Proxy) *RPCServer {
 	s := &RPCServer{Address: address, Proxy: p}
 	s.Server = transport.NewServer(address, func(grpcServer *grpc.Server) {
 		proxypb.RegisterProxyServiceServer(grpcServer, s)
