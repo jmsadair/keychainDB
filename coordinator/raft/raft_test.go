@@ -20,14 +20,12 @@ func waitForLeader(t *testing.T, expectedLeader *RaftBackend) {
 func newTestRaftBackend(t *testing.T, nodeID string, bind string, advertise string, bootstrap bool) *RaftBackend {
 	storeDir := t.TempDir()
 	snapshotDir := t.TempDir()
-
 	rb, err := NewRaftBackend(nodeID, bind, advertise, storeDir, snapshotDir, bootstrap)
 	require.NoError(t, err)
-
 	return rb
 }
 
-func TestJoinCluster(t *testing.T) {
+func TestJoinRemoveFromCluster(t *testing.T) {
 	nodeID1 := "leader"
 	addr1 := "127.0.0.1:9001"
 	leader := newTestRaftBackend(t, nodeID1, addr1, addr1, true)

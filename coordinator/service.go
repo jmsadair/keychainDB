@@ -5,6 +5,7 @@ import (
 	"log/slog"
 
 	chainclient "github.com/jmsadair/keychain/chain/client"
+	coordinatorclient "github.com/jmsadair/keychain/coordinator/client"
 	"github.com/jmsadair/keychain/coordinator/node"
 	"github.com/jmsadair/keychain/coordinator/raft"
 	"github.com/jmsadair/keychain/coordinator/server"
@@ -56,11 +57,15 @@ func NewService(cfg ServiceConfig) (*Service, error) {
 	if err != nil {
 		return nil, err
 	}
-	tn, err := chainclient.NewClient(cfg.DialOptions...)
+	chainTn, err := chainclient.NewClient(cfg.DialOptions...)
 	if err != nil {
 		return nil, err
 	}
-	coordinator := node.NewCoordinator(cfg.ID, cfg.RaftAdvertise, tn, rb, cfg.Log)
+	coordinatorTn, err := coordinatorclient.NewClient(cfg.DialOptions...)
+	if err != nil {
+		return nil, err
+	}
+	coordinator := node.NewCoordinator(cfg.ID, cfg.RaftAdvertise, coordinatorTn, chainTn, rb, cfg.Log)
 	httpServer := &server.HTTPServer{Address: cfg.HTTPListen, GRPCAddress: cfg.GRPCListen, DialOptions: cfg.DialOptions}
 	gRPCServer := server.NewServer(cfg.GRPCListen, coordinator)
 	return &Service{HTTPServer: httpServer, GRPCServer: gRPCServer, Coordinator: coordinator, Raft: rb, Config: cfg}, nil
