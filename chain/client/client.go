@@ -9,6 +9,8 @@ import (
 	"google.golang.org/grpc"
 )
 
+var defaultCallOps = []grpc.CallOption{grpc.WaitForReady(true)}
+
 // Client is a gRPC client for the chain service.
 type Client struct {
 	cache *transport.ClientCache[pb.ChainServiceClient]
@@ -25,9 +27,9 @@ func (c *Client) Replicate(ctx context.Context, address string, request *pb.Repl
 	if err != nil {
 		return nil, err
 	}
-	resp, err := client.Replicate(ctx, request)
+	resp, err := client.Replicate(ctx, request, defaultCallOps...)
 	if err != nil {
-		return nil, parseGrpcErr(err)
+		return nil, err
 	}
 	return resp, nil
 }
@@ -38,9 +40,9 @@ func (c *Client) Write(ctx context.Context, address string, request *pb.WriteReq
 	if err != nil {
 		return nil, err
 	}
-	resp, err := client.Write(ctx, request)
+	resp, err := client.Write(ctx, request, defaultCallOps...)
 	if err != nil {
-		return nil, parseGrpcErr(err)
+		return nil, err
 	}
 	return resp, nil
 }
@@ -51,9 +53,9 @@ func (c *Client) Read(ctx context.Context, address string, request *pb.ReadReque
 	if err != nil {
 		return nil, err
 	}
-	resp, err := client.Read(ctx, request)
+	resp, err := client.Read(ctx, request, defaultCallOps...)
 	if err != nil {
-		return nil, parseGrpcErr(err)
+		return nil, err
 	}
 	return resp, nil
 }
@@ -64,9 +66,9 @@ func (c *Client) Commit(ctx context.Context, address string, request *pb.CommitR
 	if err != nil {
 		return nil, err
 	}
-	resp, err := client.Commit(ctx, request)
+	resp, err := client.Commit(ctx, request, defaultCallOps...)
 	if err != nil {
-		return nil, parseGrpcErr(err)
+		return nil, err
 	}
 	return resp, nil
 }
@@ -77,9 +79,9 @@ func (c *Client) Propagate(ctx context.Context, address string, request *pb.Prop
 	if err != nil {
 		return nil, err
 	}
-	stream, err := client.Propagate(ctx, request)
+	stream, err := client.Propagate(ctx, request, defaultCallOps...)
 	if err != nil {
-		return nil, parseGrpcErr(err)
+		return nil, err
 	}
 	return stream, nil
 }
@@ -90,9 +92,9 @@ func (c *Client) Ping(ctx context.Context, address string, request *pb.PingReque
 	if err != nil {
 		return nil, err
 	}
-	resp, err := client.Ping(ctx, request)
+	resp, err := client.Ping(ctx, request, defaultCallOps...)
 	if err != nil {
-		return nil, parseGrpcErr(err)
+		return nil, err
 	}
 	return resp, nil
 }
@@ -107,9 +109,9 @@ func (c *Client) UpdateConfiguration(
 	if err != nil {
 		return nil, err
 	}
-	resp, err := client.UpdateConfiguration(ctx, request)
+	resp, err := client.UpdateConfiguration(ctx, request, defaultCallOps...)
 	if err != nil {
-		return nil, parseGrpcErr(err)
+		return nil, err
 	}
 	return resp, nil
 }

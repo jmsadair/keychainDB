@@ -8,6 +8,7 @@ package proxy
 
 import (
 	context "context"
+	api "github.com/jmsadair/keychain/proto/api"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -30,9 +31,9 @@ const (
 // Proxy service is the client-facing gateway API.
 type ProxyServiceClient interface {
 	// Get handles requests for reading key-value pairs.
-	Get(ctx context.Context, in *GetRequest, opts ...grpc.CallOption) (*GetResponse, error)
+	Get(ctx context.Context, in *api.GetRequest, opts ...grpc.CallOption) (*api.GetResponse, error)
 	// Set handles requests for setting key-value pairs.
-	Set(ctx context.Context, in *SetRequest, opts ...grpc.CallOption) (*SetResponse, error)
+	Set(ctx context.Context, in *api.SetRequest, opts ...grpc.CallOption) (*api.SetResponse, error)
 }
 
 type proxyServiceClient struct {
@@ -43,9 +44,9 @@ func NewProxyServiceClient(cc grpc.ClientConnInterface) ProxyServiceClient {
 	return &proxyServiceClient{cc}
 }
 
-func (c *proxyServiceClient) Get(ctx context.Context, in *GetRequest, opts ...grpc.CallOption) (*GetResponse, error) {
+func (c *proxyServiceClient) Get(ctx context.Context, in *api.GetRequest, opts ...grpc.CallOption) (*api.GetResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(GetResponse)
+	out := new(api.GetResponse)
 	err := c.cc.Invoke(ctx, ProxyService_Get_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -53,9 +54,9 @@ func (c *proxyServiceClient) Get(ctx context.Context, in *GetRequest, opts ...gr
 	return out, nil
 }
 
-func (c *proxyServiceClient) Set(ctx context.Context, in *SetRequest, opts ...grpc.CallOption) (*SetResponse, error) {
+func (c *proxyServiceClient) Set(ctx context.Context, in *api.SetRequest, opts ...grpc.CallOption) (*api.SetResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(SetResponse)
+	out := new(api.SetResponse)
 	err := c.cc.Invoke(ctx, ProxyService_Set_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -70,9 +71,9 @@ func (c *proxyServiceClient) Set(ctx context.Context, in *SetRequest, opts ...gr
 // Proxy service is the client-facing gateway API.
 type ProxyServiceServer interface {
 	// Get handles requests for reading key-value pairs.
-	Get(context.Context, *GetRequest) (*GetResponse, error)
+	Get(context.Context, *api.GetRequest) (*api.GetResponse, error)
 	// Set handles requests for setting key-value pairs.
-	Set(context.Context, *SetRequest) (*SetResponse, error)
+	Set(context.Context, *api.SetRequest) (*api.SetResponse, error)
 	mustEmbedUnimplementedProxyServiceServer()
 }
 
@@ -83,10 +84,10 @@ type ProxyServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedProxyServiceServer struct{}
 
-func (UnimplementedProxyServiceServer) Get(context.Context, *GetRequest) (*GetResponse, error) {
+func (UnimplementedProxyServiceServer) Get(context.Context, *api.GetRequest) (*api.GetResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Get not implemented")
 }
-func (UnimplementedProxyServiceServer) Set(context.Context, *SetRequest) (*SetResponse, error) {
+func (UnimplementedProxyServiceServer) Set(context.Context, *api.SetRequest) (*api.SetResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Set not implemented")
 }
 func (UnimplementedProxyServiceServer) mustEmbedUnimplementedProxyServiceServer() {}
@@ -111,7 +112,7 @@ func RegisterProxyServiceServer(s grpc.ServiceRegistrar, srv ProxyServiceServer)
 }
 
 func _ProxyService_Get_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetRequest)
+	in := new(api.GetRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -123,13 +124,13 @@ func _ProxyService_Get_Handler(srv interface{}, ctx context.Context, dec func(in
 		FullMethod: ProxyService_Get_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ProxyServiceServer).Get(ctx, req.(*GetRequest))
+		return srv.(ProxyServiceServer).Get(ctx, req.(*api.GetRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _ProxyService_Set_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(SetRequest)
+	in := new(api.SetRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -141,7 +142,7 @@ func _ProxyService_Set_Handler(srv interface{}, ctx context.Context, dec func(in
 		FullMethod: ProxyService_Set_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ProxyServiceServer).Set(ctx, req.(*SetRequest))
+		return srv.(ProxyServiceServer).Set(ctx, req.(*api.SetRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }

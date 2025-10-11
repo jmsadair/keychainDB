@@ -3,11 +3,24 @@ package server
 import (
 	"context"
 
+	"github.com/jmsadair/keychain/api"
 	"github.com/jmsadair/keychain/chain/node"
+	"github.com/jmsadair/keychain/chain/storage"
 	"github.com/jmsadair/keychain/internal/transport"
 	pb "github.com/jmsadair/keychain/proto/chain"
 	"google.golang.org/grpc"
 )
+
+var errToGRPCError = map[error]error{
+	storage.ErrConflict:          api.ErrGRPCConflict,
+	storage.ErrEmptyKey:          api.ErrGRPCEmptyKey,
+	storage.ErrUncommittedRead:   api.ErrGRPCUncommittedRead,
+	storage.ErrKeyNotFound:       api.ErrGRPCKeyNotFound,
+	node.ErrInvalidConfigVersion: api.ErrGRPCInvalidConfigVersion,
+	node.ErrNotHead:              api.ErrGRPCNotHead,
+	node.ErrSyncing:              api.ErrGRPCSyncing,
+	node.ErrInvalidConfigVersion: api.ErrGRPCInvalidConfigVersion,
+}
 
 // RPCServer is a gRPC-based server implementation for chain nodes.
 type RPCServer struct {
@@ -23,9 +36,12 @@ func NewServer(address string, node *node.ChainNode) *RPCServer {
 		Address: address,
 		Node:    node,
 	}
-	s.Server = transport.NewServer(address, func(grpcServer *grpc.Server) {
-		pb.RegisterChainServiceServer(grpcServer, s)
-	})
+	s.Server = transport.NewServer(
+		address,
+		func(grpcServer *grpc.Server) { pb.RegisterChainServiceServer(grpcServer, s) },
+		grpc.UnaryInterceptor(transport.UnaryServerErrorInterceptor(errToGRPCError)),
+		grpc.StreamInterceptor(transport.StreamServerErrorInterceptor(errToGRPCError)),
+	)
 	return s
 }
 
@@ -33,7 +49,7 @@ func NewServer(address string, node *node.ChainNode) *RPCServer {
 func (s *RPCServer) Replicate(ctx context.Context, request *pb.ReplicateRequest) (*pb.ReplicateResponse, error) {
 	resp, err := s.Node.Replicate(ctx, request)
 	if err != nil {
-		return nil, gRPCError(err)
+		return nil, err
 	}
 	return resp, nil
 }
@@ -42,7 +58,7 @@ func (s *RPCServer) Replicate(ctx context.Context, request *pb.ReplicateRequest)
 func (s *RPCServer) Write(ctx context.Context, request *pb.WriteRequest) (*pb.WriteResponse, error) {
 	resp, err := s.Node.WriteWithVersion(ctx, request)
 	if err != nil {
-		return nil, gRPCError(err)
+		return nil, err
 	}
 	return resp, nil
 }
@@ -51,7 +67,7 @@ func (s *RPCServer) Write(ctx context.Context, request *pb.WriteRequest) (*pb.Wr
 func (s *RPCServer) Read(ctx context.Context, request *pb.ReadRequest) (*pb.ReadResponse, error) {
 	resp, err := s.Node.Read(ctx, request)
 	if err != nil {
-		return nil, gRPCError(err)
+		return nil, err
 	}
 	return resp, nil
 }
@@ -60,7 +76,7 @@ func (s *RPCServer) Read(ctx context.Context, request *pb.ReadRequest) (*pb.Read
 func (s *RPCServer) Commit(ctx context.Context, request *pb.CommitRequest) (*pb.CommitResponse, error) {
 	resp, err := s.Node.Commit(ctx, request)
 	if err != nil {
-		return nil, gRPCError(err)
+		return nil, err
 	}
 	return resp, nil
 }
@@ -69,14 +85,14 @@ func (s *RPCServer) Commit(ctx context.Context, request *pb.CommitRequest) (*pb.
 func (s *RPCServer) UpdateConfiguration(ctx context.Context, request *pb.UpdateConfigurationRequest) (*pb.UpdateConfigurationResponse, error) {
 	resp, err := s.Node.UpdateConfiguration(ctx, request)
 	if err != nil {
-		return nil, gRPCError(err)
+		return nil, err
 	}
 	return resp, nil
 }
 
 // Propagate handles requests from other nodes in the chain to initiate a server-side stream of key-value pairs.
 func (s *RPCServer) Propagate(request *pb.PropagateRequest, stream pb.ChainService_PropagateServer) error {
-	return gRPCError(s.Node.Propagate(stream.Context(), request, stream))
+	return s.Node.Propagate(stream.Context(), request, stream)
 }
 
 // Ping handles requests from the coordinator for checking if this node is alive.

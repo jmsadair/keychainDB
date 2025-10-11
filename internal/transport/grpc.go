@@ -8,9 +8,54 @@ import (
 	"github.com/jmsadair/keychain/internal/lru"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 const defaultCacheCapacity = 50
+
+// UnaryServerErrorInterceptor maps server errors to their gRPC equivalent.
+func UnaryServerErrorInterceptor(errToGRPCErrorMapping map[error]error) grpc.UnaryServerInterceptor {
+	return func(
+		ctx context.Context,
+		req any,
+		info *grpc.UnaryServerInfo,
+		handler grpc.UnaryHandler,
+	) (any, error) {
+		resp, err := handler(ctx, req)
+		if err != nil {
+			if _, ok := status.FromError(err); ok {
+				return nil, err
+			}
+			grpcErr, ok := errToGRPCErrorMapping[err]
+			if !ok {
+				grpcErr := status.New(codes.Internal, err.Error())
+				return nil, grpcErr.Err()
+			}
+			return nil, grpcErr
+		}
+		return resp, nil
+	}
+}
+
+// StreamServerErrorInterceptor maps server errors to their gRPC equivalent.
+func StreamServerErrorInterceptor(errToGRPCErrorMapping map[error]error) grpc.StreamServerInterceptor {
+	return func(srv any, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
+		err := handler(srv, ss)
+		if err != nil {
+			if _, ok := status.FromError(err); ok {
+				return err
+			}
+			grpcErr, ok := errToGRPCErrorMapping[err]
+			if !ok {
+				grpcErr := status.New(codes.Internal, err.Error())
+				return grpcErr.Err()
+			}
+			return grpcErr
+		}
+		return nil
+	}
+}
 
 // ServiceRegistrar is a function that registers a service on a grpc.Server.
 type ServiceRegistrar func(server *grpc.Server)
@@ -19,13 +64,15 @@ type ServiceRegistrar func(server *grpc.Server)
 type Server struct {
 	Address  string
 	register ServiceRegistrar
+	opts     []grpc.ServerOption
 }
 
 // NewServer creates a new gRPC server for a given address and registration function.
-func NewServer(address string, register ServiceRegistrar) *Server {
+func NewServer(address string, register ServiceRegistrar, opts ...grpc.ServerOption) *Server {
 	return &Server{
 		Address:  address,
 		register: register,
+		opts:     opts,
 	}
 }
 
@@ -41,7 +88,7 @@ func (s *Server) Run(ctx context.Context) error {
 		return err
 	}
 
-	srv := grpc.NewServer()
+	srv := grpc.NewServer(s.opts...)
 	s.register(srv)
 
 	g, ctx := errgroup.WithContext(ctx)

@@ -237,7 +237,7 @@ func TestRead(t *testing.T) {
 	// Node is not the tail of the chain and the key-value pair is dirty.
 	// It should forward the read to the tail.
 	forwardedReq := &pb.ReadRequest{Key: key, ConfigVersion: 0, Forwarded: true}
-	store.On("CommittedRead", key).Return(nil, storage.ErrDirtyRead).Once()
+	store.On("CommittedRead", key).Return(nil, storage.ErrUncommittedRead).Once()
 	transport.On("Read", mock.Anything, member3.Address, forwardedReq).Return(&pb.ReadResponse{Value: value}, nil).Once()
 	resp, err = node.Read(context.Background(), req)
 	require.NoError(t, err)

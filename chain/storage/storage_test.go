@@ -37,7 +37,7 @@ func TestSingleUncommittedWriteThenRead(t *testing.T) {
 	require.Equal(t, uint64(1), version)
 
 	_, err = store.CommittedRead(key)
-	require.ErrorIs(t, err, ErrDirtyRead)
+	require.ErrorIs(t, err, ErrUncommittedRead)
 }
 
 func TestMultipleUncommittedWriteThenRead(t *testing.T) {
@@ -56,7 +56,7 @@ func TestMultipleUncommittedWriteThenRead(t *testing.T) {
 	require.Equal(t, uint64(2), version)
 
 	_, err = store.CommittedRead(key)
-	require.ErrorIs(t, err, ErrDirtyRead)
+	require.ErrorIs(t, err, ErrUncommittedRead)
 }
 
 func TestUncommittedWriteCommitThenRead(t *testing.T) {
@@ -118,7 +118,7 @@ func TestInterleavedUncommittedWriteCommitsReads(t *testing.T) {
 	err = store.CommitVersion(key, version1)
 	require.NoError(t, err)
 	_, err = store.CommittedRead(key)
-	require.ErrorIs(t, err, ErrDirtyRead)
+	require.ErrorIs(t, err, ErrUncommittedRead)
 
 	value3 := []byte("value-3")
 	version3, err := store.UncommittedWriteNewVersion(key, value3)
@@ -126,7 +126,7 @@ func TestInterleavedUncommittedWriteCommitsReads(t *testing.T) {
 	require.Equal(t, uint64(3), version3)
 
 	_, err = store.CommittedRead(key)
-	require.ErrorIs(t, err, ErrDirtyRead)
+	require.ErrorIs(t, err, ErrUncommittedRead)
 
 	err = store.CommitVersion(key, version3)
 	require.NoError(t, err)
