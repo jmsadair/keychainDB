@@ -3,7 +3,9 @@ package server
 import (
 	"context"
 
+	"github.com/jmsadair/keychain/api/types"
 	"github.com/jmsadair/keychain/coordinator/node"
+	"github.com/jmsadair/keychain/coordinator/raft"
 	"github.com/jmsadair/keychain/internal/transport"
 	pb "github.com/jmsadair/keychain/proto/coordinator"
 	"google.golang.org/grpc"
@@ -12,6 +14,15 @@ import (
 	"google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/status"
 )
+
+var errToGRPCError = map[error]error{
+	node.ErrConfigurationUpdateFailed: types.ErrGRPCConfigurationUpdateFailed,
+	raft.ErrEnqueueTimeout:            types.ErrGRPCEnqueueTimeout,
+	raft.ErrLeader:                    types.ErrGRPCLeader,
+	raft.ErrNodeExists:                types.ErrGRPCNodeExists,
+	raft.ErrLeadershipLost:            types.ErrGRPCLeadershipLost,
+	raft.ErrNotLeader:                 types.ErrGRPCNotLeader,
+}
 
 // RPCServer is the gRPC coordinator server.
 type RPCServer struct {
@@ -30,8 +41,7 @@ func NewServer(address string, node *node.Coordinator) *RPCServer {
 	s.Server = transport.NewServer(address, func(grpcServer *grpc.Server) {
 		pb.RegisterCoordinatorServiceServer(grpcServer, s)
 		grpc_health_v1.RegisterHealthServer(grpcServer, health.NewServer())
-
-	})
+	}, grpc.UnaryInterceptor(transport.UnaryServerErrorInterceptor(errToGRPCError)))
 	return s
 }
 

@@ -184,11 +184,6 @@ func (rb *RaftBackend) LeaderCh() <-chan bool {
 	return rb.raft.LeaderCh()
 }
 
-func (rb *RaftBackend) LeaderAddressAndID() (string, string) {
-	addr, id := rb.raft.LeaderWithID()
-	return string(addr), string(id)
-}
-
 func (rb *RaftBackend) ChainConfiguration() *chainnode.Configuration {
 	return rb.fsm.ChainConfiguration()
 }

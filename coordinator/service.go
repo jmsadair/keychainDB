@@ -61,11 +61,7 @@ func NewService(cfg ServiceConfig) (*Service, error) {
 	if err != nil {
 		return nil, err
 	}
-	coordinatorTn, err := coordinatorclient.NewClient(cfg.DialOptions...)
-	if err != nil {
-		return nil, err
-	}
-	coordinator := node.NewCoordinator(cfg.ID, cfg.RaftAdvertise, coordinatorTn, chainTn, rb, cfg.Log)
+	coordinator := node.NewCoordinator(cfg.ID, cfg.RaftAdvertise, chainTn, rb, cfg.Log)
 	httpServer := &server.HTTPServer{Address: cfg.HTTPListen, GRPCAddress: cfg.GRPCListen, DialOptions: cfg.DialOptions}
 	gRPCServer := server.NewServer(cfg.GRPCListen, coordinator)
 	return &Service{HTTPServer: httpServer, GRPCServer: gRPCServer, Coordinator: coordinator, Raft: rb, Config: cfg}, nil

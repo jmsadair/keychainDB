@@ -15,36 +15,16 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-var (
-	ErrConfigurationUpdateFailed = errors.New("coordinator: failed to update configuration for one or more chain members")
-	ErrNoLeader                  = errors.New("coordinator: no leader elected")
-)
+var ErrConfigurationUpdateFailed = errors.New("coordinator: failed to update configuration for chain member")
 
 const (
 	heartbeatInterval   = 250 * time.Millisecond
 	chainFailureTimeout = 5 * time.Second
 )
 
-func forwardToLeader[T any, S any](ctx context.Context, leaderAddr string, request T, fn func(context.Context, string, T) (S, error)) (S, error) {
-	var zero S
-	if leaderAddr == "" {
-		return zero, ErrNoLeader
-	}
-	return fn(ctx, leaderAddr, request)
-}
-
 type ChainTransport interface {
 	UpdateConfiguration(ctx context.Context, address string, request *chainpb.UpdateConfigurationRequest) (*chainpb.UpdateConfigurationResponse, error)
 	Ping(ctx context.Context, address string, request *chainpb.PingRequest) (*chainpb.PingResponse, error)
-}
-
-type CoordinatorTransport interface {
-	GetMembers(ctx context.Context, address string, request *pb.GetMembersRequest) (*pb.GetMembersResponse, error)
-	JoinCluster(ctx context.Context, address string, request *pb.JoinClusterRequest) (*pb.JoinClusterResponse, error)
-	RemoveFromCluster(ctx context.Context, address string, request *pb.RemoveFromClusterRequest) (*pb.RemoveFromClusterResponse, error)
-	AddMember(ctx context.Context, address string, request *pb.AddMemberRequest) (*pb.AddMemberResponse, error)
-	RemoveMember(ctx context.Context, address string, request *pb.RemoveMemberRequest) (*pb.RemoveMemberResponse, error)
-	ClusterStatus(ctx context.Context, address string, request *pb.ClusterStatusRequest) (*pb.ClusterStatusResponse, error)
 }
 
 type RaftProtocol interface {
@@ -52,7 +32,6 @@ type RaftProtocol interface {
 	RemoveMember(ctx context.Context, id string) (*chainnode.Configuration, *chainnode.ChainMember, error)
 	GetMembers(ctx context.Context) (*chainnode.Configuration, error)
 	LeaderCh() <-chan bool
-	LeaderAddressAndID() (string, string)
 	ChainConfiguration() *chainnode.Configuration
 	JoinCluster(ctx context.Context, id, address string) error
 	RemoveFromCluster(ctx context.Context, id string) error
@@ -71,7 +50,6 @@ type Coordinator struct {
 	Address             string
 	raft                RaftProtocol
 	chainTn             ChainTransport
-	coordinatorTn       CoordinatorTransport
 	memberStates        map[string]*memberState
 	isLeader            bool
 	leadershipChangeCh  <-chan bool
@@ -84,7 +62,6 @@ type Coordinator struct {
 func NewCoordinator(
 	id string,
 	address string,
-	coordinatorTn CoordinatorTransport,
 	chainTn ChainTransport,
 	raft RaftProtocol,
 	log *slog.Logger,
@@ -94,7 +71,6 @@ func NewCoordinator(
 		ID:                  id,
 		raft:                raft,
 		chainTn:             chainTn,
-		coordinatorTn:       coordinatorTn,
 		leadershipChangeCh:  raft.LeaderCh(),
 		memberStates:        make(map[string]*memberState),
 		failedChainMemberCh: make(chan any),
@@ -127,9 +103,6 @@ func (c *Coordinator) Run(ctx context.Context) error {
 }
 
 func (c *Coordinator) AddMember(ctx context.Context, request *pb.AddMemberRequest) (*pb.AddMemberResponse, error) {
-	if leaderAddr, leaderID := c.raft.LeaderAddressAndID(); leaderID != c.ID {
-		return forwardToLeader(ctx, leaderAddr, request, c.coordinatorTn.AddMember)
-	}
 	config, err := c.raft.AddMember(ctx, request.GetId(), request.GetAddress())
 	if err != nil {
 		return nil, err
@@ -138,9 +111,6 @@ func (c *Coordinator) AddMember(ctx context.Context, request *pb.AddMemberReques
 }
 
 func (c *Coordinator) RemoveMember(ctx context.Context, request *pb.RemoveMemberRequest) (*pb.RemoveMemberResponse, error) {
-	if leaderAddr, leaderID := c.raft.LeaderAddressAndID(); leaderID != c.ID {
-		return forwardToLeader(ctx, leaderAddr, request, c.coordinatorTn.RemoveMember)
-	}
 	config, removed, err := c.raft.RemoveMember(ctx, request.GetId())
 	if err != nil {
 		return nil, err
@@ -149,9 +119,6 @@ func (c *Coordinator) RemoveMember(ctx context.Context, request *pb.RemoveMember
 }
 
 func (c *Coordinator) GetMembers(ctx context.Context, request *pb.GetMembersRequest) (*pb.GetMembersResponse, error) {
-	if leaderAddr, leaderID := c.raft.LeaderAddressAndID(); leaderID != c.ID {
-		return forwardToLeader(ctx, leaderAddr, request, c.coordinatorTn.GetMembers)
-	}
 	config, err := c.raft.GetMembers(ctx)
 	if err != nil {
 		return nil, err
@@ -160,9 +127,6 @@ func (c *Coordinator) GetMembers(ctx context.Context, request *pb.GetMembersRequ
 }
 
 func (c *Coordinator) JoinCluster(ctx context.Context, request *pb.JoinClusterRequest) (*pb.JoinClusterResponse, error) {
-	if leaderAddr, leaderID := c.raft.LeaderAddressAndID(); leaderID != c.ID {
-		return forwardToLeader(ctx, leaderAddr, request, c.coordinatorTn.JoinCluster)
-	}
 	if err := c.raft.JoinCluster(ctx, request.GetId(), request.GetAddress()); err != nil {
 		return nil, err
 	}
@@ -170,9 +134,6 @@ func (c *Coordinator) JoinCluster(ctx context.Context, request *pb.JoinClusterRe
 }
 
 func (c *Coordinator) RemoveFromCluster(ctx context.Context, request *pb.RemoveFromClusterRequest) (*pb.RemoveFromClusterResponse, error) {
-	if leaderAddr, leaderID := c.raft.LeaderAddressAndID(); leaderID != c.ID {
-		return forwardToLeader(ctx, leaderAddr, request, c.coordinatorTn.RemoveFromCluster)
-	}
 	if err := c.raft.RemoveFromCluster(ctx, request.GetId()); err != nil {
 		return nil, err
 	}
@@ -180,9 +141,6 @@ func (c *Coordinator) RemoveFromCluster(ctx context.Context, request *pb.RemoveF
 }
 
 func (c *Coordinator) ClusterStatus(ctx context.Context, request *pb.ClusterStatusRequest) (*pb.ClusterStatusResponse, error) {
-	if leaderAddr, leaderID := c.raft.LeaderAddressAndID(); leaderID != c.ID {
-		return forwardToLeader(ctx, leaderAddr, request, c.coordinatorTn.ClusterStatus)
-	}
 	status, err := c.raft.ClusterStatus()
 	if err != nil {
 		return nil, err
