@@ -4,7 +4,6 @@ package coordinator;
 
 option go_package = "github.com/jmsadair/keychain/proto/coordinator";
 
-import "google/protobuf/timestamp.proto";
 import "google/api/annotations.proto";
 import "proto/chain/chain.proto";
 
@@ -134,20 +133,4 @@ message ReplicatedOperation {
 		RemoveMemberOperation remove_member = 2;
 		ReadMembershipOperation read_membership = 3;
 	}
-}
-
-// Log is a log entry in the raft log.
-message Log {
-	// The index of this log entry.
-	uint64 index = 1;
-	// The election term of this log entry.
-	uint64 term = 2;
-	// The type of this log entry.
-	uint32 type = 3;
-	// The data of this log entry.
-	bytes data = 4;
-	// The extensions for this log entry.
-	bytes extensions = 5;
-	// The time at which this log entry was appended to the log.
-	google.protobuf.Timestamp appended_at = 6;
 }
