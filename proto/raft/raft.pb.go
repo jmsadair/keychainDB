@@ -354,6 +354,7 @@ type InstallSnapshotRequest struct {
 	Configuration      []byte                 `protobuf:"bytes,8,opt,name=configuration,proto3" json:"configuration,omitempty"`
 	ConfigurationIndex uint64                 `protobuf:"varint,9,opt,name=configuration_index,json=configurationIndex,proto3" json:"configuration_index,omitempty"`
 	Size               int64                  `protobuf:"varint,10,opt,name=size,proto3" json:"size,omitempty"`
+	Data               []byte                 `protobuf:"bytes,11,opt,name=data,proto3" json:"data,omitempty"`
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }
@@ -456,6 +457,13 @@ func (x *InstallSnapshotRequest) GetSize() int64 {
 		return x.Size
 	}
 	return 0
+}
+
+func (x *InstallSnapshotRequest) GetData() []byte {
+	if x != nil {
+		return x.Data
+	}
+	return nil
 }
 
 type InstallSnapshotResponse struct {
@@ -836,7 +844,7 @@ const file_proto_raft_raft_proto_rawDesc = "" +
 	"rpc_header\x18\x01 \x01(\v2\x0f.raft.RpcHeaderR\trpcHeader\x12\x12\n" +
 	"\x04term\x18\x02 \x01(\x04R\x04term\x12\x14\n" +
 	"\x05peers\x18\x03 \x01(\fR\x05peers\x12\x18\n" +
-	"\agranted\x18\x04 \x01(\bR\agranted\"\xea\x02\n" +
+	"\agranted\x18\x04 \x01(\bR\agranted\"\xfe\x02\n" +
 	"\x16InstallSnapshotRequest\x12.\n" +
 	"\n" +
 	"rpc_header\x18\x01 \x01(\v2\x0f.raft.RpcHeaderR\trpcHeader\x12)\n" +
@@ -849,7 +857,8 @@ const file_proto_raft_raft_proto_rawDesc = "" +
 	"\rconfiguration\x18\b \x01(\fR\rconfiguration\x12/\n" +
 	"\x13configuration_index\x18\t \x01(\x04R\x12configurationIndex\x12\x12\n" +
 	"\x04size\x18\n" +
-	" \x01(\x03R\x04size\"w\n" +
+	" \x01(\x03R\x04size\x12\x12\n" +
+	"\x04data\x18\v \x01(\fR\x04data\"w\n" +
 	"\x17InstallSnapshotResponse\x12.\n" +
 	"\n" +
 	"rpc_header\x18\x01 \x01(\v2\x0f.raft.RpcHeaderR\trpcHeader\x12\x12\n" +
@@ -877,9 +886,10 @@ const file_proto_raft_raft_proto_rawDesc = "" +
 	"\x04addr\x18\x03 \x01(\fR\x04addr\"J\n" +
 	"\x04Peer\x12\x1b\n" +
 	"\tserver_id\x18\x01 \x01(\tR\bserverId\x12%\n" +
-	"\x0eserver_address\x18\x02 \x01(\tR\rserverAddress2\xb6\x02\n" +
+	"\x0eserver_address\x18\x02 \x01(\tR\rserverAddress2\x8e\x03\n" +
 	"\vRaftService\x12J\n" +
-	"\rAppendEntries\x12\x1a.raft.AppendEntriesRequest\x1a\x1b.raft.AppendEntriesResponse\"\x00\x12D\n" +
+	"\rAppendEntries\x12\x1a.raft.AppendEntriesRequest\x1a\x1b.raft.AppendEntriesResponse\"\x00\x12V\n" +
+	"\x15AppendEntriesPipeline\x12\x1a.raft.AppendEntriesRequest\x1a\x1b.raft.AppendEntriesResponse\"\x00(\x010\x01\x12D\n" +
 	"\vRequestVote\x12\x18.raft.RequestVoteRequest\x1a\x19.raft.RequestVoteResponse\"\x00\x12R\n" +
 	"\x0fInstallSnapshot\x12\x1c.raft.InstallSnapshotRequest\x1a\x1d.raft.InstallSnapshotResponse\"\x00(\x01\x12A\n" +
 	"\n" +
@@ -924,15 +934,17 @@ var file_proto_raft_raft_proto_depIdxs = []int32{
 	9,  // 8: raft.TimeoutNowResponse.rpc_header:type_name -> raft.RpcHeader
 	11, // 9: raft.Log.appended_at:type_name -> google.protobuf.Timestamp
 	0,  // 10: raft.RaftService.AppendEntries:input_type -> raft.AppendEntriesRequest
-	2,  // 11: raft.RaftService.RequestVote:input_type -> raft.RequestVoteRequest
-	4,  // 12: raft.RaftService.InstallSnapshot:input_type -> raft.InstallSnapshotRequest
-	6,  // 13: raft.RaftService.TimeoutNow:input_type -> raft.TimeoutNowRequest
-	1,  // 14: raft.RaftService.AppendEntries:output_type -> raft.AppendEntriesResponse
-	3,  // 15: raft.RaftService.RequestVote:output_type -> raft.RequestVoteResponse
-	5,  // 16: raft.RaftService.InstallSnapshot:output_type -> raft.InstallSnapshotResponse
-	7,  // 17: raft.RaftService.TimeoutNow:output_type -> raft.TimeoutNowResponse
-	14, // [14:18] is the sub-list for method output_type
-	10, // [10:14] is the sub-list for method input_type
+	0,  // 11: raft.RaftService.AppendEntriesPipeline:input_type -> raft.AppendEntriesRequest
+	2,  // 12: raft.RaftService.RequestVote:input_type -> raft.RequestVoteRequest
+	4,  // 13: raft.RaftService.InstallSnapshot:input_type -> raft.InstallSnapshotRequest
+	6,  // 14: raft.RaftService.TimeoutNow:input_type -> raft.TimeoutNowRequest
+	1,  // 15: raft.RaftService.AppendEntries:output_type -> raft.AppendEntriesResponse
+	1,  // 16: raft.RaftService.AppendEntriesPipeline:output_type -> raft.AppendEntriesResponse
+	3,  // 17: raft.RaftService.RequestVote:output_type -> raft.RequestVoteResponse
+	5,  // 18: raft.RaftService.InstallSnapshot:output_type -> raft.InstallSnapshotResponse
+	7,  // 19: raft.RaftService.TimeoutNow:output_type -> raft.TimeoutNowResponse
+	15, // [15:20] is the sub-list for method output_type
+	10, // [10:15] is the sub-list for method input_type
 	10, // [10:10] is the sub-list for extension type_name
 	10, // [10:10] is the sub-list for extension extendee
 	0,  // [0:10] is the sub-list for field type_name

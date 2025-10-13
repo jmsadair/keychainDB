@@ -19,10 +19,11 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	RaftService_AppendEntries_FullMethodName   = "/raft.RaftService/AppendEntries"
-	RaftService_RequestVote_FullMethodName     = "/raft.RaftService/RequestVote"
-	RaftService_InstallSnapshot_FullMethodName = "/raft.RaftService/InstallSnapshot"
-	RaftService_TimeoutNow_FullMethodName      = "/raft.RaftService/TimeoutNow"
+	RaftService_AppendEntries_FullMethodName         = "/raft.RaftService/AppendEntries"
+	RaftService_AppendEntriesPipeline_FullMethodName = "/raft.RaftService/AppendEntriesPipeline"
+	RaftService_RequestVote_FullMethodName           = "/raft.RaftService/RequestVote"
+	RaftService_InstallSnapshot_FullMethodName       = "/raft.RaftService/InstallSnapshot"
+	RaftService_TimeoutNow_FullMethodName            = "/raft.RaftService/TimeoutNow"
 )
 
 // RaftServiceClient is the client API for RaftService service.
@@ -30,6 +31,7 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type RaftServiceClient interface {
 	AppendEntries(ctx context.Context, in *AppendEntriesRequest, opts ...grpc.CallOption) (*AppendEntriesResponse, error)
+	AppendEntriesPipeline(ctx context.Context, opts ...grpc.CallOption) (grpc.BidiStreamingClient[AppendEntriesRequest, AppendEntriesResponse], error)
 	RequestVote(ctx context.Context, in *RequestVoteRequest, opts ...grpc.CallOption) (*RequestVoteResponse, error)
 	InstallSnapshot(ctx context.Context, opts ...grpc.CallOption) (grpc.ClientStreamingClient[InstallSnapshotRequest, InstallSnapshotResponse], error)
 	TimeoutNow(ctx context.Context, in *TimeoutNowRequest, opts ...grpc.CallOption) (*TimeoutNowResponse, error)
@@ -53,6 +55,19 @@ func (c *raftServiceClient) AppendEntries(ctx context.Context, in *AppendEntries
 	return out, nil
 }
 
+func (c *raftServiceClient) AppendEntriesPipeline(ctx context.Context, opts ...grpc.CallOption) (grpc.BidiStreamingClient[AppendEntriesRequest, AppendEntriesResponse], error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &RaftService_ServiceDesc.Streams[0], RaftService_AppendEntriesPipeline_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &grpc.GenericClientStream[AppendEntriesRequest, AppendEntriesResponse]{ClientStream: stream}
+	return x, nil
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type RaftService_AppendEntriesPipelineClient = grpc.BidiStreamingClient[AppendEntriesRequest, AppendEntriesResponse]
+
 func (c *raftServiceClient) RequestVote(ctx context.Context, in *RequestVoteRequest, opts ...grpc.CallOption) (*RequestVoteResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(RequestVoteResponse)
@@ -65,7 +80,7 @@ func (c *raftServiceClient) RequestVote(ctx context.Context, in *RequestVoteRequ
 
 func (c *raftServiceClient) InstallSnapshot(ctx context.Context, opts ...grpc.CallOption) (grpc.ClientStreamingClient[InstallSnapshotRequest, InstallSnapshotResponse], error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	stream, err := c.cc.NewStream(ctx, &RaftService_ServiceDesc.Streams[0], RaftService_InstallSnapshot_FullMethodName, cOpts...)
+	stream, err := c.cc.NewStream(ctx, &RaftService_ServiceDesc.Streams[1], RaftService_InstallSnapshot_FullMethodName, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -91,6 +106,7 @@ func (c *raftServiceClient) TimeoutNow(ctx context.Context, in *TimeoutNowReques
 // for forward compatibility.
 type RaftServiceServer interface {
 	AppendEntries(context.Context, *AppendEntriesRequest) (*AppendEntriesResponse, error)
+	AppendEntriesPipeline(grpc.BidiStreamingServer[AppendEntriesRequest, AppendEntriesResponse]) error
 	RequestVote(context.Context, *RequestVoteRequest) (*RequestVoteResponse, error)
 	InstallSnapshot(grpc.ClientStreamingServer[InstallSnapshotRequest, InstallSnapshotResponse]) error
 	TimeoutNow(context.Context, *TimeoutNowRequest) (*TimeoutNowResponse, error)
@@ -106,6 +122,9 @@ type UnimplementedRaftServiceServer struct{}
 
 func (UnimplementedRaftServiceServer) AppendEntries(context.Context, *AppendEntriesRequest) (*AppendEntriesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AppendEntries not implemented")
+}
+func (UnimplementedRaftServiceServer) AppendEntriesPipeline(grpc.BidiStreamingServer[AppendEntriesRequest, AppendEntriesResponse]) error {
+	return status.Errorf(codes.Unimplemented, "method AppendEntriesPipeline not implemented")
 }
 func (UnimplementedRaftServiceServer) RequestVote(context.Context, *RequestVoteRequest) (*RequestVoteResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RequestVote not implemented")
@@ -154,6 +173,13 @@ func _RaftService_AppendEntries_Handler(srv interface{}, ctx context.Context, de
 	}
 	return interceptor(ctx, in, info, handler)
 }
+
+func _RaftService_AppendEntriesPipeline_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(RaftServiceServer).AppendEntriesPipeline(&grpc.GenericServerStream[AppendEntriesRequest, AppendEntriesResponse]{ServerStream: stream})
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type RaftService_AppendEntriesPipelineServer = grpc.BidiStreamingServer[AppendEntriesRequest, AppendEntriesResponse]
 
 func _RaftService_RequestVote_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(RequestVoteRequest)
@@ -219,6 +245,12 @@ var RaftService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "AppendEntriesPipeline",
+			Handler:       _RaftService_AppendEntriesPipeline_Handler,
+			ServerStreams: true,
+			ClientStreams: true,
+		},
 		{
 			StreamName:    "InstallSnapshot",
 			Handler:       _RaftService_InstallSnapshot_Handler,
