@@ -26,6 +26,14 @@ func (c *Client) AppendEntries(ctx context.Context, address string, request *pb.
 	return client.AppendEntries(ctx, request, defaultCallOps...)
 }
 
+func (c *Client) AppendEntriesPipeline(ctx context.Context, address string) (pb.RaftService_AppendEntriesPipelineClient, error) {
+	client, err := c.cache.GetOrCreate(address)
+	if err != nil {
+		return nil, err
+	}
+	return client.AppendEntriesPipeline(ctx, defaultCallOps...)
+}
+
 func (c *Client) RequestVote(ctx context.Context, address string, request *pb.RequestVoteRequest) (*pb.RequestVoteResponse, error) {
 	client, err := c.cache.GetOrCreate(address)
 	if err != nil {

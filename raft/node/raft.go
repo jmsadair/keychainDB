@@ -8,15 +8,6 @@ import (
 	pb "github.com/jmsadair/keychain/proto/raft"
 )
 
-type snapshotStream struct {
-	buf    []byte
-	stream pb.RaftService_InstallSnapshotServer
-}
-
-func (s *snapshotStream) Read(b []byte) (int, error) {
-	return -1, nil
-}
-
 type Raft struct {
 	rpcCh chan raft.RPC
 }
@@ -66,7 +57,7 @@ func (r *Raft) InstallSnapshot(stream pb.RaftService_InstallSnapshotServer) erro
 
 	var command raft.InstallSnapshotRequest
 	protoToInstallSnapshotRequest(request, &command)
-	streamWrapper := &snapshotStream{stream: stream}
+	streamWrapper := &snapshotStream{stream: stream, buf: request.GetData()}
 	result, err := executeRPC[*raft.InstallSnapshotResponse](ctx, command, streamWrapper, r.rpcCh)
 	if err != nil {
 		return err
@@ -82,8 +73,6 @@ func executeRPC[T any](ctx context.Context, command any, reader io.Reader, rpcCh
 	rpc := raft.RPC{Command: command, Reader: reader, RespChan: respCh}
 	var zero T
 
-	// The hashicorp raft implementation does not use contexts.
-	// The only time the context would be cancelled is if the server is shutting down.
 	select {
 	case rpcCh <- rpc:
 	case <-ctx.Done():
@@ -98,5 +87,34 @@ func executeRPC[T any](ctx context.Context, command any, reader io.Reader, rpcCh
 	case <-ctx.Done():
 		return zero, ctx.Err()
 	}
+}
 
+type snapshotStream struct {
+	buf    []byte
+	eof    bool
+	stream pb.RaftService_InstallSnapshotServer
+}
+
+func (s *snapshotStream) Read(p []byte) (int, error) {
+	for len(s.buf) == 0 && !s.eof {
+		resp, err := s.stream.Recv()
+		if err != nil {
+			if err == io.EOF {
+				s.eof = true
+			} else {
+				return 0, err
+			}
+			break
+		}
+		s.buf = resp.GetData()
+	}
+
+	if len(s.buf) == 0 {
+		return 0, io.EOF
+	}
+
+	n := copy(p, s.buf)
+	s.buf = s.buf[n:]
+
+	return n, nil
 }
