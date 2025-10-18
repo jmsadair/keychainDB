@@ -170,7 +170,6 @@ func TestAddMember(t *testing.T) {
 	member := &chainnode.ChainMember{ID: memberID, Address: memberAddr}
 	config := chainnode.NewConfiguration([]*chainnode.ChainMember{member}, 0)
 
-	consensus.On("LeaderAddressAndID").Return(addr, id).Once()
 	consensus.On("AddMember", mock.Anything, memberID, memberAddr).Return(config, nil).Once()
 	chainTn.On("UpdateConfiguration", mock.Anything, memberAddr, mock.MatchedBy(func(r *chainpb.UpdateConfigurationRequest) bool {
 		return config.Equal(chainnode.NewConfigurationFromProto(r.GetConfiguration()))
@@ -197,7 +196,6 @@ func TestRemoveMember(t *testing.T) {
 	member2 := &chainnode.ChainMember{ID: "member-2", Address: "127.0.0.3:9000"}
 	config := chainnode.NewConfiguration([]*chainnode.ChainMember{member1}, 1)
 
-	consensus.On("LeaderAddressAndID").Return(addr, id).Once()
 	consensus.On("RemoveMember", mock.Anything, member2.ID).Return(config, member2, nil).Once()
 	chainTn.On(
 		"UpdateConfiguration",
@@ -232,7 +230,6 @@ func TestGetMembers(t *testing.T) {
 	member1 := &chainnode.ChainMember{ID: "member-1", Address: "127.0.0.1:9000"}
 	member2 := &chainnode.ChainMember{ID: "member-2", Address: "127.0.0.2:9000"}
 
-	consensus.On("LeaderAddressAndID").Return(addr, id).Once()
 	expectedConfig := chainnode.NewConfiguration([]*chainnode.ChainMember{member1, member2}, 0)
 	consensus.On("GetMembers", mock.Anything).Return(expectedConfig, nil).Once()
 	req := &pb.GetMembersRequest{}

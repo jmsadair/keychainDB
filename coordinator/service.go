@@ -5,7 +5,6 @@ import (
 	"log/slog"
 
 	chainclient "github.com/jmsadair/keychain/chain/client"
-	coordinatorclient "github.com/jmsadair/keychain/coordinator/client"
 	"github.com/jmsadair/keychain/coordinator/node"
 	"github.com/jmsadair/keychain/coordinator/raft"
 	"github.com/jmsadair/keychain/coordinator/server"
