@@ -81,14 +81,14 @@ func (m *mockTransport) UpdateConfiguration(ctx context.Context, address string,
 }
 
 func TestNewCoordinator(t *testing.T) {
-	tn := new(mockTransport)
-	raft := new(mockRaft)
+	chainTn := new(mockTransport)
+	consensus := new(mockRaft)
 	id := "coordinator-1"
 	addr := "127.0.0.1:9000"
 	log := slog.Default()
-	raft.On("LeaderCh").Return(make(chan bool)).Once()
-	coordinator := NewCoordinator(id, addr, tn, raft, log)
-	raft.AssertExpectations(t)
+	consensus.On("LeaderCh").Return(make(chan bool)).Once()
+	coordinator := NewCoordinator(id, addr, chainTn, consensus, log)
+	consensus.AssertExpectations(t)
 
 	require.NotNil(t, coordinator)
 	require.Equal(t, id, coordinator.ID)
@@ -98,55 +98,112 @@ func TestNewCoordinator(t *testing.T) {
 	require.False(t, coordinator.isLeader)
 }
 
-func TestAddMember(t *testing.T) {
-	tn := new(mockTransport)
-	raft := new(mockRaft)
+func TestJoinCluster(t *testing.T) {
+	chainTn := new(mockTransport)
+	consensus := new(mockRaft)
 	id := "coordinator-1"
 	addr := "127.0.0.1:9000"
 	log := slog.Default()
-	raft.On("LeaderCh").Return(make(chan bool)).Once()
-	coordinator := NewCoordinator(id, addr, tn, raft, log)
-	raft.AssertExpectations(t)
+	consensus.On("LeaderCh").Return(make(chan bool)).Once()
+	coordinator := NewCoordinator(id, addr, chainTn, consensus, log)
+	consensus.AssertExpectations(t)
+
+	req := &pb.JoinClusterRequest{Id: "node-2", Address: "127.0.0.2:9000"}
+
+	consensus.On("LeaderAddressAndID").Return(addr, id).Once()
+	consensus.On("JoinCluster", mock.Anything, req.Id, req.Address).Return(nil)
+	resp, err := coordinator.JoinCluster(context.Background(), req)
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+}
+
+func TestRemoveFromCluster(t *testing.T) {
+	chainTn := new(mockTransport)
+	consensus := new(mockRaft)
+	id := "coordinator-1"
+	addr := "127.0.0.1:9000"
+	log := slog.Default()
+	consensus.On("LeaderCh").Return(make(chan bool)).Once()
+	coordinator := NewCoordinator(id, addr, chainTn, consensus, log)
+	consensus.AssertExpectations(t)
+
+	req := &pb.RemoveFromClusterRequest{Id: "coordinator-3"}
+
+	consensus.On("LeaderAddressAndID").Return(addr, id).Once()
+	consensus.On("RemoveFromCluster", mock.Anything, req.Id).Return(nil)
+	resp, err := coordinator.RemoveFromCluster(context.Background(), req)
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+}
+
+func TestClusterStatus(t *testing.T) {
+	chainTn := new(mockTransport)
+	consensus := new(mockRaft)
+	id := "coordinator-1"
+	addr := "127.0.0.1:9000"
+	log := slog.Default()
+	consensus.On("LeaderCh").Return(make(chan bool)).Once()
+	coordinator := NewCoordinator(id, addr, chainTn, consensus, log)
+	consensus.AssertExpectations(t)
+
+	req := &pb.ClusterStatusRequest{}
+
+	consensus.On("LeaderAddressAndID").Return(addr, id).Once()
+	consensus.On("ClusterStatus", mock.Anything).Return(raft.Status{Leader: addr, Members: map[string]string{id: addr}}, nil)
+	resp, err := coordinator.ClusterStatus(context.Background(), req)
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+}
+
+func TestAddMember(t *testing.T) {
+	chainTn := new(mockTransport)
+	consensus := new(mockRaft)
+	id := "coordinator-1"
+	addr := "127.0.0.1:9000"
+	log := slog.Default()
+	consensus.On("LeaderCh").Return(make(chan bool)).Once()
+	coordinator := NewCoordinator(id, addr, chainTn, consensus, log)
+	consensus.AssertExpectations(t)
 
 	memberID := "member-1"
 	memberAddr := "127.0.0.2:9000"
 	member := &chainnode.ChainMember{ID: memberID, Address: memberAddr}
 	config := chainnode.NewConfiguration([]*chainnode.ChainMember{member}, 0)
 
-	raft.On("AddMember", mock.Anything, memberID, memberAddr).Return(config, nil).Once()
-	tn.On("UpdateConfiguration", mock.Anything, memberAddr, mock.MatchedBy(func(r *chainpb.UpdateConfigurationRequest) bool {
+	consensus.On("AddMember", mock.Anything, memberID, memberAddr).Return(config, nil).Once()
+	chainTn.On("UpdateConfiguration", mock.Anything, memberAddr, mock.MatchedBy(func(r *chainpb.UpdateConfigurationRequest) bool {
 		return config.Equal(chainnode.NewConfigurationFromProto(r.GetConfiguration()))
 	})).Return(&chainpb.UpdateConfigurationResponse{}, nil).Once()
 	req := &pb.AddMemberRequest{Id: memberID, Address: memberAddr}
 	resp, err := coordinator.AddMember(context.Background(), req)
 	require.NoError(t, err)
 	require.NotNil(t, resp)
-	tn.AssertExpectations(t)
-	raft.AssertExpectations(t)
+	chainTn.AssertExpectations(t)
+	consensus.AssertExpectations(t)
 }
 
 func TestRemoveMember(t *testing.T) {
-	tn := new(mockTransport)
-	raft := new(mockRaft)
+	chainTn := new(mockTransport)
+	consensus := new(mockRaft)
 	id := "coordinator-1"
 	addr := "127.0.0.1:9000"
 	log := slog.Default()
-	raft.On("LeaderCh").Return(make(chan bool)).Once()
-	coordinator := NewCoordinator(id, addr, tn, raft, log)
-	raft.AssertExpectations(t)
+	consensus.On("LeaderCh").Return(make(chan bool)).Once()
+	coordinator := NewCoordinator(id, addr, chainTn, consensus, log)
+	consensus.AssertExpectations(t)
 
 	member1 := &chainnode.ChainMember{ID: "member-1", Address: "127.0.0.2:9000"}
 	member2 := &chainnode.ChainMember{ID: "member-2", Address: "127.0.0.3:9000"}
 	config := chainnode.NewConfiguration([]*chainnode.ChainMember{member1}, 1)
 
-	raft.On("RemoveMember", mock.Anything, member2.ID).Return(config, member2, nil).Once()
-	tn.On(
+	consensus.On("RemoveMember", mock.Anything, member2.ID).Return(config, member2, nil).Once()
+	chainTn.On(
 		"UpdateConfiguration",
 		mock.Anything,
 		member1.Address,
 		&chainpb.UpdateConfigurationRequest{Configuration: config.Proto()},
 	).Return(&chainpb.UpdateConfigurationResponse{}, nil).Once()
-	tn.On(
+	chainTn.On(
 		"UpdateConfiguration",
 		mock.Anything,
 		member2.Address,
@@ -156,42 +213,42 @@ func TestRemoveMember(t *testing.T) {
 	resp, err := coordinator.RemoveMember(context.Background(), req)
 	require.NoError(t, err)
 	require.NotNil(t, resp)
-	raft.AssertExpectations(t)
-	tn.AssertExpectations(t)
+	consensus.AssertExpectations(t)
+	chainTn.AssertExpectations(t)
 }
 
 func TestGetMembers(t *testing.T) {
-	tn := new(mockTransport)
-	raft := new(mockRaft)
+	chainTn := new(mockTransport)
+	consensus := new(mockRaft)
 	id := "coordinator-1"
 	addr := "127.0.0.1:9000"
 	log := slog.Default()
-	raft.On("LeaderCh").Return(make(chan bool)).Once()
-	coordinator := NewCoordinator(id, addr, tn, raft, log)
-	raft.AssertExpectations(t)
+	consensus.On("LeaderCh").Return(make(chan bool)).Once()
+	coordinator := NewCoordinator(id, addr, chainTn, consensus, log)
+	consensus.AssertExpectations(t)
 
 	member1 := &chainnode.ChainMember{ID: "member-1", Address: "127.0.0.1:9000"}
 	member2 := &chainnode.ChainMember{ID: "member-2", Address: "127.0.0.2:9000"}
 
 	expectedConfig := chainnode.NewConfiguration([]*chainnode.ChainMember{member1, member2}, 0)
-	raft.On("GetMembers", mock.Anything).Return(expectedConfig, nil).Once()
+	consensus.On("GetMembers", mock.Anything).Return(expectedConfig, nil).Once()
 	req := &pb.GetMembersRequest{}
 	resp, err := coordinator.GetMembers(context.Background(), req)
 	require.NoError(t, err)
 	require.NotNil(t, resp)
 	require.Equal(t, expectedConfig, chainnode.NewConfigurationFromProto(resp.GetConfiguration()))
-	raft.AssertExpectations(t)
+	consensus.AssertExpectations(t)
 }
 
 func TestOnHeartbeat(t *testing.T) {
-	tn := new(mockTransport)
-	raft := new(mockRaft)
+	chainTn := new(mockTransport)
+	consensus := new(mockRaft)
 	id := "coordinator-1"
 	addr := "127.0.0.1:9000"
 	log := slog.Default()
-	raft.On("LeaderCh").Return(make(chan bool)).Once()
-	coordinator := NewCoordinator(id, addr, tn, raft, log)
-	raft.AssertExpectations(t)
+	consensus.On("LeaderCh").Return(make(chan bool)).Once()
+	coordinator := NewCoordinator(id, addr, chainTn, consensus, log)
+	consensus.AssertExpectations(t)
 
 	member1 := &chainnode.ChainMember{ID: "member-1", Address: "127.0.0.2:9000"}
 	member2 := &chainnode.ChainMember{ID: "member-2", Address: "127.0.0.3:9000"}
@@ -201,38 +258,38 @@ func TestOnHeartbeat(t *testing.T) {
 
 	// This coordinator is the leader and all pings to chain members are successful.
 	coordinator.isLeader = true
-	raft.On("ChainConfiguration").Return(config).Once()
-	tn.On("Ping", mock.Anything, member1.Address, &chainpb.PingRequest{}).Return(&chainpb.PingResponse{ConfigVersion: version}, nil).Once()
-	tn.On("Ping", mock.Anything, member2.Address, &chainpb.PingRequest{}).Return(&chainpb.PingResponse{ConfigVersion: version}, nil).Once()
-	tn.On("Ping", mock.Anything, member3.Address, &chainpb.PingRequest{}).Return(&chainpb.PingResponse{ConfigVersion: version}, nil).Once()
+	consensus.On("ChainConfiguration").Return(config).Once()
+	chainTn.On("Ping", mock.Anything, member1.Address, &chainpb.PingRequest{}).Return(&chainpb.PingResponse{ConfigVersion: version}, nil).Once()
+	chainTn.On("Ping", mock.Anything, member2.Address, &chainpb.PingRequest{}).Return(&chainpb.PingResponse{ConfigVersion: version}, nil).Once()
+	chainTn.On("Ping", mock.Anything, member3.Address, &chainpb.PingRequest{}).Return(&chainpb.PingResponse{ConfigVersion: version}, nil).Once()
 	coordinator.onHeartbeat(context.Background())
 	require.Contains(t, coordinator.memberStates, member1.ID)
 	require.Contains(t, coordinator.memberStates, member2.ID)
 	require.Contains(t, coordinator.memberStates, member3.ID)
-	raft.AssertExpectations(t)
-	tn.AssertExpectations(t)
+	consensus.AssertExpectations(t)
+	chainTn.AssertExpectations(t)
 
 	// This coordinator is the leader and a ping to one of the chain members fails.
 	coordinator.failedChainMemberCh = make(chan any, 1)
-	raft.On("ChainConfiguration").Return(config).Once()
-	tn.On("Ping", mock.Anything, member1.Address, &chainpb.PingRequest{}).Return(&chainpb.PingResponse{ConfigVersion: version}, nil).Once()
-	tn.On("Ping", mock.Anything, member2.Address, &chainpb.PingRequest{}).Return(nil, errors.New("ping RPC failed")).Once()
-	tn.On("Ping", mock.Anything, member3.Address, &chainpb.PingRequest{}).Return(&chainpb.PingResponse{ConfigVersion: version}, nil).Once()
+	consensus.On("ChainConfiguration").Return(config).Once()
+	chainTn.On("Ping", mock.Anything, member1.Address, &chainpb.PingRequest{}).Return(&chainpb.PingResponse{ConfigVersion: version}, nil).Once()
+	chainTn.On("Ping", mock.Anything, member2.Address, &chainpb.PingRequest{}).Return(nil, errors.New("ping RPC failed")).Once()
+	chainTn.On("Ping", mock.Anything, member3.Address, &chainpb.PingRequest{}).Return(&chainpb.PingResponse{ConfigVersion: version}, nil).Once()
 	coordinator.onHeartbeat(context.Background())
 	require.Len(t, coordinator.failedChainMemberCh, 1)
-	raft.AssertExpectations(t)
-	tn.AssertExpectations(t)
+	consensus.AssertExpectations(t)
+	chainTn.AssertExpectations(t)
 
 	// This coordinator is the leader and a chain members has an out-of-date configuration.
 	coordinator.configSyncCh = make(chan any, 1)
-	raft.On("ChainConfiguration").Return(config).Once()
-	tn.On("Ping", mock.Anything, member1.Address, &chainpb.PingRequest{}).Return(&chainpb.PingResponse{ConfigVersion: version}, nil).Once()
-	tn.On("Ping", mock.Anything, member2.Address, &chainpb.PingRequest{}).Return(&chainpb.PingResponse{ConfigVersion: version}, nil).Once()
-	tn.On("Ping", mock.Anything, member3.Address, &chainpb.PingRequest{}).Return(&chainpb.PingResponse{ConfigVersion: version - 1}, nil).Once()
+	consensus.On("ChainConfiguration").Return(config).Once()
+	chainTn.On("Ping", mock.Anything, member1.Address, &chainpb.PingRequest{}).Return(&chainpb.PingResponse{ConfigVersion: version}, nil).Once()
+	chainTn.On("Ping", mock.Anything, member2.Address, &chainpb.PingRequest{}).Return(&chainpb.PingResponse{ConfigVersion: version}, nil).Once()
+	chainTn.On("Ping", mock.Anything, member3.Address, &chainpb.PingRequest{}).Return(&chainpb.PingResponse{ConfigVersion: version - 1}, nil).Once()
 	coordinator.onHeartbeat(context.Background())
 	require.Len(t, coordinator.configSyncCh, 1)
-	raft.AssertExpectations(t)
-	tn.AssertExpectations(t)
+	consensus.AssertExpectations(t)
+	chainTn.AssertExpectations(t)
 
 	// This coordinator is not the leader. It should not send heartbeats.
 	coordinator.isLeader = false
@@ -242,14 +299,14 @@ func TestOnHeartbeat(t *testing.T) {
 }
 
 func TestOnFailedChainMember(t *testing.T) {
-	tn := new(mockTransport)
-	raft := new(mockRaft)
+	chainTn := new(mockTransport)
+	consensus := new(mockRaft)
 	id := "coordinator-1"
 	addr := "127.0.0.1:9000"
 	log := slog.Default()
-	raft.On("LeaderCh").Return(make(chan bool)).Once()
-	coordinator := NewCoordinator(id, addr, tn, raft, log)
-	raft.AssertExpectations(t)
+	consensus.On("LeaderCh").Return(make(chan bool)).Once()
+	coordinator := NewCoordinator(id, addr, chainTn, consensus, log)
+	consensus.AssertExpectations(t)
 
 	member1 := &chainnode.ChainMember{ID: "member-1", Address: "127.0.0.2:9000"}
 	member2 := &chainnode.ChainMember{ID: "member-2", Address: "127.0.0.3:9000"}
@@ -273,19 +330,19 @@ func TestOnFailedChainMember(t *testing.T) {
 		member3.ID: {lastContact: time.Now()},
 	}
 	config := chainnode.NewConfiguration([]*chainnode.ChainMember{member1, member3}, 0)
-	raft.On("RemoveMember", mock.Anything, member2.ID).Return(config, member2, nil)
-	tn.On("UpdateConfiguration", mock.Anything, member1.Address, mock.MatchedBy(func(r *chainpb.UpdateConfigurationRequest) bool {
+	consensus.On("RemoveMember", mock.Anything, member2.ID).Return(config, member2, nil)
+	chainTn.On("UpdateConfiguration", mock.Anything, member1.Address, mock.MatchedBy(func(r *chainpb.UpdateConfigurationRequest) bool {
 		return config.Equal(chainnode.NewConfigurationFromProto(r.GetConfiguration()))
 	})).Return(&chainpb.UpdateConfigurationResponse{}, nil)
-	tn.On("UpdateConfiguration", mock.Anything, member2.Address, mock.MatchedBy(func(r *chainpb.UpdateConfigurationRequest) bool {
+	chainTn.On("UpdateConfiguration", mock.Anything, member2.Address, mock.MatchedBy(func(r *chainpb.UpdateConfigurationRequest) bool {
 		return config.Equal(chainnode.NewConfigurationFromProto(r.GetConfiguration()))
 	})).Return(&chainpb.UpdateConfigurationResponse{}, errors.New("RPC failed"))
-	tn.On("UpdateConfiguration", mock.Anything, member3.Address, mock.MatchedBy(func(r *chainpb.UpdateConfigurationRequest) bool {
+	chainTn.On("UpdateConfiguration", mock.Anything, member3.Address, mock.MatchedBy(func(r *chainpb.UpdateConfigurationRequest) bool {
 		return config.Equal(chainnode.NewConfigurationFromProto(r.GetConfiguration()))
 	})).Return(&chainpb.UpdateConfigurationResponse{}, nil)
 	coordinator.onFailedChainMember(context.Background())
-	raft.AssertExpectations(t)
-	tn.AssertExpectations(t)
+	consensus.AssertExpectations(t)
+	chainTn.AssertExpectations(t)
 
 	// This coordinator is not the leader. It should not attempt to remove chain members.
 	coordinator.isLeader = false
@@ -293,14 +350,14 @@ func TestOnFailedChainMember(t *testing.T) {
 }
 
 func TestOnLeadershipChange(t *testing.T) {
-	tn := new(mockTransport)
-	raft := new(mockRaft)
+	chainTn := new(mockTransport)
+	consensus := new(mockRaft)
 	id := "coordinator-1"
 	addr := "127.0.0.1:9000"
 	log := slog.Default()
-	raft.On("LeaderCh").Return(make(chan bool)).Once()
-	coordinator := NewCoordinator(id, addr, tn, raft, log)
-	raft.AssertExpectations(t)
+	consensus.On("LeaderCh").Return(make(chan bool)).Once()
+	coordinator := NewCoordinator(id, addr, chainTn, consensus, log)
+	consensus.AssertExpectations(t)
 
 	memberID := "member-1"
 	coordinator.memberStates = map[string]*memberState{
@@ -319,14 +376,14 @@ func TestOnLeadershipChange(t *testing.T) {
 }
 
 func TestOnConfigSync(t *testing.T) {
-	tn := new(mockTransport)
-	raft := new(mockRaft)
+	chainTn := new(mockTransport)
+	consensus := new(mockRaft)
 	id := "coordinator-1"
 	addr := "127.0.0.1:9000"
 	log := slog.Default()
-	raft.On("LeaderCh").Return(make(chan bool)).Once()
-	coordinator := NewCoordinator(id, addr, tn, raft, log)
-	raft.AssertExpectations(t)
+	consensus.On("LeaderCh").Return(make(chan bool)).Once()
+	coordinator := NewCoordinator(id, addr, chainTn, consensus, log)
+	consensus.AssertExpectations(t)
 
 	member1 := &chainnode.ChainMember{ID: "member-1", Address: "127.0.0.2:9000"}
 	member2 := &chainnode.ChainMember{ID: "member-2", Address: "127.0.0.3:9000"}
@@ -336,20 +393,20 @@ func TestOnConfigSync(t *testing.T) {
 
 	// This coordinator is the leader and all chain members have the correct chain configuration version.
 	// It should not attempt to update any of their configurations.
-	raft.On("GetMembers", mock.Anything).Return(config, nil).Once()
 	coordinator.isLeader = true
+	consensus.On("GetMembers", mock.Anything).Return(config, nil).Once()
 	coordinator.memberStates = map[string]*memberState{
 		member1.ID: {lastContact: time.Now(), configVersion: version},
 		member2.ID: {lastContact: time.Now(), configVersion: version},
 		member3.ID: {lastContact: time.Now(), configVersion: version},
 	}
 	coordinator.onConfigSync(context.Background())
-	raft.AssertExpectations(t)
+	consensus.AssertExpectations(t)
 
 	// This coordinator is the leader and one of the chain members has an out-of-date configuration.
 	// It should attempt to update that member's configuration.
-	raft.On("GetMembers", mock.Anything).Return(config, nil).Once()
-	tn.On("UpdateConfiguration", mock.Anything, member2.Address, mock.MatchedBy(func(r *chainpb.UpdateConfigurationRequest) bool {
+	consensus.On("GetMembers", mock.Anything).Return(config, nil).Once()
+	chainTn.On("UpdateConfiguration", mock.Anything, member2.Address, mock.MatchedBy(func(r *chainpb.UpdateConfigurationRequest) bool {
 		return config.Equal(chainnode.NewConfigurationFromProto(r.GetConfiguration()))
 	})).Return(&chainpb.UpdateConfigurationResponse{}, nil)
 	coordinator.memberStates = map[string]*memberState{
@@ -358,8 +415,8 @@ func TestOnConfigSync(t *testing.T) {
 		member3.ID: {lastContact: time.Now(), configVersion: version},
 	}
 	coordinator.onConfigSync(context.Background())
-	raft.AssertExpectations(t)
-	tn.AssertExpectations(t)
+	consensus.AssertExpectations(t)
+	chainTn.AssertExpectations(t)
 
 	// This coordinator is not the leader. It should not attempt to update the configuration of any chain members.
 	coordinator.isLeader = false

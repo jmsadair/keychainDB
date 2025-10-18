@@ -15,14 +15,14 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-var ErrConfigurationUpdateFailed = errors.New("failed to update configuration for one or more chain members")
+var ErrConfigurationUpdateFailed = errors.New("coordinator: failed to update configuration for chain member")
 
 const (
 	heartbeatInterval   = 250 * time.Millisecond
 	chainFailureTimeout = 5 * time.Second
 )
 
-type Transport interface {
+type ChainTransport interface {
 	UpdateConfiguration(ctx context.Context, address string, request *chainpb.UpdateConfigurationRequest) (*chainpb.UpdateConfigurationResponse, error)
 	Ping(ctx context.Context, address string, request *chainpb.PingRequest) (*chainpb.PingResponse, error)
 }
@@ -49,7 +49,7 @@ type Coordinator struct {
 	ID                  string
 	Address             string
 	raft                RaftProtocol
-	tn                  Transport
+	chainTn             ChainTransport
 	memberStates        map[string]*memberState
 	isLeader            bool
 	leadershipChangeCh  <-chan bool
@@ -59,12 +59,18 @@ type Coordinator struct {
 	mu                  sync.Mutex
 }
 
-func NewCoordinator(id string, address string, tn Transport, raft RaftProtocol, log *slog.Logger) *Coordinator {
+func NewCoordinator(
+	id string,
+	address string,
+	chainTn ChainTransport,
+	raft RaftProtocol,
+	log *slog.Logger,
+) *Coordinator {
 	return &Coordinator{
 		Address:             address,
 		ID:                  id,
 		raft:                raft,
-		tn:                  tn,
+		chainTn:             chainTn,
 		leadershipChangeCh:  raft.LeaderCh(),
 		memberStates:        make(map[string]*memberState),
 		failedChainMemberCh: make(chan any),
@@ -155,7 +161,7 @@ func (c *Coordinator) updateChainMemberConfigurations(ctx context.Context, confi
 		go func() {
 			defer wg.Done()
 			req := &chainpb.UpdateConfigurationRequest{Configuration: config.Proto()}
-			_, err := c.tn.UpdateConfiguration(ctx, member.Address, req)
+			_, err := c.chainTn.UpdateConfiguration(ctx, member.Address, req)
 			if err != nil {
 				c.log.ErrorContext(
 					ctx,
@@ -231,12 +237,10 @@ func (c *Coordinator) onConfigSync(ctx context.Context) {
 	}
 	c.mu.Unlock()
 
-	req := &pb.GetMembersRequest{}
-	resp, err := c.GetMembers(ctx, req)
+	config, err := c.raft.GetMembers(ctx)
 	if err != nil {
 		return
 	}
-	config := chainnode.NewConfigurationFromProto(resp.GetConfiguration())
 
 	c.mu.Lock()
 	needSync := []string{}
@@ -267,7 +271,7 @@ func (c *Coordinator) onConfigSync(ctx context.Context) {
 				return
 			}
 			req := &chainpb.UpdateConfigurationRequest{Configuration: config.Proto()}
-			c.tn.UpdateConfiguration(ctx, member.Address, req)
+			c.chainTn.UpdateConfiguration(ctx, member.Address, req)
 		}()
 	}
 
@@ -306,8 +310,11 @@ func (c *Coordinator) onFailedChainMember(ctx context.Context) {
 	for _, memberID := range toRemove {
 		go func() {
 			defer wg.Done()
-			req := &pb.RemoveMemberRequest{Id: memberID}
-			c.RemoveMember(ctx, req)
+			config, removed, err := c.raft.RemoveMember(ctx, memberID)
+			if err != nil {
+				return
+			}
+			c.updateChainMemberConfigurations(ctx, config, removed)
 		}()
 	}
 
@@ -345,7 +352,7 @@ func (c *Coordinator) sendHeartbeats(ctx context.Context, config *chainnode.Conf
 		go func() {
 			defer wg.Done()
 			req := &chainpb.PingRequest{}
-			resp, err := c.tn.Ping(ctx, member.Address, req)
+			resp, err := c.chainTn.Ping(ctx, member.Address, req)
 			if err == nil {
 				c.mu.Lock()
 				state, ok := c.memberStates[member.ID]
