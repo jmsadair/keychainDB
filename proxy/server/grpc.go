@@ -3,7 +3,7 @@ package server
 import (
 	"context"
 
-	"github.com/jmsadair/keychain/api"
+	"github.com/jmsadair/keychain/api/types"
 	"github.com/jmsadair/keychain/internal/transport"
 	apipb "github.com/jmsadair/keychain/proto/api"
 	proxypb "github.com/jmsadair/keychain/proto/proxy"
@@ -16,8 +16,8 @@ import (
 )
 
 var errToGRPCError = map[error]error{
-	node.ErrCoordinatorUnavailable: api.ErrGRPCCoordinatorUnavailable,
-	node.ErrNoMembers:              api.ErrGRPCNoMembers,
+	node.ErrCoordinatorUnavailable: types.ErrGRPCCoordinatorUnavailable,
+	node.ErrNoMembers:              types.ErrGRPCNoMembers,
 }
 
 // RPCServer is the gRPC proxy server.

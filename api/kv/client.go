@@ -1,9 +1,10 @@
-package api
+package kv
 
 import (
 	"context"
 
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/retry"
+	"github.com/jmsadair/keychain/api/types"
 	"github.com/jmsadair/keychain/internal/transport"
 	apipb "github.com/jmsadair/keychain/proto/api"
 	proxypb "github.com/jmsadair/keychain/proto/proxy"
@@ -45,12 +46,12 @@ func NewClient(cfg Config) (*Client, error) {
 func (c *Client) Set(ctx context.Context, key string, value []byte) error {
 	client, err := c.clientCache.GetOrCreate(c.config.Endpoint)
 	if err != nil {
-		return err
+		return types.Error(err)
 	}
 	req := &apipb.SetRequest{Key: key, Value: value}
 	_, err = client.Set(ctx, req, defaultCallOps...)
 	if err != nil {
-		return err
+		return types.Error(err)
 	}
 	return nil
 }
@@ -59,12 +60,12 @@ func (c *Client) Set(ctx context.Context, key string, value []byte) error {
 func (c *Client) Get(ctx context.Context, key string) ([]byte, error) {
 	client, err := c.clientCache.GetOrCreate(c.config.Endpoint)
 	if err != nil {
-		return nil, err
+		return nil, types.Error(err)
 	}
 	req := &apipb.GetRequest{Key: key}
 	resp, err := client.Get(ctx, req, defaultCallOps...)
 	if err != nil {
-		return nil, err
+		return nil, types.Error(err)
 	}
 	return resp.GetValue(), nil
 }

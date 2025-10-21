@@ -2,7 +2,6 @@ package raft
 
 import (
 	"context"
-	"errors"
 	"net"
 	"os"
 	"time"
@@ -18,8 +17,6 @@ const (
 	maxPool              = 5
 	numSnapshotsToRetain = 10
 )
-
-var ErrNodeExists = errors.New("node already exists with same ID or address")
 
 func timeoutFromContext(ctx context.Context, defaultTimeout time.Duration) time.Duration {
 	if deadline, ok := ctx.Deadline(); ok {
@@ -103,7 +100,7 @@ func (rb *RaftBackend) AddMember(ctx context.Context, id, address string) (*chai
 	op := &AddMemberOperation{ID: id, Address: address}
 	applied, err := rb.apply(ctx, op)
 	if err != nil {
-		return nil, err
+		return nil, handleError(err)
 	}
 	opResult := applied.(*AddMemberResult)
 	return opResult.Config, nil
@@ -113,7 +110,7 @@ func (rb *RaftBackend) RemoveMember(ctx context.Context, id string) (*chainnode.
 	op := &RemoveMemberOperation{ID: id}
 	applied, err := rb.apply(ctx, op)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, handleError(err)
 	}
 	opResult := applied.(*RemoveMemberResult)
 	return opResult.Config, opResult.Removed, nil
@@ -123,7 +120,7 @@ func (rb *RaftBackend) GetMembers(ctx context.Context) (*chainnode.Configuration
 	op := &ReadMembershipOperation{}
 	applied, err := rb.apply(ctx, op)
 	if err != nil {
-		return nil, err
+		return nil, handleError(err)
 	}
 	opResult := applied.(*ReadMembershipResult)
 	return opResult.Config, nil
@@ -132,7 +129,7 @@ func (rb *RaftBackend) GetMembers(ctx context.Context) (*chainnode.Configuration
 func (rb *RaftBackend) JoinCluster(ctx context.Context, nodeID string, address string) error {
 	configFuture := rb.raft.GetConfiguration()
 	if err := configFuture.Error(); err != nil {
-		return err
+		return handleError(err)
 	}
 
 	for _, srv := range configFuture.Configuration().Servers {
@@ -145,19 +142,19 @@ func (rb *RaftBackend) JoinCluster(ctx context.Context, nodeID string, address s
 	}
 
 	indexFuture := rb.raft.AddVoter(raft.ServerID(nodeID), raft.ServerAddress(address), 0, timeoutFromContext(ctx, defaultApplyTimeout))
-	return indexFuture.Error()
+	return handleError(indexFuture.Error())
 }
 
 func (rb *RaftBackend) RemoveFromCluster(ctx context.Context, nodeID string) error {
 	configFuture := rb.raft.GetConfiguration()
 	if err := configFuture.Error(); err != nil {
-		return err
+		return handleError(err)
 	}
 
 	for _, srv := range configFuture.Configuration().Servers {
 		if srv.ID == raft.ServerID(nodeID) {
 			indexFuture := rb.raft.RemoveServer(raft.ServerID(nodeID), 0, timeoutFromContext(ctx, defaultApplyTimeout))
-			return indexFuture.Error()
+			return handleError(indexFuture.Error())
 		}
 	}
 
@@ -169,7 +166,7 @@ func (rb *RaftBackend) ClusterStatus() (Status, error) {
 
 	configFuture := rb.raft.GetConfiguration()
 	if err := configFuture.Error(); err != nil {
-		return Status{}, err
+		return Status{}, handleError(err)
 	}
 	nodeIDToAddr := make(map[string]string, len(configFuture.Configuration().Servers))
 	for _, srv := range configFuture.Configuration().Servers {

@@ -3,7 +3,7 @@ package server
 import (
 	"context"
 
-	"github.com/jmsadair/keychain/api"
+	"github.com/jmsadair/keychain/api/types"
 	"github.com/jmsadair/keychain/chain/node"
 	"github.com/jmsadair/keychain/chain/storage"
 	"github.com/jmsadair/keychain/internal/transport"
@@ -12,14 +12,14 @@ import (
 )
 
 var errToGRPCError = map[error]error{
-	storage.ErrConflict:          api.ErrGRPCConflict,
-	storage.ErrEmptyKey:          api.ErrGRPCEmptyKey,
-	storage.ErrUncommittedRead:   api.ErrGRPCUncommittedRead,
-	storage.ErrKeyNotFound:       api.ErrGRPCKeyNotFound,
-	node.ErrInvalidConfigVersion: api.ErrGRPCInvalidConfigVersion,
-	node.ErrNotHead:              api.ErrGRPCNotHead,
-	node.ErrSyncing:              api.ErrGRPCSyncing,
-	node.ErrInvalidConfigVersion: api.ErrGRPCInvalidConfigVersion,
+	storage.ErrConflict:          types.ErrGRPCConflict,
+	storage.ErrEmptyKey:          types.ErrGRPCEmptyKey,
+	storage.ErrUncommittedRead:   types.ErrGRPCUncommittedRead,
+	storage.ErrKeyNotFound:       types.ErrGRPCKeyNotFound,
+	node.ErrInvalidConfigVersion: types.ErrGRPCInvalidConfigVersion,
+	node.ErrNotHead:              types.ErrGRPCNotHead,
+	node.ErrSyncing:              types.ErrGRPCSyncing,
+	node.ErrInvalidConfigVersion: types.ErrGRPCInvalidConfigVersion,
 }
 
 // RPCServer is a gRPC-based server implementation for chain nodes.

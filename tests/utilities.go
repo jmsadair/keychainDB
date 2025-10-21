@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jmsadair/keychain/api"
+	"github.com/jmsadair/keychain/api/kv"
 	"github.com/jmsadair/keychain/chain"
 	chainclient "github.com/jmsadair/keychain/chain/client"
 	"github.com/jmsadair/keychain/chain/node"
@@ -99,13 +99,13 @@ func newTestChainClient(t *testing.T) *chainclient.Client {
 	return client
 }
 
-func newTestAPIClient(t *testing.T, endpoint string) *api.Client {
-	cfg := api.Config{
+func newTestKvClient(t *testing.T, endpoint string) *kv.Client {
+	cfg := kv.Config{
 		Endpoint:    endpoint,
 		Credentials: insecure.NewCredentials(),
 		MaxRetries:  5,
 	}
-	client, err := api.NewClient(cfg)
+	client, err := kv.NewClient(cfg)
 	require.NoError(t, err)
 	return client
 }

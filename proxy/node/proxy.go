@@ -7,7 +7,7 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/jmsadair/keychain/api"
+	"github.com/jmsadair/keychain/api/types"
 	chainnode "github.com/jmsadair/keychain/chain/node"
 	apipb "github.com/jmsadair/keychain/proto/api"
 	chainpb "github.com/jmsadair/keychain/proto/chain"
@@ -15,8 +15,8 @@ import (
 )
 
 var (
-	ErrNoMembers              = errors.New("chain has no members")
-	ErrCoordinatorUnavailable = errors.New("failed to read chain configuration from coordinator")
+	ErrNoMembers              = errors.New("proxyserver: chain has no members")
+	ErrCoordinatorUnavailable = errors.New("proxyserver: failed to read chain configuration from coordinator")
 )
 
 func forwardToLeader[T any](clusterMembers []string, fn func(target string) (T, error)) (T, error) {
@@ -25,6 +25,7 @@ func forwardToLeader[T any](clusterMembers []string, fn func(target string) (T, 
 	var success bool
 	var successResp T
 
+	// Try all of the coordinators - one of them should be the leader.
 	wg.Add(len(clusterMembers))
 	for _, m := range clusterMembers {
 		go func() {
@@ -90,7 +91,7 @@ func (p *Proxy) Get(ctx context.Context, request *apipb.GetRequest) (*apipb.GetR
 
 	readReq := &chainpb.ReadRequest{Key: request.GetKey(), ConfigVersion: config.Version}
 	readResp, err := p.chainTn.Read(ctx, tail.Address, readReq)
-	if err != nil && errors.Is(err, api.ErrGRPCInvalidConfigVersion) {
+	if err != nil && errors.Is(err, types.ErrGRPCInvalidConfigVersion) {
 		p.log.WarnContext(ctx, "proxy configuration version does not match chain configuration version")
 		config, err := p.getChainMembership(ctx, true)
 		if err != nil {
