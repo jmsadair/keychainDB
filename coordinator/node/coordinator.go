@@ -9,7 +9,6 @@ import (
 	"time"
 
 	chainnode "github.com/jmsadair/keychain/chain/node"
-	"github.com/jmsadair/keychain/coordinator/raft"
 	chainpb "github.com/jmsadair/keychain/proto/chain"
 	pb "github.com/jmsadair/keychain/proto/coordinator"
 	"golang.org/x/sync/errgroup"
@@ -35,8 +34,7 @@ type RaftProtocol interface {
 	ChainConfiguration() *chainnode.Configuration
 	JoinCluster(ctx context.Context, id, address string) error
 	RemoveFromCluster(ctx context.Context, id string) error
-	ClusterStatus() (raft.Status, error)
-	Shutdown() error
+	ClusterStatus() (Status, error)
 }
 
 type memberState struct {
@@ -46,6 +44,7 @@ type memberState struct {
 }
 
 type Coordinator struct {
+	pb.UnimplementedCoordinatorServiceServer
 	ID                  string
 	Address             string
 	raft                RaftProtocol
@@ -98,8 +97,7 @@ func (c *Coordinator) Run(ctx context.Context) error {
 		return nil
 	})
 
-	g.Wait()
-	return c.raft.Shutdown()
+	return g.Wait()
 }
 
 func (c *Coordinator) AddMember(ctx context.Context, request *pb.AddMemberRequest) (*pb.AddMemberResponse, error) {

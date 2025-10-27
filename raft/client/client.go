@@ -50,7 +50,7 @@ func (c *Client) TimeoutNow(ctx context.Context, address string, request *pb.Tim
 	return client.TimeoutNow(ctx, request, defaultCallOps...)
 }
 
-func (c *Client) InstallSnapshot(ctx context.Context, address string) (grpc.ClientStreamingClient[pb.InstallSnapshotRequest, pb.InstallSnapshotResponse], error) {
+func (c *Client) InstallSnapshot(ctx context.Context, address string) (pb.RaftService_InstallSnapshotClient, error) {
 	client, err := c.cache.GetOrCreate(address)
 	if err != nil {
 		return nil, err

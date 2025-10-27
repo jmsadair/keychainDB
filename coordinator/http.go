@@ -1,4 +1,4 @@
-package server
+package coordinator
 
 import (
 	"context"
@@ -15,22 +15,22 @@ import (
 const defaultShutdownTimeout = 500 * time.Millisecond
 
 type HTTPServer struct {
-	GRPCAddress string
-	Address     string
+	GRPCListen  string
+	Listen      string
 	DialOptions []grpc.DialOption
 }
 
 func (s *HTTPServer) Run(ctx context.Context) error {
-	cc, err := grpc.NewClient(s.GRPCAddress, s.DialOptions...)
+	cc, err := grpc.NewClient(s.GRPCListen, s.DialOptions...)
 	if err != nil {
 		return err
 	}
 	mux := runtime.NewServeMux(runtime.WithHealthzEndpoint(grpc_health_v1.NewHealthClient(cc)))
-	if err := gw.RegisterCoordinatorServiceHandlerFromEndpoint(ctx, mux, s.GRPCAddress, s.DialOptions); err != nil {
+	if err := gw.RegisterCoordinatorServiceHandlerFromEndpoint(ctx, mux, s.GRPCListen, s.DialOptions); err != nil {
 		return err
 	}
 
-	httpServer := &http.Server{Addr: s.Address, Handler: mux}
+	httpServer := &http.Server{Addr: s.Listen, Handler: mux}
 	g, ctx := errgroup.WithContext(ctx)
 	g.Go(func() error {
 		<-ctx.Done()
