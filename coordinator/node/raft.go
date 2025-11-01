@@ -4,7 +4,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/hashicorp/raft"
 	hraft "github.com/hashicorp/raft"
 	chainnode "github.com/jmsadair/keychain/chain/node"
 	"github.com/jmsadair/keychain/raft/network"
