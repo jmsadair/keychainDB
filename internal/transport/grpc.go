@@ -108,7 +108,6 @@ func (s *Server) Run(ctx context.Context) error {
 type cachedClient[T any] struct {
 	client T
 	conn   *grpc.ClientConn
-	mu     sync.RWMutex
 }
 
 // ClientFactory is a function that wraps a grpc.ClientConn into a typed gRPC client.
