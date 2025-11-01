@@ -1,9 +1,8 @@
-package storage
+package logstore
 
 import (
 	"encoding/binary"
 	"errors"
-	"os"
 
 	"github.com/dgraph-io/badger/v4"
 	"github.com/hashicorp/raft"
@@ -62,10 +61,6 @@ func bytesToLog(b []byte, log *raft.Log) error {
 	log.AppendedAt = protoLog.AppendedAt.AsTime()
 
 	return nil
-}
-
-func NewSnapshotStorage(dbpath string) (*raft.FileSnapshotStore, error) {
-	return raft.NewFileSnapshotStore(dbpath, 10, os.Stderr)
 }
 
 // PersistentStorage is a persistent storage system for raft log entries and metadata.

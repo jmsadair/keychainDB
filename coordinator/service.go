@@ -10,7 +10,6 @@ import (
 	"github.com/jmsadair/keychain/coordinator/node"
 	"github.com/jmsadair/keychain/internal/transport"
 	coordinatorpb "github.com/jmsadair/keychain/proto/coordinator"
-	raftclient "github.com/jmsadair/keychain/raft/client"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/health"
@@ -63,15 +62,13 @@ type Service struct {
 
 // NewService creates a new coordinator service.
 func NewService(cfg ServiceConfig) (*Service, error) {
-	raftClient, err := raftclient.NewClient(cfg.DialOptions...)
-	if err != nil {
-		return nil, err
-	}
 	chainClient, err := chainclient.NewClient(cfg.DialOptions...)
 	if err != nil {
 		return nil, err
 	}
-	rb, err := node.NewRaftBackend(cfg.ID, cfg.Advertise, raftClient, cfg.StorageDir)
+
+	// Create a raft node and bootstap it if requested.
+	rb, err := node.NewRaftBackend(cfg.ID, cfg.Advertise, cfg.StorageDir, cfg.DialOptions...)
 	if err != nil {
 		return nil, err
 	}
@@ -90,7 +87,6 @@ func NewService(cfg ServiceConfig) (*Service, error) {
 		rb.Register(grpcServer)
 		grpc_health_v1.RegisterHealthServer(grpcServer, health.NewServer())
 	}, grpc.UnaryInterceptor(transport.UnaryServerErrorInterceptor(errToGRPCError)))
-
 	gw := transport.NewHTTPGateway(
 		cfg.HTTPListen,
 		cfg.Listen,

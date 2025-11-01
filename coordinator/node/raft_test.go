@@ -8,7 +8,6 @@ import (
 
 	"github.com/hashicorp/raft"
 	chainnode "github.com/jmsadair/keychain/chain/node"
-	"github.com/jmsadair/keychain/raft/client"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -41,9 +40,7 @@ func waitForLeader(t *testing.T, expectedLeader *RaftBackend) {
 }
 
 func newTestRaftBackend(t *testing.T, id string, address string, bootstrap bool) *testRaftBackend {
-	c, err := client.NewClient(grpc.WithTransportCredentials(insecure.NewCredentials()))
-	require.NoError(t, err)
-	rb, err := NewRaftBackend(id, address, c, t.TempDir())
+	rb, err := NewRaftBackend(id, address, t.TempDir(), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	require.NoError(t, err)
 	srv := grpc.NewServer()
 	rb.Register(srv)

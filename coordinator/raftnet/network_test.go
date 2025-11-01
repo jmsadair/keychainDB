@@ -1,4 +1,4 @@
-package network
+package raftnet
 
 import (
 	"bytes"
@@ -799,14 +799,14 @@ func (m *mockInstallSnapshotClient) Trailer() metadata.MD {
 
 func TestTransportLocalAddr(t *testing.T) {
 	client := new(mockClient)
-	nw := NewNetwork("127.0.0.1:8080", client)
+	nw := newNetworkWithClient("127.0.0.1:8080", client)
 	transport := nw.Transport()
 	require.Equal(t, raft.ServerAddress("127.0.0.1:8080"), transport.LocalAddr())
 }
 
 func TestTransportRequestVoteSuccess(t *testing.T) {
 	client := new(mockClient)
-	nw := NewNetwork("127.0.0.1:8080", client)
+	nw := newNetworkWithClient("127.0.0.1:8080", client)
 	transport := nw.Transport()
 
 	pbResp := &pb.RequestVoteResponse{
@@ -827,7 +827,7 @@ func TestTransportRequestVoteSuccess(t *testing.T) {
 
 func TestTransportRequestVoteError(t *testing.T) {
 	client := new(mockClient)
-	nw := NewNetwork("127.0.0.1:8080", client)
+	nw := newNetworkWithClient("127.0.0.1:8080", client)
 	transport := nw.Transport()
 
 	expectedErr := errors.New("vote failed")
@@ -843,7 +843,7 @@ func TestTransportRequestVoteError(t *testing.T) {
 
 func TestTransportRequestPreVoteSuccess(t *testing.T) {
 	client := new(mockClient)
-	nw := NewNetwork("127.0.0.1:8080", client)
+	nw := newNetworkWithClient("127.0.0.1:8080", client)
 	transport := nw.Transport()
 
 	pbResp := &pb.RequestPreVoteResponse{RpcHeader: &pb.RpcHeader{ProtocolVersion: 3}, Term: 5, Granted: true}
@@ -860,7 +860,7 @@ func TestTransportRequestPreVoteSuccess(t *testing.T) {
 
 func TestTransportRequestPreVoteError(t *testing.T) {
 	client := new(mockClient)
-	nw := NewNetwork("127.0.0.1:8080", client)
+	nw := newNetworkWithClient("127.0.0.1:8080", client)
 	transport := nw.Transport()
 
 	expectedErr := errors.New("prevote failed")
@@ -876,7 +876,7 @@ func TestTransportRequestPreVoteError(t *testing.T) {
 
 func TestTransportAppendEntriesSuccess(t *testing.T) {
 	client := new(mockClient)
-	nw := NewNetwork("127.0.0.1:8080", client)
+	nw := newNetworkWithClient("127.0.0.1:8080", client)
 	transport := nw.Transport()
 
 	pbResp := &pb.AppendEntriesResponse{RpcHeader: &pb.RpcHeader{ProtocolVersion: 3}, Term: 6, LastLog: 11, Success: true}
@@ -894,7 +894,7 @@ func TestTransportAppendEntriesSuccess(t *testing.T) {
 
 func TestTransportAppendEntriesError(t *testing.T) {
 	client := new(mockClient)
-	nw := NewNetwork("127.0.0.1:8080", client)
+	nw := newNetworkWithClient("127.0.0.1:8080", client)
 	transport := nw.Transport()
 
 	expectedErr := errors.New("append failed")
@@ -911,7 +911,7 @@ func TestTransportAppendEntriesError(t *testing.T) {
 
 func TestTransportAppendEntriesPipelineSuccess(t *testing.T) {
 	client := new(mockClient)
-	nw := NewNetwork("127.0.0.1:8080", client)
+	nw := newNetworkWithClient("127.0.0.1:8080", client)
 	transport := nw.Transport()
 
 	mockPipelineClient := new(mockAppendEntriesPipelineClient)
@@ -926,7 +926,7 @@ func TestTransportAppendEntriesPipelineSuccess(t *testing.T) {
 
 func TestTransportAppendEntriesPipelineError(t *testing.T) {
 	client := new(mockClient)
-	nw := NewNetwork("127.0.0.1:8080", client)
+	nw := newNetworkWithClient("127.0.0.1:8080", client)
 	transport := nw.Transport()
 
 	expectedErr := errors.New("pipeline failed")
@@ -941,7 +941,7 @@ func TestTransportAppendEntriesPipelineError(t *testing.T) {
 
 func TestTransportTimeoutNowSuccess(t *testing.T) {
 	client := new(mockClient)
-	nw := NewNetwork("127.0.0.1:8080", client)
+	nw := newNetworkWithClient("127.0.0.1:8080", client)
 	transport := nw.Transport()
 
 	pbResp := &pb.TimeoutNowResponse{RpcHeader: &pb.RpcHeader{ProtocolVersion: 3}}
@@ -957,7 +957,7 @@ func TestTransportTimeoutNowSuccess(t *testing.T) {
 
 func TestTransportTimeoutNowError(t *testing.T) {
 	client := new(mockClient)
-	nw := NewNetwork("127.0.0.1:8080", client)
+	nw := newNetworkWithClient("127.0.0.1:8080", client)
 	transport := nw.Transport()
 
 	expectedErr := errors.New("timeout failed")
@@ -974,7 +974,7 @@ func TestTransportTimeoutNowError(t *testing.T) {
 
 func TestTransportInstallSnapshotSuccess(t *testing.T) {
 	client := new(mockClient)
-	nw := NewNetwork("127.0.0.1:8080", client)
+	nw := newNetworkWithClient("127.0.0.1:8080", client)
 	transport := nw.Transport()
 
 	mockSnapshotClient := new(mockInstallSnapshotClient)
@@ -1000,7 +1000,7 @@ func TestTransportInstallSnapshotSuccess(t *testing.T) {
 
 func TestTransportInstallSnapshotClientError(t *testing.T) {
 	client := new(mockClient)
-	nw := NewNetwork("127.0.0.1:8080", client)
+	nw := newNetworkWithClient("127.0.0.1:8080", client)
 	transport := nw.Transport()
 
 	expectedErr := errors.New("snapshot client failed")
@@ -1017,7 +1017,7 @@ func TestTransportInstallSnapshotClientError(t *testing.T) {
 
 func TestTransportInstallSnapshotSendError(t *testing.T) {
 	client := new(mockClient)
-	nw := NewNetwork("127.0.0.1:8080", client)
+	nw := newNetworkWithClient("127.0.0.1:8080", client)
 	transport := nw.Transport()
 
 	mockSnapshotClient := new(mockInstallSnapshotClient)
@@ -1038,7 +1038,7 @@ func TestTransportInstallSnapshotSendError(t *testing.T) {
 
 func TestTransportInstallSnapshotCloseError(t *testing.T) {
 	client := new(mockClient)
-	nw := NewNetwork("127.0.0.1:8080", client)
+	nw := newNetworkWithClient("127.0.0.1:8080", client)
 	transport := nw.Transport()
 
 	mockSnapshotClient := new(mockInstallSnapshotClient)
@@ -1060,7 +1060,7 @@ func TestTransportInstallSnapshotCloseError(t *testing.T) {
 
 func TestTransportEncodePeer(t *testing.T) {
 	client := new(mockClient)
-	nw := NewNetwork("127.0.0.1:8080", client)
+	nw := newNetworkWithClient("127.0.0.1:8080", client)
 	transport := nw.Transport()
 	encoded := transport.EncodePeer("node1", "192.168.1.10:9000")
 	require.Equal(t, []byte("192.168.1.10:9000"), encoded)
@@ -1068,7 +1068,7 @@ func TestTransportEncodePeer(t *testing.T) {
 
 func TestTransportDecodePeer(t *testing.T) {
 	client := new(mockClient)
-	nw := NewNetwork("127.0.0.1:8080", client)
+	nw := newNetworkWithClient("127.0.0.1:8080", client)
 	transport := nw.Transport()
 	decoded := transport.DecodePeer([]byte("192.168.1.10:9000"))
 	require.Equal(t, raft.ServerAddress("192.168.1.10:9000"), decoded)
