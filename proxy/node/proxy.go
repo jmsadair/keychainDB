@@ -12,6 +12,10 @@ import (
 	apipb "github.com/jmsadair/keychain/proto/api"
 	chainpb "github.com/jmsadair/keychain/proto/chain"
 	coordinatorpb "github.com/jmsadair/keychain/proto/coordinator"
+	proxypb "github.com/jmsadair/keychain/proto/proxy"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/health/grpc_health_v1"
+	"google.golang.org/grpc/status"
 )
 
 var (
@@ -68,6 +72,7 @@ type CoordinatorTransport interface {
 }
 
 type Proxy struct {
+	proxypb.UnimplementedProxyServiceServer
 	chainTn       ChainTransport
 	coordinatorTn CoordinatorTransport
 	raftMembers   []string
@@ -147,6 +152,14 @@ func (p *Proxy) Set(ctx context.Context, request *apipb.SetRequest) (*apipb.SetR
 	}
 
 	return &apipb.SetResponse{}, nil
+}
+
+func (p *Proxy) Check(ctx context.Context, req *grpc_health_v1.HealthCheckRequest) (*grpc_health_v1.HealthCheckResponse, error) {
+	return &grpc_health_v1.HealthCheckResponse{Status: grpc_health_v1.HealthCheckResponse_SERVING}, nil
+}
+
+func (p *Proxy) Watch(req *grpc_health_v1.HealthCheckRequest, _ grpc_health_v1.Health_WatchServer) error {
+	return status.Error(codes.Unimplemented, "unimplemented")
 }
 
 func (p *Proxy) getChainMembership(ctx context.Context, forceRefresh bool) (*chainnode.Configuration, error) {

@@ -8,7 +8,6 @@ import (
 	"time"
 
 	chainnode "github.com/jmsadair/keychain/chain/node"
-	"github.com/jmsadair/keychain/coordinator/raft"
 	chainpb "github.com/jmsadair/keychain/proto/chain"
 	pb "github.com/jmsadair/keychain/proto/coordinator"
 	"github.com/stretchr/testify/mock"
@@ -50,9 +49,9 @@ func (m *mockRaft) ChainConfiguration() *chainnode.Configuration {
 	return m.MethodCalled("ChainConfiguration").Get(0).(*chainnode.Configuration)
 }
 
-func (m *mockRaft) ClusterStatus() (raft.Status, error) {
+func (m *mockRaft) ClusterStatus() (Status, error) {
 	args := m.MethodCalled("ClusterStatus")
-	return args.Get(0).(raft.Status), args.Error(1)
+	return args.Get(0).(Status), args.Error(1)
 }
 
 func (m *mockRaft) Shutdown() error {
@@ -78,6 +77,11 @@ func (m *mockTransport) UpdateConfiguration(ctx context.Context, address string,
 		return resp.(*chainpb.UpdateConfigurationResponse), nil
 	}
 	return nil, args.Error(1)
+}
+
+func (m *mockTransport) Close() error {
+	args := m.MethodCalled("Close")
+	return args.Error(0)
 }
 
 func TestNewCoordinator(t *testing.T) {
@@ -149,7 +153,7 @@ func TestClusterStatus(t *testing.T) {
 	req := &pb.ClusterStatusRequest{}
 
 	consensus.On("LeaderAddressAndID").Return(addr, id).Once()
-	consensus.On("ClusterStatus", mock.Anything).Return(raft.Status{Leader: addr, Members: map[string]string{id: addr}}, nil)
+	consensus.On("ClusterStatus", mock.Anything).Return(Status{Leader: addr, Members: map[string]string{id: addr}}, nil)
 	resp, err := coordinator.ClusterStatus(context.Background(), req)
 	require.NoError(t, err)
 	require.NotNil(t, resp)

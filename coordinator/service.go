@@ -4,30 +4,41 @@ import (
 	"context"
 	"log/slog"
 
+	"github.com/hashicorp/raft"
+	"github.com/jmsadair/keychain/api/types"
 	chainclient "github.com/jmsadair/keychain/chain/client"
 	"github.com/jmsadair/keychain/coordinator/node"
-	"github.com/jmsadair/keychain/coordinator/raft"
-	"github.com/jmsadair/keychain/coordinator/server"
+	"github.com/jmsadair/keychain/internal/transport"
+	coordinatorpb "github.com/jmsadair/keychain/proto/coordinator"
+	raftclient "github.com/jmsadair/keychain/raft/client"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/health"
+	"google.golang.org/grpc/health/grpc_health_v1"
 )
+
+// Maps service errors to gRPC errors.
+var errToGRPCError = map[error]error{
+	node.ErrConfigurationUpdateFailed: types.ErrGRPCConfigurationUpdateFailed,
+	node.ErrEnqueueTimeout:            types.ErrGRPCEnqueueTimeout,
+	node.ErrLeader:                    types.ErrGRPCLeader,
+	node.ErrNodeExists:                types.ErrGRPCNodeExists,
+	node.ErrLeadershipLost:            types.ErrGRPCLeadershipLost,
+	node.ErrNotLeader:                 types.ErrGRPCNotLeader,
+}
 
 // ServiceConfig contains the configurations for a coordinator service.
 type ServiceConfig struct {
 	// ID that uniquely identifies this service instance.
 	ID string
-	// Address that raft will advertise to other members of the cluster.
-	RaftAdvertise string
-	// Address that raft will listen for incoming requests on.
-	RaftListen string
+	// Address that will be advertised to other members of the cluster.
+	Advertise string
+	// Address that the service will listen for incoming RPCs on. This is shared by raft and the coordinator.
+	Listen string
 	// Address that the service will listen for incoming HTTP requests on.
 	HTTPListen string
-	// Address that the service will listen for incoming RPCs on.
-	GRPCListen string
-	// Path to where a service will store on-disk raft logs.
-	StoragePath string
-	// Path to where a service will store on-disk raft snapshots.
-	SnapshotStoragePath string
+	// Directory where raft will store logs and snapshots.
+	StorageDir string
 	// Whether or not to bootstrap a new raft cluster.
 	Bootstrap bool
 	// gRPC dial options a service will use when making RPCs to other servers.
@@ -38,32 +49,62 @@ type ServiceConfig struct {
 
 // Service is the coordinator service.
 type Service struct {
-	// HTTP server implementation.
-	HTTPServer *server.HTTPServer
+	// HTTP gateway for translating .
+	Gateway *transport.HTTPGateway
 	// gRPC server implementation.
-	GRPCServer *server.RPCServer
-	// The raft consensus protocol implementation.
-	Raft *raft.RaftBackend
+	Server *transport.Server
 	// The coordinator implementation.
 	Coordinator *node.Coordinator
+	// The raft implementation.
+	Raft *node.RaftBackend
 	// The configuration for this service.
 	Config ServiceConfig
 }
 
 // NewService creates a new coordinator service.
 func NewService(cfg ServiceConfig) (*Service, error) {
-	rb, err := raft.NewRaftBackend(cfg.ID, cfg.RaftListen, cfg.RaftAdvertise, cfg.StoragePath, cfg.SnapshotStoragePath, cfg.Bootstrap)
+	raftClient, err := raftclient.NewClient(cfg.DialOptions...)
 	if err != nil {
 		return nil, err
 	}
-	chainTn, err := chainclient.NewClient(cfg.DialOptions...)
+	chainClient, err := chainclient.NewClient(cfg.DialOptions...)
 	if err != nil {
 		return nil, err
 	}
-	coordinator := node.NewCoordinator(cfg.ID, cfg.RaftAdvertise, chainTn, rb, cfg.Log)
-	httpServer := &server.HTTPServer{Address: cfg.HTTPListen, GRPCAddress: cfg.GRPCListen, DialOptions: cfg.DialOptions}
-	gRPCServer := server.NewServer(cfg.GRPCListen, coordinator)
-	return &Service{HTTPServer: httpServer, GRPCServer: gRPCServer, Coordinator: coordinator, Raft: rb, Config: cfg}, nil
+	rb, err := node.NewRaftBackend(cfg.ID, cfg.Advertise, raftClient, cfg.StorageDir)
+	if err != nil {
+		return nil, err
+	}
+	if cfg.Bootstrap {
+		clusterConfig := raft.Configuration{
+			Servers: []raft.Server{{ID: raft.ServerID(cfg.ID), Address: raft.ServerAddress(cfg.Advertise)}},
+		}
+		if err := rb.Bootstrap(clusterConfig); err != nil {
+			return nil, err
+		}
+	}
+
+	coordinatorNode := node.NewCoordinator(cfg.ID, cfg.Advertise, chainClient, rb, cfg.Log)
+	srv := transport.NewServer(cfg.Listen, func(grpcServer *grpc.Server) {
+		coordinatorpb.RegisterCoordinatorServiceServer(grpcServer, coordinatorNode)
+		rb.Register(grpcServer)
+		grpc_health_v1.RegisterHealthServer(grpcServer, health.NewServer())
+	}, grpc.UnaryInterceptor(transport.UnaryServerErrorInterceptor(errToGRPCError)))
+
+	gw := transport.NewHTTPGateway(
+		cfg.HTTPListen,
+		cfg.Listen,
+		coordinatorpb.RegisterCoordinatorServiceHandlerFromEndpoint,
+		cfg.DialOptions...,
+	)
+
+	return &Service{
+		Gateway:     gw,
+		Server:      srv,
+		Coordinator: coordinatorNode,
+		Config:      cfg,
+		Raft:        rb,
+	}, nil
 }
 
 // Run runs the service.
@@ -73,11 +114,12 @@ func (s *Service) Run(ctx context.Context) error {
 		return s.Coordinator.Run(ctx)
 	})
 	g.Go(func() error {
-		return s.HTTPServer.Run(ctx)
+		return s.Gateway.Run(ctx)
 	})
 	g.Go(func() error {
-		return s.GRPCServer.Run(ctx)
+		return s.Server.Run(ctx)
 	})
+
 	s.Config.Log.InfoContext(
 		ctx,
 		"running coordinator service",
@@ -85,10 +127,11 @@ func (s *Service) Run(ctx context.Context) error {
 		s.Config.ID,
 		"http-listen",
 		s.Config.HTTPListen,
-		"grpc-listen",
-		s.Config.HTTPListen,
-		"raft-listen",
-		s.Config.HTTPListen,
+		"listen",
+		s.Config.Listen,
+		"advertise",
+		s.Config.Advertise,
 	)
+
 	return g.Wait()
 }

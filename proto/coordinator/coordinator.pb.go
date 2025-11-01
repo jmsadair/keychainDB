@@ -11,7 +11,6 @@ import (
 	_ "google.golang.org/genproto/googleapis/api/annotations"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
-	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
@@ -786,102 +785,11 @@ func (*ReplicatedOperation_RemoveMember) isReplicatedOperation_Operation() {}
 
 func (*ReplicatedOperation_ReadMembership) isReplicatedOperation_Operation() {}
 
-// Log is a log entry in the raft log.
-type Log struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// The index of this log entry.
-	Index uint64 `protobuf:"varint,1,opt,name=index,proto3" json:"index,omitempty"`
-	// The election term of this log entry.
-	Term uint64 `protobuf:"varint,2,opt,name=term,proto3" json:"term,omitempty"`
-	// The type of this log entry.
-	Type uint32 `protobuf:"varint,3,opt,name=type,proto3" json:"type,omitempty"`
-	// The data of this log entry.
-	Data []byte `protobuf:"bytes,4,opt,name=data,proto3" json:"data,omitempty"`
-	// The extensions for this log entry.
-	Extensions []byte `protobuf:"bytes,5,opt,name=extensions,proto3" json:"extensions,omitempty"`
-	// The time at which this log entry was appended to the log.
-	AppendedAt    *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=appended_at,json=appendedAt,proto3" json:"appended_at,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *Log) Reset() {
-	*x = Log{}
-	mi := &file_proto_coordinator_coordinator_proto_msgTypes[16]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *Log) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*Log) ProtoMessage() {}
-
-func (x *Log) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_coordinator_coordinator_proto_msgTypes[16]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use Log.ProtoReflect.Descriptor instead.
-func (*Log) Descriptor() ([]byte, []int) {
-	return file_proto_coordinator_coordinator_proto_rawDescGZIP(), []int{16}
-}
-
-func (x *Log) GetIndex() uint64 {
-	if x != nil {
-		return x.Index
-	}
-	return 0
-}
-
-func (x *Log) GetTerm() uint64 {
-	if x != nil {
-		return x.Term
-	}
-	return 0
-}
-
-func (x *Log) GetType() uint32 {
-	if x != nil {
-		return x.Type
-	}
-	return 0
-}
-
-func (x *Log) GetData() []byte {
-	if x != nil {
-		return x.Data
-	}
-	return nil
-}
-
-func (x *Log) GetExtensions() []byte {
-	if x != nil {
-		return x.Extensions
-	}
-	return nil
-}
-
-func (x *Log) GetAppendedAt() *timestamppb.Timestamp {
-	if x != nil {
-		return x.AppendedAt
-	}
-	return nil
-}
-
 var File_proto_coordinator_coordinator_proto protoreflect.FileDescriptor
 
 const file_proto_coordinator_coordinator_proto_rawDesc = "" +
 	"\n" +
-	"#proto/coordinator/coordinator.proto\x12\vcoordinator\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1cgoogle/api/annotations.proto\x1a\x17proto/chain/chain.proto\"\x13\n" +
+	"#proto/coordinator/coordinator.proto\x12\vcoordinator\x1a\x1cgoogle/api/annotations.proto\x1a\x17proto/chain/chain.proto\"\x13\n" +
 	"\x11GetMembersRequest\"P\n" +
 	"\x12GetMembersResponse\x12:\n" +
 	"\rconfiguration\x18\x01 \x01(\v2\x14.chain.ConfigurationR\rconfiguration\"<\n" +
@@ -917,17 +825,7 @@ const file_proto_coordinator_coordinator_proto_rawDesc = "" +
 	"add_member\x18\x01 \x01(\v2\x1f.coordinator.AddMemberOperationH\x00R\taddMember\x12I\n" +
 	"\rremove_member\x18\x02 \x01(\v2\".coordinator.RemoveMemberOperationH\x00R\fremoveMember\x12O\n" +
 	"\x0fread_membership\x18\x03 \x01(\v2$.coordinator.ReadMembershipOperationH\x00R\x0ereadMembershipB\v\n" +
-	"\toperation\"\xb4\x01\n" +
-	"\x03Log\x12\x14\n" +
-	"\x05index\x18\x01 \x01(\x04R\x05index\x12\x12\n" +
-	"\x04term\x18\x02 \x01(\x04R\x04term\x12\x12\n" +
-	"\x04type\x18\x03 \x01(\rR\x04type\x12\x12\n" +
-	"\x04data\x18\x04 \x01(\fR\x04data\x12\x1e\n" +
-	"\n" +
-	"extensions\x18\x05 \x01(\fR\n" +
-	"extensions\x12;\n" +
-	"\vappended_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
-	"appendedAt2\xca\x05\n" +
+	"\toperation2\xca\x05\n" +
 	"\x12CoordinatorService\x12h\n" +
 	"\n" +
 	"GetMembers\x12\x1e.coordinator.GetMembersRequest\x1a\x1f.coordinator.GetMembersResponse\"\x19\x82\xd3\xe4\x93\x02\x13\x12\x11/v1/chain/members\x12h\n" +
@@ -949,7 +847,7 @@ func file_proto_coordinator_coordinator_proto_rawDescGZIP() []byte {
 	return file_proto_coordinator_coordinator_proto_rawDescData
 }
 
-var file_proto_coordinator_coordinator_proto_msgTypes = make([]protoimpl.MessageInfo, 18)
+var file_proto_coordinator_coordinator_proto_msgTypes = make([]protoimpl.MessageInfo, 17)
 var file_proto_coordinator_coordinator_proto_goTypes = []any{
 	(*GetMembersRequest)(nil),         // 0: coordinator.GetMembersRequest
 	(*GetMembersResponse)(nil),        // 1: coordinator.GetMembersResponse
@@ -967,35 +865,32 @@ var file_proto_coordinator_coordinator_proto_goTypes = []any{
 	(*RemoveMemberOperation)(nil),     // 13: coordinator.RemoveMemberOperation
 	(*ReadMembershipOperation)(nil),   // 14: coordinator.ReadMembershipOperation
 	(*ReplicatedOperation)(nil),       // 15: coordinator.ReplicatedOperation
-	(*Log)(nil),                       // 16: coordinator.Log
-	nil,                               // 17: coordinator.ClusterStatusResponse.MembersEntry
-	(*chain.Configuration)(nil),       // 18: chain.Configuration
-	(*timestamppb.Timestamp)(nil),     // 19: google.protobuf.Timestamp
+	nil,                               // 16: coordinator.ClusterStatusResponse.MembersEntry
+	(*chain.Configuration)(nil),       // 17: chain.Configuration
 }
 var file_proto_coordinator_coordinator_proto_depIdxs = []int32{
-	18, // 0: coordinator.GetMembersResponse.configuration:type_name -> chain.Configuration
-	17, // 1: coordinator.ClusterStatusResponse.members:type_name -> coordinator.ClusterStatusResponse.MembersEntry
+	17, // 0: coordinator.GetMembersResponse.configuration:type_name -> chain.Configuration
+	16, // 1: coordinator.ClusterStatusResponse.members:type_name -> coordinator.ClusterStatusResponse.MembersEntry
 	12, // 2: coordinator.ReplicatedOperation.add_member:type_name -> coordinator.AddMemberOperation
 	13, // 3: coordinator.ReplicatedOperation.remove_member:type_name -> coordinator.RemoveMemberOperation
 	14, // 4: coordinator.ReplicatedOperation.read_membership:type_name -> coordinator.ReadMembershipOperation
-	19, // 5: coordinator.Log.appended_at:type_name -> google.protobuf.Timestamp
-	0,  // 6: coordinator.CoordinatorService.GetMembers:input_type -> coordinator.GetMembersRequest
-	2,  // 7: coordinator.CoordinatorService.AddMember:input_type -> coordinator.AddMemberRequest
-	4,  // 8: coordinator.CoordinatorService.RemoveMember:input_type -> coordinator.RemoveMemberRequest
-	6,  // 9: coordinator.CoordinatorService.JoinCluster:input_type -> coordinator.JoinClusterRequest
-	8,  // 10: coordinator.CoordinatorService.RemoveFromCluster:input_type -> coordinator.RemoveFromClusterRequest
-	10, // 11: coordinator.CoordinatorService.ClusterStatus:input_type -> coordinator.ClusterStatusRequest
-	1,  // 12: coordinator.CoordinatorService.GetMembers:output_type -> coordinator.GetMembersResponse
-	3,  // 13: coordinator.CoordinatorService.AddMember:output_type -> coordinator.AddMemberResponse
-	5,  // 14: coordinator.CoordinatorService.RemoveMember:output_type -> coordinator.RemoveMemberResponse
-	7,  // 15: coordinator.CoordinatorService.JoinCluster:output_type -> coordinator.JoinClusterResponse
-	9,  // 16: coordinator.CoordinatorService.RemoveFromCluster:output_type -> coordinator.RemoveFromClusterResponse
-	11, // 17: coordinator.CoordinatorService.ClusterStatus:output_type -> coordinator.ClusterStatusResponse
-	12, // [12:18] is the sub-list for method output_type
-	6,  // [6:12] is the sub-list for method input_type
-	6,  // [6:6] is the sub-list for extension type_name
-	6,  // [6:6] is the sub-list for extension extendee
-	0,  // [0:6] is the sub-list for field type_name
+	0,  // 5: coordinator.CoordinatorService.GetMembers:input_type -> coordinator.GetMembersRequest
+	2,  // 6: coordinator.CoordinatorService.AddMember:input_type -> coordinator.AddMemberRequest
+	4,  // 7: coordinator.CoordinatorService.RemoveMember:input_type -> coordinator.RemoveMemberRequest
+	6,  // 8: coordinator.CoordinatorService.JoinCluster:input_type -> coordinator.JoinClusterRequest
+	8,  // 9: coordinator.CoordinatorService.RemoveFromCluster:input_type -> coordinator.RemoveFromClusterRequest
+	10, // 10: coordinator.CoordinatorService.ClusterStatus:input_type -> coordinator.ClusterStatusRequest
+	1,  // 11: coordinator.CoordinatorService.GetMembers:output_type -> coordinator.GetMembersResponse
+	3,  // 12: coordinator.CoordinatorService.AddMember:output_type -> coordinator.AddMemberResponse
+	5,  // 13: coordinator.CoordinatorService.RemoveMember:output_type -> coordinator.RemoveMemberResponse
+	7,  // 14: coordinator.CoordinatorService.JoinCluster:output_type -> coordinator.JoinClusterResponse
+	9,  // 15: coordinator.CoordinatorService.RemoveFromCluster:output_type -> coordinator.RemoveFromClusterResponse
+	11, // 16: coordinator.CoordinatorService.ClusterStatus:output_type -> coordinator.ClusterStatusResponse
+	11, // [11:17] is the sub-list for method output_type
+	5,  // [5:11] is the sub-list for method input_type
+	5,  // [5:5] is the sub-list for extension type_name
+	5,  // [5:5] is the sub-list for extension extendee
+	0,  // [0:5] is the sub-list for field type_name
 }
 
 func init() { file_proto_coordinator_coordinator_proto_init() }
@@ -1014,7 +909,7 @@ func file_proto_coordinator_coordinator_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_coordinator_coordinator_proto_rawDesc), len(file_proto_coordinator_coordinator_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   18,
+			NumMessages:   17,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

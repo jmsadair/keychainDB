@@ -112,8 +112,8 @@ func newTestKvClient(t *testing.T, endpoint string) *kv.Client {
 
 func waitForLeader(t *testing.T, srv *coordinator.Service) {
 	require.Eventually(t, func() bool {
-		status, err := srv.Raft.ClusterStatus()
-		return err == nil && status.Leader == srv.Raft.ID
+		_, id := srv.Raft.LeaderWithID()
+		return string(id) == srv.Config.ID
 	}, eventuallyTimeout, eventuallyTick)
 }
 
@@ -173,8 +173,8 @@ func newTestCoordinatorCluster(t *testing.T, bootstrapID string) *testCluster {
 		members:   make(map[string]*testCoordinator, 1),
 	}
 
-	ports := tc.allocator.allocate(3)
-	srv := newTestCoordinator(t, bootstrapID, ports[0], ports[1], ports[2], true)
+	ports := tc.allocator.allocate(2)
+	srv := newTestCoordinator(t, bootstrapID, ports[0], ports[1], true)
 	tc.srvs = append(tc.srvs, srv)
 	tc.members[bootstrapID] = srv
 	tc.leader = srv
@@ -183,67 +183,56 @@ func newTestCoordinatorCluster(t *testing.T, bootstrapID string) *testCluster {
 }
 
 func (tc *testCluster) addServerToClusterRPC(t *testing.T, client *coordinatorclient.Client, id string) {
-	ports := tc.allocator.allocate(3)
-	srv := newTestCoordinator(
-		t,
-		id,
-		ports[0],
-		ports[1],
-		ports[2],
-		false,
-	)
+	ports := tc.allocator.allocate(2)
+	srv := newTestCoordinator(t, id, ports[0], ports[1], false)
 	tc.srvs = append(tc.srvs, srv)
 	tc.members[id] = srv
 
 	req := &coordinatorpb.JoinClusterRequest{Id: srv.server.Coordinator.ID, Address: srv.server.Coordinator.Address}
-	_, err := client.JoinCluster(context.Background(), tc.leader.server.GRPCServer.Address, req)
+	_, err := client.JoinCluster(context.Background(), tc.leader.server.Coordinator.Address, req)
 	require.NoError(t, err)
 }
 
 func (tc *testCluster) removeServerFromClusterRPC(t *testing.T, client *coordinatorclient.Client, id string) {
 	req := &coordinatorpb.RemoveFromClusterRequest{Id: id}
-	_, err := client.RemoveFromCluster(context.Background(), tc.leader.server.GRPCServer.Address, req)
+	_, err := client.RemoveFromCluster(context.Background(), tc.leader.server.Coordinator.Address, req)
 	require.NoError(t, err)
 	delete(tc.members, id)
 }
 
 func (tc *testCluster) addChainMemberRPC(t *testing.T, client *coordinatorclient.Client, id string, addr string) {
 	req := &coordinatorpb.AddMemberRequest{Id: id, Address: addr}
-	_, err := client.AddMember(context.Background(), tc.leader.server.GRPCServer.Address, req)
+	_, err := client.AddMember(context.Background(), tc.leader.server.Coordinator.Address, req)
 	require.NoError(t, err)
 }
 
 func (tc *testCluster) removeChainMemberRPC(t *testing.T, client *coordinatorclient.Client, id string) {
 	req := &coordinatorpb.RemoveMemberRequest{Id: id}
-	_, err := client.RemoveMember(context.Background(), tc.leader.server.GRPCServer.Address, req)
+	_, err := client.RemoveMember(context.Background(), tc.leader.server.Coordinator.Address, req)
 	require.NoError(t, err)
 }
 
 func (tc *testCluster) addServerToClusterHTTP(t *testing.T, id string) {
 	ports := tc.allocator.allocate(3)
-	srv := newTestCoordinator(
-		t,
-		id,
-		ports[0],
-		ports[1],
-		ports[2],
-		false,
-	)
+	srv := newTestCoordinator(t, id, ports[0], ports[1], false)
 	tc.srvs = append(tc.srvs, srv)
 	tc.members[id] = srv
 
-	clusterMembersURL := fmt.Sprintf("http://%s/v1/cluster/members", tc.leader.server.HTTPServer.Address)
+	clusterMembersURL := fmt.Sprintf("http://%s/v1/cluster/members", tc.leader.server.Config.HTTPListen)
 	req := &coordinatorpb.JoinClusterRequest{Id: srv.server.Coordinator.ID, Address: srv.server.Coordinator.Address}
 	b, err := protojson.Marshal(req)
 	require.NoError(t, err)
 	resp1, err := http.Post(clusterMembersURL, "application/json", bytes.NewReader(b))
 	require.NoError(t, err)
-	resp1.Body.Close()
+	defer resp1.Body.Close()
+	b, err = io.ReadAll(resp1.Body)
+	require.NoError(t, err)
+	fmt.Println(string(b))
 	require.Equal(t, http.StatusOK, resp1.StatusCode)
 }
 
 func (tc *testCluster) removeServerFromClusterHTTP(t *testing.T, id string) {
-	clusterMembersURL := fmt.Sprintf("http://%s/v1/cluster/members", tc.leader.server.HTTPServer.Address)
+	clusterMembersURL := fmt.Sprintf("http://%s/v1/cluster/members", tc.leader.server.Config.HTTPListen)
 	deleteURL, err := url.JoinPath(clusterMembersURL, id)
 	require.NoError(t, err)
 
@@ -257,7 +246,7 @@ func (tc *testCluster) removeServerFromClusterHTTP(t *testing.T, id string) {
 }
 
 func (tc *testCluster) addChainMemberHTTP(t *testing.T, id string, addr string) {
-	chainMembersURL := fmt.Sprintf("http://%s/v1/chain/members", tc.leader.server.HTTPServer.Address)
+	chainMembersURL := fmt.Sprintf("http://%s/v1/chain/members", tc.leader.server.Config.HTTPListen)
 
 	req := &coordinatorpb.AddMemberRequest{Id: id, Address: addr}
 	b, err := protojson.Marshal(req)
@@ -269,7 +258,7 @@ func (tc *testCluster) addChainMemberHTTP(t *testing.T, id string, addr string) 
 }
 
 func (tc *testCluster) removeChainMemberHTTP(t *testing.T, id string) {
-	chainMembersURL := fmt.Sprintf("http://%s/v1/chain/members", tc.leader.server.HTTPServer.Address)
+	chainMembersURL := fmt.Sprintf("http://%s/v1/chain/members", tc.leader.server.Config.HTTPListen)
 	deleteURL, err := url.JoinPath(chainMembersURL, id)
 	require.NoError(t, err)
 
@@ -283,13 +272,13 @@ func (tc *testCluster) removeChainMemberHTTP(t *testing.T, id string) {
 
 func (tc *testCluster) clusterStatusRPC(t *testing.T, client *coordinatorclient.Client) *coordinatorpb.ClusterStatusResponse {
 	var req coordinatorpb.ClusterStatusRequest
-	resp, err := client.ClusterStatus(context.Background(), tc.leader.server.GRPCServer.Address, &req)
+	resp, err := client.ClusterStatus(context.Background(), tc.leader.server.Coordinator.Address, &req)
 	require.NoError(t, err)
 	return resp
 }
 
 func (tc *testCluster) clusterStatusHTTP(t *testing.T) *coordinatorpb.ClusterStatusResponse {
-	cluserStatusURL := fmt.Sprintf("http://%s/v1/cluster/status", tc.leader.server.HTTPServer.Address)
+	cluserStatusURL := fmt.Sprintf("http://%s/v1/cluster/status", tc.leader.server.Config.HTTPListen)
 
 	resp, err := http.Get(cluserStatusURL)
 	require.NoError(t, err)
@@ -303,13 +292,13 @@ func (tc *testCluster) clusterStatusHTTP(t *testing.T) *coordinatorpb.ClusterSta
 
 func (tc *testCluster) getChainMembersRPC(t *testing.T, client *coordinatorclient.Client) *coordinatorpb.GetMembersResponse {
 	var req coordinatorpb.GetMembersRequest
-	resp, err := client.GetMembers(context.Background(), tc.leader.server.GRPCServer.Address, &req)
+	resp, err := client.GetMembers(context.Background(), tc.leader.server.Coordinator.Address, &req)
 	require.NoError(t, err)
 	return resp
 }
 
 func (tc *testCluster) getChainMembersHTTP(t *testing.T) *coordinatorpb.GetMembersResponse {
-	chainMembersURL := fmt.Sprintf("http://%s/v1/chain/members", tc.leader.server.HTTPServer.Address)
+	chainMembersURL := fmt.Sprintf("http://%s/v1/chain/members", tc.leader.server.Config.HTTPListen)
 
 	resp, err := http.Get(chainMembersURL)
 	require.NoError(t, err)
@@ -332,7 +321,7 @@ func (tc *testCluster) clusterMembers() map[string]string {
 func (tc *testCluster) rpcAddresses() []string {
 	addrs := make([]string, 0, len(tc.members))
 	for _, srv := range tc.members {
-		addrs = append(addrs, srv.server.GRPCServer.Address)
+		addrs = append(addrs, srv.server.Coordinator.Address)
 	}
 	return addrs
 }
@@ -352,18 +341,16 @@ type testCoordinator struct {
 	runner *serverRunner
 }
 
-func newTestCoordinator(t *testing.T, id string, httpPort int, gRPCPort int, raftPort int, bootstrap bool) *testCoordinator {
+func newTestCoordinator(t *testing.T, id string, httpPort int, rpcPort int, bootstrap bool) *testCoordinator {
 	config := coordinator.ServiceConfig{
-		ID:                  id,
-		HTTPListen:          fmt.Sprintf("%s:%d", clusterAddress, httpPort),
-		GRPCListen:          fmt.Sprintf("%s:%d", clusterAddress, gRPCPort),
-		RaftListen:          fmt.Sprintf("%s:%d", clusterAddress, raftPort),
-		RaftAdvertise:       fmt.Sprintf("%s:%d", clusterAddress, raftPort),
-		StoragePath:         t.TempDir(),
-		SnapshotStoragePath: t.TempDir(),
-		Bootstrap:           bootstrap,
-		DialOptions:         []grpc.DialOption{creds},
-		Log:                 slog.Default(),
+		ID:          id,
+		HTTPListen:  fmt.Sprintf("%s:%d", clusterAddress, httpPort),
+		Listen:      fmt.Sprintf("%s:%d", clusterAddress, rpcPort),
+		Advertise:   fmt.Sprintf("%s:%d", clusterAddress, rpcPort),
+		StorageDir:  t.TempDir(),
+		Bootstrap:   bootstrap,
+		DialOptions: []grpc.DialOption{creds},
+		Log:         slog.Default(),
 	}
 	srv, err := coordinator.NewService(config)
 	require.NoError(t, err)
@@ -371,7 +358,7 @@ func newTestCoordinator(t *testing.T, id string, httpPort int, gRPCPort int, raf
 	runner := newServerRunner(t)
 	runner.runServer(srv)
 
-	waitForHealthy(t, srv.HTTPServer.Address)
+	waitForHealthy(t, srv.Config.HTTPListen)
 	if bootstrap {
 		waitForLeader(t, srv)
 	}
@@ -461,7 +448,7 @@ type testProxyServer struct {
 func newTestProxyServer(t *testing.T, clusterMembers []string) *testProxyServer {
 	cfg := proxy.ServiceConfig{
 		HTTPListen:   fmt.Sprintf("%s:8080", proxyAddress),
-		GRPCListen:   fmt.Sprintf("%s:8081", proxyAddress),
+		Listen:       fmt.Sprintf("%s:8081", proxyAddress),
 		Coordinators: clusterMembers,
 		DialOptions:  []grpc.DialOption{creds},
 		Log:          slog.Default(),
@@ -471,7 +458,7 @@ func newTestProxyServer(t *testing.T, clusterMembers []string) *testProxyServer 
 
 	runner := newServerRunner(t)
 	runner.runServer(srv)
-	waitForHealthy(t, srv.HTTPServer.Address)
+	waitForHealthy(t, srv.Config.HTTPListen)
 
 	return &testProxyServer{
 		server: srv,

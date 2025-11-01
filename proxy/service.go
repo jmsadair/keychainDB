@@ -4,13 +4,23 @@ import (
 	"context"
 	"log/slog"
 
+	"github.com/jmsadair/keychain/api/types"
 	chainclient "github.com/jmsadair/keychain/chain/client"
 	coordinatorclient "github.com/jmsadair/keychain/coordinator/client"
+	"github.com/jmsadair/keychain/internal/transport"
+	proxypb "github.com/jmsadair/keychain/proto/proxy"
 	"github.com/jmsadair/keychain/proxy/node"
-	"github.com/jmsadair/keychain/proxy/server"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/health"
+	"google.golang.org/grpc/health/grpc_health_v1"
 )
+
+// Maps service errors to gRPC errors.
+var errToGRPCError = map[error]error{
+	node.ErrCoordinatorUnavailable: types.ErrGRPCCoordinatorUnavailable,
+	node.ErrNoMembers:              types.ErrGRPCNoMembers,
+}
 
 // ServiceConfig contains the configurations for a proxy service.
 type ServiceConfig struct {
@@ -19,7 +29,7 @@ type ServiceConfig struct {
 	// Address that the service will listen for incoming HTTP requests on.
 	HTTPListen string
 	// Address that the service will listen for incoming RPCs on.
-	GRPCListen string
+	Listen string
 	// gRPC Dial options a service will use when making RPCs to other services.
 	DialOptions []grpc.DialOption
 	// Logger that the service will use for logging.
@@ -28,10 +38,10 @@ type ServiceConfig struct {
 
 // Service is the proxy service.
 type Service struct {
-	// The proxy HTTP server.
-	HTTPServer *server.HTTPServer
+	// HTTP gateway for the service.
+	Gateway *transport.HTTPGateway
 	// The proxy RPC service.
-	GRPCServer *server.RPCServer
+	Server *transport.Server
 	// The proxy implementation.
 	Proxy *node.Proxy
 	// The configuration for this service.
@@ -48,28 +58,32 @@ func NewService(cfg ServiceConfig) (*Service, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	p := node.NewProxy(cfg.Coordinators, coordinatorTn, chainTn, cfg.Log)
-	gRPCServer := server.NewServer(cfg.GRPCListen, p)
-	httpServer := &server.HTTPServer{Address: cfg.HTTPListen, GRPCAddress: cfg.GRPCListen, DialOptions: cfg.DialOptions}
-	return &Service{HTTPServer: httpServer, GRPCServer: gRPCServer, Proxy: p, Config: cfg}, nil
+	srv := transport.NewServer(cfg.Listen, func(grpcServer *grpc.Server) {
+		proxypb.RegisterProxyServiceServer(grpcServer, p)
+		grpc_health_v1.RegisterHealthServer(grpcServer, health.NewServer())
+	}, grpc.ChainUnaryInterceptor(transport.UnaryServerErrorInterceptor(errToGRPCError)))
+	gw := transport.NewHTTPGateway(cfg.HTTPListen, cfg.Listen, proxypb.RegisterProxyServiceHandlerFromEndpoint, cfg.DialOptions...)
+	return &Service{Gateway: gw, Server: srv, Proxy: p, Config: cfg}, nil
 }
 
 // Run runs the service.
 func (s *Service) Run(ctx context.Context) error {
 	g, ctx := errgroup.WithContext(ctx)
 	g.Go(func() error {
-		return s.GRPCServer.Run(ctx)
+		return s.Server.Run(ctx)
 	})
 	g.Go(func() error {
-		return s.HTTPServer.Run(ctx)
+		return s.Gateway.Run(ctx)
 	})
 	s.Config.Log.InfoContext(
 		ctx,
 		"running proxy service",
 		"http-listen",
 		s.Config.HTTPListen,
-		"grpc-listen",
-		s.Config.GRPCListen,
+		"listen",
+		s.Config.Listen,
 	)
 	return g.Wait()
 }

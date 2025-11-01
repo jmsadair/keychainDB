@@ -2,17 +2,15 @@ package transport
 
 import (
 	"context"
+	"errors"
 	"net"
 	"sync"
 
-	"github.com/jmsadair/keychain/internal/lru"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
-
-const defaultCacheCapacity = 50
 
 // UnaryServerErrorInterceptor maps server errors to their gRPC equivalent.
 func UnaryServerErrorInterceptor(errToGRPCErrorMapping map[error]error) grpc.UnaryServerInterceptor {
@@ -115,22 +113,18 @@ type cachedClient[T any] struct {
 // ClientFactory is a function that wraps a grpc.ClientConn into a typed gRPC client.
 type ClientFactory[T any] func(conn grpc.ClientConnInterface) T
 
-// ClientCache manages a cache of gRPC clients of a specific type. The cache employs and LRU eviction strategy.
-// When a client is evicted from the cache, the underlying connection will be closed.
+// ClientCache manages a cache of gRPC clients of a specific type.
 type ClientCache[T any] struct {
 	mu       sync.Mutex
-	clients  *lru.LruCache[string, *cachedClient[T]]
+	clients  map[string]*cachedClient[T]
 	dialOpts []grpc.DialOption
 	factory  ClientFactory[T]
 }
 
 // NewClientCache creates a new ClientCache.
 func NewClientCache[T any](factory ClientFactory[T], dialOpts ...grpc.DialOption) *ClientCache[T] {
-	closeOnEvict := func(_ string, cc *cachedClient[T]) {
-		cc.conn.Close()
-	}
 	return &ClientCache[T]{
-		clients:  lru.NewLruCache(defaultCacheCapacity, closeOnEvict),
+		clients:  make(map[string]*cachedClient[T]),
 		dialOpts: dialOpts,
 		factory:  factory,
 	}
@@ -142,7 +136,7 @@ func (c *ClientCache[T]) GetOrCreate(address string) (T, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	if cc, ok := c.clients.Get(address); ok {
+	if cc, ok := c.clients[address]; ok {
 		return cc.client, nil
 	}
 
@@ -153,6 +147,19 @@ func (c *ClientCache[T]) GetOrCreate(address string) (T, error) {
 	}
 
 	client := c.factory(conn)
-	c.clients.Set(address, &cachedClient[T]{conn: conn, client: client})
+	c.clients[address] = &cachedClient[T]{conn: conn, client: client}
 	return client, nil
+}
+
+// Close closes all connections managed by this cache.
+func (c *ClientCache[T]) Close() error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	closeErrs := make([]error, 0, len(c.clients))
+	for _, cc := range c.clients {
+		closeErrs = append(closeErrs, cc.conn.Close())
+	}
+
+	return errors.Join(closeErrs...)
 }
