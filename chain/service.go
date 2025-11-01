@@ -6,8 +6,9 @@ import (
 
 	"github.com/jmsadair/keychain/chain/client"
 	"github.com/jmsadair/keychain/chain/node"
-	"github.com/jmsadair/keychain/chain/server"
 	"github.com/jmsadair/keychain/chain/storage"
+	"github.com/jmsadair/keychain/internal/transport"
+	pb "github.com/jmsadair/keychain/proto/chain"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 )
@@ -28,8 +29,8 @@ type ServiceConfig struct {
 
 // Service is the chain service.
 type Service struct {
-	// A gRPC server.
-	GRPCServer *server.RPCServer
+	// The gRPC server.
+	Server *transport.Server
 	// Chain node implementation.
 	Node *node.ChainNode
 	// The configuration for this server.
@@ -49,8 +50,8 @@ func NewService(cfg ServiceConfig) (*Service, error) {
 		return nil, err
 	}
 	node := node.NewChainNode(cfg.ID, cfg.ListenAddr, store, tn, cfg.Log)
-	gRPCServer := server.NewServer(cfg.ListenAddr, node)
-	return &Service{GRPCServer: gRPCServer, Node: node, Config: cfg, store: store}, nil
+	srv := transport.NewServer(cfg.ListenAddr, func(s *grpc.Server) { pb.RegisterChainServiceServer(s, node) })
+	return &Service{Server: srv, Node: node, Config: cfg, store: store}, nil
 }
 
 // Run runs the service.
@@ -61,7 +62,7 @@ func (s *Service) Run(ctx context.Context) error {
 		s.Node.Run(ctx)
 		return nil
 	})
-	g.Go(func() error { return s.GRPCServer.Run(ctx) })
-	s.Config.Log.InfoContext(ctx, "running chain server", "local-id", s.Config.ID, "listen", s.Config.ListenAddr)
+	g.Go(func() error { return s.Server.Run(ctx) })
+	s.Config.Log.InfoContext(ctx, "running chain service", "local-id", s.Config.ID, "listen", s.Config.ListenAddr)
 	return g.Wait()
 }

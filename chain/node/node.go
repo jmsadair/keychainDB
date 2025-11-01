@@ -122,6 +122,8 @@ func (ct *cancellableTask) run(ctx context.Context, fn func(ctx context.Context)
 
 // ChainNode represents a node in a chain replication system.
 type ChainNode struct {
+	pb.ChainServiceServer
+
 	// The ID for this node.
 	ID string
 	// The address for this node.
@@ -167,9 +169,8 @@ func (c *ChainNode) Run(ctx context.Context) {
 	g.Wait()
 }
 
-// WriteWithVersion performs a write operation with a specific version number.
-// This is used for replicated writes that are part of the chain replication protocol.
-func (c *ChainNode) WriteWithVersion(ctx context.Context, request *pb.WriteRequest) (*pb.WriteResponse, error) {
+// Write performs a write operation with a specific version number.
+func (c *ChainNode) Write(ctx context.Context, request *pb.WriteRequest) (*pb.WriteResponse, error) {
 	state := c.state.Load()
 	if request.ConfigVersion != state.Config.Version {
 		return nil, ErrInvalidConfigVersion
@@ -290,7 +291,7 @@ func (c *ChainNode) Read(ctx context.Context, request *pb.ReadRequest) (*pb.Read
 }
 
 // Propagate sends key-value pairs to a requesting node through the provided stream.
-func (c *ChainNode) Propagate(ctx context.Context, request *pb.PropagateRequest, stream grpc.ServerStreamingServer[storagepb.KeyValuePair]) error {
+func (c *ChainNode) Propagate(request *pb.PropagateRequest, stream pb.ChainService_PropagateServer) error {
 	state := c.state.Load()
 	if request.ConfigVersion != state.Config.Version {
 		return ErrInvalidConfigVersion
@@ -311,7 +312,7 @@ func (c *ChainNode) Propagate(ctx context.Context, request *pb.PropagateRequest,
 		return nil
 	}
 
-	return c.store.SendKeyValuePairs(ctx, sendFunc, storage.KeyFilterFromProto(request.KeyType))
+	return c.store.SendKeyValuePairs(stream.Context(), sendFunc, storage.KeyFilterFromProto(request.KeyType))
 }
 
 // UpdateConfiguration updates the chain configuration for this node.
@@ -332,9 +333,9 @@ func (c *ChainNode) UpdateConfiguration(ctx context.Context, request *pb.UpdateC
 	}
 }
 
-func (c *ChainNode) Ping(request *pb.PingRequest) *pb.PingResponse {
+func (c *ChainNode) Ping(ctx context.Context, request *pb.PingRequest) (*pb.PingResponse, error) {
 	state := c.state.Load()
-	return &pb.PingResponse{Status: int32(state.Status), ConfigVersion: state.Config.Version}
+	return &pb.PingResponse{Status: int32(state.Status), ConfigVersion: state.Config.Version}, nil
 }
 
 func (c *ChainNode) Configuration() *Configuration {
