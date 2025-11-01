@@ -45,6 +45,19 @@ func requestVoteResponseToProto(resp *raft.RequestVoteResponse, respPb *pb.Reque
 	respPb.Granted = resp.Granted
 }
 
+func requestPreVoteRequestToProto(req *raft.RequestPreVoteRequest, reqPb *pb.RequestPreVoteRequest) {
+	reqPb.RpcHeader = &pb.RpcHeader{ProtocolVersion: int32(req.ProtocolVersion), Id: req.ID, Addr: req.Addr}
+	reqPb.Term = req.Term
+	reqPb.LastLogIndex = req.LastLogIndex
+	reqPb.LastLogTerm = req.LastLogTerm
+}
+
+func requestPreVoteResponseToProto(resp *raft.RequestPreVoteResponse, respPb *pb.RequestPreVoteResponse) {
+	respPb.RpcHeader = &pb.RpcHeader{ProtocolVersion: int32(resp.ProtocolVersion), Id: resp.ID, Addr: resp.Addr}
+	respPb.Term = resp.Term
+	respPb.Granted = resp.Granted
+}
+
 func installSnapshotRequestToProto(req *raft.InstallSnapshotRequest, reqPb *pb.InstallSnapshotRequest) {
 	reqPb.RpcHeader = &pb.RpcHeader{ProtocolVersion: int32(req.ProtocolVersion), Id: req.ID, Addr: req.Addr}
 	reqPb.SnapshotVersion = int32(req.SnapshotVersion)
@@ -130,6 +143,23 @@ func protoToRequestVoteResponse(respPb *pb.RequestVoteResponse, resp *raft.Reque
 	resp.Addr = respPb.GetRpcHeader().GetAddr()
 	resp.Term = respPb.GetTerm()
 	resp.Peers = respPb.GetPeers()
+	resp.Granted = respPb.GetGranted()
+}
+
+func protoToRequestPreVoteRequest(reqPb *pb.RequestPreVoteRequest, req *raft.RequestPreVoteRequest) {
+	req.ProtocolVersion = raft.ProtocolVersion(reqPb.GetRpcHeader().GetProtocolVersion())
+	req.ID = reqPb.GetRpcHeader().GetId()
+	req.Addr = reqPb.GetRpcHeader().GetAddr()
+	req.Term = reqPb.GetTerm()
+	req.LastLogIndex = reqPb.GetLastLogIndex()
+	req.LastLogTerm = reqPb.GetLastLogTerm()
+}
+
+func protoToRequestPreVoteResponse(respPb *pb.RequestPreVoteResponse, resp *raft.RequestPreVoteResponse) {
+	resp.ProtocolVersion = raft.ProtocolVersion(respPb.GetRpcHeader().GetProtocolVersion())
+	resp.ID = respPb.GetRpcHeader().GetId()
+	resp.Addr = respPb.GetRpcHeader().GetAddr()
+	resp.Term = respPb.GetTerm()
 	resp.Granted = respPb.GetGranted()
 }
 

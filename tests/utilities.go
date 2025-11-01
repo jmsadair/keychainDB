@@ -218,18 +218,21 @@ func (tc *testCluster) addServerToClusterHTTP(t *testing.T, id string) {
 	tc.srvs = append(tc.srvs, srv)
 	tc.members[id] = srv
 
-	clusterMembersURL := fmt.Sprintf("http://%s/v1/cluster/members", tc.leader.server.HTTPServer.Listen)
+	clusterMembersURL := fmt.Sprintf("http://%s/v1/cluster/members", tc.leader.server.Config.HTTPListen)
 	req := &coordinatorpb.JoinClusterRequest{Id: srv.server.Coordinator.ID, Address: srv.server.Coordinator.Address}
 	b, err := protojson.Marshal(req)
 	require.NoError(t, err)
 	resp1, err := http.Post(clusterMembersURL, "application/json", bytes.NewReader(b))
 	require.NoError(t, err)
-	resp1.Body.Close()
+	defer resp1.Body.Close()
+	b, err = io.ReadAll(resp1.Body)
+	require.NoError(t, err)
+	fmt.Println(string(b))
 	require.Equal(t, http.StatusOK, resp1.StatusCode)
 }
 
 func (tc *testCluster) removeServerFromClusterHTTP(t *testing.T, id string) {
-	clusterMembersURL := fmt.Sprintf("http://%s/v1/cluster/members", tc.leader.server.HTTPServer.Listen)
+	clusterMembersURL := fmt.Sprintf("http://%s/v1/cluster/members", tc.leader.server.Config.HTTPListen)
 	deleteURL, err := url.JoinPath(clusterMembersURL, id)
 	require.NoError(t, err)
 
@@ -243,7 +246,7 @@ func (tc *testCluster) removeServerFromClusterHTTP(t *testing.T, id string) {
 }
 
 func (tc *testCluster) addChainMemberHTTP(t *testing.T, id string, addr string) {
-	chainMembersURL := fmt.Sprintf("http://%s/v1/chain/members", tc.leader.server.HTTPServer.Listen)
+	chainMembersURL := fmt.Sprintf("http://%s/v1/chain/members", tc.leader.server.Config.HTTPListen)
 
 	req := &coordinatorpb.AddMemberRequest{Id: id, Address: addr}
 	b, err := protojson.Marshal(req)
@@ -255,7 +258,7 @@ func (tc *testCluster) addChainMemberHTTP(t *testing.T, id string, addr string) 
 }
 
 func (tc *testCluster) removeChainMemberHTTP(t *testing.T, id string) {
-	chainMembersURL := fmt.Sprintf("http://%s/v1/chain/members", tc.leader.server.HTTPServer.Listen)
+	chainMembersURL := fmt.Sprintf("http://%s/v1/chain/members", tc.leader.server.Config.HTTPListen)
 	deleteURL, err := url.JoinPath(chainMembersURL, id)
 	require.NoError(t, err)
 
@@ -275,7 +278,7 @@ func (tc *testCluster) clusterStatusRPC(t *testing.T, client *coordinatorclient.
 }
 
 func (tc *testCluster) clusterStatusHTTP(t *testing.T) *coordinatorpb.ClusterStatusResponse {
-	cluserStatusURL := fmt.Sprintf("http://%s/v1/cluster/status", tc.leader.server.HTTPServer.Listen)
+	cluserStatusURL := fmt.Sprintf("http://%s/v1/cluster/status", tc.leader.server.Config.HTTPListen)
 
 	resp, err := http.Get(cluserStatusURL)
 	require.NoError(t, err)
@@ -295,7 +298,7 @@ func (tc *testCluster) getChainMembersRPC(t *testing.T, client *coordinatorclien
 }
 
 func (tc *testCluster) getChainMembersHTTP(t *testing.T) *coordinatorpb.GetMembersResponse {
-	chainMembersURL := fmt.Sprintf("http://%s/v1/chain/members", tc.leader.server.HTTPServer.Listen)
+	chainMembersURL := fmt.Sprintf("http://%s/v1/chain/members", tc.leader.server.Config.HTTPListen)
 
 	resp, err := http.Get(chainMembersURL)
 	require.NoError(t, err)
@@ -355,7 +358,7 @@ func newTestCoordinator(t *testing.T, id string, httpPort int, rpcPort int, boot
 	runner := newServerRunner(t)
 	runner.runServer(srv)
 
-	waitForHealthy(t, srv.HTTPServer.Listen)
+	waitForHealthy(t, srv.Config.HTTPListen)
 	if bootstrap {
 		waitForLeader(t, srv)
 	}
@@ -445,7 +448,7 @@ type testProxyServer struct {
 func newTestProxyServer(t *testing.T, clusterMembers []string) *testProxyServer {
 	cfg := proxy.ServiceConfig{
 		HTTPListen:   fmt.Sprintf("%s:8080", proxyAddress),
-		GRPCListen:   fmt.Sprintf("%s:8081", proxyAddress),
+		Listen:       fmt.Sprintf("%s:8081", proxyAddress),
 		Coordinators: clusterMembers,
 		DialOptions:  []grpc.DialOption{creds},
 		Log:          slog.Default(),
@@ -455,7 +458,7 @@ func newTestProxyServer(t *testing.T, clusterMembers []string) *testProxyServer 
 
 	runner := newServerRunner(t)
 	runner.runServer(srv)
-	waitForHealthy(t, srv.HTTPServer.Address)
+	waitForHealthy(t, srv.Config.HTTPListen)
 
 	return &testProxyServer{
 		server: srv,

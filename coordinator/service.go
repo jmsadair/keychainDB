@@ -11,14 +11,13 @@ import (
 	"github.com/jmsadair/keychain/internal/transport"
 	coordinatorpb "github.com/jmsadair/keychain/proto/coordinator"
 	raftclient "github.com/jmsadair/keychain/raft/client"
-	"github.com/jmsadair/keychain/raft/network"
-	"github.com/jmsadair/keychain/raft/storage"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/health"
 	"google.golang.org/grpc/health/grpc_health_v1"
 )
 
+// Maps service errors to gRPC errors.
 var errToGRPCError = map[error]error{
 	node.ErrConfigurationUpdateFailed: types.ErrGRPCConfigurationUpdateFailed,
 	node.ErrEnqueueTimeout:            types.ErrGRPCEnqueueTimeout,
@@ -50,30 +49,20 @@ type ServiceConfig struct {
 
 // Service is the coordinator service.
 type Service struct {
-	// HTTP server implementation.
-	HTTPServer *HTTPServer
+	// HTTP gateway for translating .
+	Gateway *transport.HTTPGateway
 	// gRPC server implementation.
 	Server *transport.Server
 	// The coordinator implementation.
 	Coordinator *node.Coordinator
+	// The raft implementation.
+	Raft *node.RaftBackend
 	// The configuration for this service.
 	Config ServiceConfig
-	// The raft implementation.
-	Raft *raft.Raft
-
-	store *storage.PersistentStorage
 }
 
 // NewService creates a new coordinator service.
 func NewService(cfg ServiceConfig) (*Service, error) {
-	logStore, err := storage.NewPersistentStorage(cfg.StorageDir)
-	if err != nil {
-		return nil, err
-	}
-	snapshotStore, err := storage.NewSnapshotStorage(cfg.StorageDir)
-	if err != nil {
-		return nil, err
-	}
 	raftClient, err := raftclient.NewClient(cfg.DialOptions...)
 	if err != nil {
 		return nil, err
@@ -82,53 +71,50 @@ func NewService(cfg ServiceConfig) (*Service, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	netLayer := network.NewNetwork(cfg.Advertise, raftClient)
-	fsm := node.NewFSM()
-	raftCfg := raft.DefaultConfig()
-	raftCfg.LocalID = raft.ServerID(cfg.ID)
-	consensus, err := raft.NewRaft(raftCfg, fsm, logStore, logStore, snapshotStore, netLayer.Transport())
+	rb, err := node.NewRaftBackend(cfg.ID, cfg.Advertise, raftClient, cfg.StorageDir)
 	if err != nil {
 		return nil, err
 	}
-
 	if cfg.Bootstrap {
 		clusterConfig := raft.Configuration{
-			Servers: []raft.Server{{ID: raftCfg.LocalID, Address: netLayer.Transport().LocalAddr()}},
+			Servers: []raft.Server{{ID: raft.ServerID(cfg.ID), Address: raft.ServerAddress(cfg.Advertise)}},
 		}
-		future := consensus.BootstrapCluster(clusterConfig)
-		if err := future.Error(); err != nil {
+		if err := rb.Bootstrap(clusterConfig); err != nil {
 			return nil, err
 		}
 	}
 
-	rb := node.NewRaftBackend(consensus, fsm)
 	coordinatorNode := node.NewCoordinator(cfg.ID, cfg.Advertise, chainClient, rb, cfg.Log)
 	srv := transport.NewServer(cfg.Listen, func(grpcServer *grpc.Server) {
 		coordinatorpb.RegisterCoordinatorServiceServer(grpcServer, coordinatorNode)
-		netLayer.Register(grpcServer)
+		rb.Register(grpcServer)
 		grpc_health_v1.RegisterHealthServer(grpcServer, health.NewServer())
 	}, grpc.UnaryInterceptor(transport.UnaryServerErrorInterceptor(errToGRPCError)))
-	httpSrv := &HTTPServer{Listen: cfg.HTTPListen, GRPCListen: cfg.Listen, DialOptions: cfg.DialOptions}
+
+	gw := transport.NewHTTPGateway(
+		cfg.HTTPListen,
+		cfg.Listen,
+		coordinatorpb.RegisterCoordinatorServiceHandlerFromEndpoint,
+		cfg.DialOptions...,
+	)
+
 	return &Service{
-		HTTPServer:  httpSrv,
+		Gateway:     gw,
 		Server:      srv,
 		Coordinator: coordinatorNode,
 		Config:      cfg,
-		Raft:        consensus,
-		store:       logStore,
+		Raft:        rb,
 	}, nil
 }
 
 // Run runs the service.
 func (s *Service) Run(ctx context.Context) error {
-	defer s.store.Close()
 	g, ctx := errgroup.WithContext(ctx)
 	g.Go(func() error {
 		return s.Coordinator.Run(ctx)
 	})
 	g.Go(func() error {
-		return s.HTTPServer.Run(ctx)
+		return s.Gateway.Run(ctx)
 	})
 	g.Go(func() error {
 		return s.Server.Run(ctx)
@@ -147,9 +133,5 @@ func (s *Service) Run(ctx context.Context) error {
 		s.Config.Advertise,
 	)
 
-	if err := g.Wait(); err != nil {
-		return err
-	}
-	future := s.Raft.Shutdown()
-	return future.Error()
+	return g.Wait()
 }

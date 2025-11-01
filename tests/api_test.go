@@ -26,7 +26,7 @@ func TestSetGetValue(t *testing.T) {
 	defer proxy.stop()
 
 	ctx := context.Background()
-	client := newTestKvClient(t, proxy.server.GRPCServer.Address)
+	client := newTestKvClient(t, proxy.server.Config.Listen)
 
 	key := "key-1"
 	value := []byte("value-1")
@@ -56,7 +56,7 @@ func TestRemoveMemberThenGetValue(t *testing.T) {
 	defer proxy.stop()
 
 	ctx := context.Background()
-	client := newTestKvClient(t, proxy.server.GRPCServer.Address)
+	client := newTestKvClient(t, proxy.server.Config.Listen)
 
 	key := "key-1"
 	value := []byte("value-1")
@@ -88,7 +88,7 @@ func TestAddMemberThenGetValue(t *testing.T) {
 	defer proxy.stop()
 
 	ctx := context.Background()
-	client := newTestKvClient(t, proxy.server.GRPCServer.Address)
+	client := newTestKvClient(t, proxy.server.Config.Listen)
 
 	key := "key-1"
 	value := []byte("value-1")

@@ -12,6 +12,9 @@ import (
 	chainpb "github.com/jmsadair/keychain/proto/chain"
 	pb "github.com/jmsadair/keychain/proto/coordinator"
 	"golang.org/x/sync/errgroup"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/health/grpc_health_v1"
+	"google.golang.org/grpc/status"
 )
 
 var ErrConfigurationUpdateFailed = errors.New("coordinator: failed to update configuration for chain member")
@@ -22,8 +25,11 @@ const (
 )
 
 type ChainTransport interface {
-	UpdateConfiguration(ctx context.Context, address string, request *chainpb.UpdateConfigurationRequest) (*chainpb.UpdateConfigurationResponse, error)
+	UpdateConfiguration(
+		ctx context.Context, address string, request *chainpb.UpdateConfigurationRequest,
+	) (*chainpb.UpdateConfigurationResponse, error)
 	Ping(ctx context.Context, address string, request *chainpb.PingRequest) (*chainpb.PingResponse, error)
+	Close() error
 }
 
 type RaftProtocol interface {
@@ -35,6 +41,7 @@ type RaftProtocol interface {
 	JoinCluster(ctx context.Context, id, address string) error
 	RemoveFromCluster(ctx context.Context, id string) error
 	ClusterStatus() (Status, error)
+	Shutdown() error
 }
 
 type memberState struct {
@@ -79,6 +86,11 @@ func NewCoordinator(
 }
 
 func (c *Coordinator) Run(ctx context.Context) error {
+	defer func() {
+		c.chainTn.Close()
+		c.raft.Shutdown()
+	}()
+
 	g, ctx := errgroup.WithContext(ctx)
 	g.Go(func() error {
 		c.heartbeatLoop(ctx)
@@ -97,7 +109,8 @@ func (c *Coordinator) Run(ctx context.Context) error {
 		return nil
 	})
 
-	return g.Wait()
+	err := g.Wait()
+	return errors.Join(err, c.chainTn.Close(), c.raft.Shutdown())
 }
 
 func (c *Coordinator) AddMember(ctx context.Context, request *pb.AddMemberRequest) (*pb.AddMemberResponse, error) {
@@ -144,6 +157,14 @@ func (c *Coordinator) ClusterStatus(ctx context.Context, request *pb.ClusterStat
 		return nil, err
 	}
 	return &pb.ClusterStatusResponse{Leader: status.Leader, Members: status.Members}, nil
+}
+
+func (c *Coordinator) Check(ctx context.Context, req *grpc_health_v1.HealthCheckRequest) (*grpc_health_v1.HealthCheckResponse, error) {
+	return &grpc_health_v1.HealthCheckResponse{Status: grpc_health_v1.HealthCheckResponse_SERVING}, nil
+}
+
+func (c *Coordinator) Watch(req *grpc_health_v1.HealthCheckRequest, _ grpc_health_v1.Health_WatchServer) error {
+	return status.Error(codes.Unimplemented, "unimplemented")
 }
 
 func (c *Coordinator) updateChainMemberConfigurations(ctx context.Context, config *chainnode.Configuration, removed *chainnode.ChainMember) error {

@@ -115,3 +115,8 @@ func (c *Client) UpdateConfiguration(
 	}
 	return resp, nil
 }
+
+// Close closes all connections managed by this client.
+func (c *Client) Close() error {
+	return c.cache.Close()
+}

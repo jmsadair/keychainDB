@@ -79,6 +79,11 @@ func (m *mockTransport) UpdateConfiguration(ctx context.Context, address string,
 	return nil, args.Error(1)
 }
 
+func (m *mockTransport) Close() error {
+	args := m.MethodCalled("Close")
+	return args.Error(0)
+}
+
 func TestNewCoordinator(t *testing.T) {
 	chainTn := new(mockTransport)
 	consensus := new(mockRaft)
