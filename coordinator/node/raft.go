@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	hraft "github.com/hashicorp/raft"
+	"github.com/hashicorp/raft"
 	chainnode "github.com/jmsadair/keychain/chain/node"
 	"github.com/jmsadair/keychain/raft/network"
 	"github.com/jmsadair/keychain/raft/storage"
@@ -45,7 +45,7 @@ type RaftBackend struct {
 	// Network layer used for cluster communication.
 	nw *network.Network
 	// The underlying consensus mechanism.
-	consensus *hraft.Raft
+	consensus *raft.Raft
 	// The state that is replicated across the cluster.
 	fsm *FSM
 	// Storage for logs.
@@ -91,7 +91,7 @@ func (r *RaftBackend) Register(s grpc.ServiceRegistrar) {
 }
 
 // Bootstrap is used to bootstrap a raft cluster.
-func (r *RaftBackend) Bootstrap(config hraft.Configuration) error {
+func (r *RaftBackend) Bootstrap(config raft.Configuration) error {
 	future := r.consensus.BootstrapCluster(config)
 	return future.Error()
 }
@@ -144,15 +144,15 @@ func (r *RaftBackend) JoinCluster(ctx context.Context, nodeID string, address st
 	}
 
 	for _, srv := range configFuture.Configuration().Servers {
-		if srv.ID == hraft.ServerID(nodeID) || srv.Address == hraft.ServerAddress(address) {
-			if srv.Address == hraft.ServerAddress(address) && srv.ID == hraft.ServerID(nodeID) {
+		if srv.ID == raft.ServerID(nodeID) || srv.Address == raft.ServerAddress(address) {
+			if srv.Address == raft.ServerAddress(address) && srv.ID == raft.ServerID(nodeID) {
 				return nil
 			}
 			return ErrNodeExists
 		}
 	}
 
-	indexFuture := r.consensus.AddVoter(hraft.ServerID(nodeID), hraft.ServerAddress(address), 0, timeoutFromContext(ctx, defaultApplyTimeout))
+	indexFuture := r.consensus.AddVoter(raft.ServerID(nodeID), raft.ServerAddress(address), 0, timeoutFromContext(ctx, defaultApplyTimeout))
 	return handleError(indexFuture.Error())
 }
 
@@ -164,8 +164,8 @@ func (r *RaftBackend) RemoveFromCluster(ctx context.Context, nodeID string) erro
 	}
 
 	for _, srv := range configFuture.Configuration().Servers {
-		if srv.ID == hraft.ServerID(nodeID) {
-			indexFuture := r.consensus.RemoveServer(hraft.ServerID(nodeID), 0, timeoutFromContext(ctx, defaultApplyTimeout))
+		if srv.ID == raft.ServerID(nodeID) {
+			indexFuture := r.consensus.RemoveServer(raft.ServerID(nodeID), 0, timeoutFromContext(ctx, defaultApplyTimeout))
 			return handleError(indexFuture.Error())
 		}
 	}
