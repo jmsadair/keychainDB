@@ -693,6 +693,11 @@ func (m *mockClient) InstallSnapshot(ctx context.Context, address string) (pb.Ra
 	return args.Get(0).(pb.RaftService_InstallSnapshotClient), args.Error(1)
 }
 
+func (m *mockClient) Close() error {
+	args := m.MethodCalled("Close")
+	return args.Error(0)
+}
+
 type mockAppendEntriesPipelineClient struct {
 	mock.Mock
 }
