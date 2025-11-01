@@ -7,14 +7,21 @@ option go_package = "github.com/jmsadair/keychain/proto/raft";
 import "google/protobuf/timestamp.proto";
 
 service RaftService {
+  // AppendEntries is used to append entries to the replicated log.
   rpc AppendEntries (AppendEntriesRequest) returns (AppendEntriesResponse) {}
+  // AppendEntries is the same as AppendEntries but it streams the requests and responses.
   rpc AppendEntriesPipeline(stream AppendEntriesRequest) returns (stream AppendEntriesResponse) {}
+  // RequestVote is used by a candidate to ask a peer for a vote in an election.
   rpc RequestVote (RequestVoteRequest) returns (RequestVoteResponse) {}
+  // RequestPreVoteRequest is used by a candidate to ask a peer for a vote in an election.
   rpc RequestPreVote (RequestPreVoteRequest) returns (RequestPreVoteResponse) {}
+  // InstallSnapshotRequest is invoked by a peer to bootstrap this node's log and state machine from a snapshot.
   rpc InstallSnapshot (stream InstallSnapshotRequest) returns (InstallSnapshotResponse) {}
+  // TimeoutNow is used to start a leadership transfer to this node.
   rpc TimeoutNow (TimeoutNowRequest) returns (TimeoutNowResponse) {}
 }
 
+// AppendEntriesRequest is the command used to append entries to the replicated log.
 message AppendEntriesRequest {
   RpcHeader rpc_header = 1;
   uint64 term = 2;
@@ -25,6 +32,7 @@ message AppendEntriesRequest {
   repeated Log entries = 7;
 }
 
+// AppendEntriesResponse is the response returned from an AppendEntriesRequest.
 message AppendEntriesResponse {
   RpcHeader rpc_header = 1;
   uint64 term = 2;
@@ -48,6 +56,7 @@ message RequestPreVoteResponse {
   bool granted = 3;
 }
 
+// RequestVoteRequest is the command used by a candidate to ask a Rpeer for a vote in an election.
 message RequestVoteRequest {
   RpcHeader rpc_header = 1;
   uint64 term = 2;
@@ -57,6 +66,7 @@ message RequestVoteRequest {
   bool leadership_transfer = 6;
 }
 
+// RequestVoteResponse is the response returned from a RequestVoteRequest.
 message RequestVoteResponse {
   RpcHeader rpc_header = 1;
   uint64 term = 2;
@@ -64,6 +74,7 @@ message RequestVoteResponse {
   bool granted = 4;
 }
 
+// InstallSnapshotRequest is the command sent to a peer to bootstrap its log (and state machine) from a snapshot on another peer.
 message InstallSnapshotRequest {
   RpcHeader rpc_header = 1;
   int32 snapshot_version = 2;
@@ -78,20 +89,24 @@ message InstallSnapshotRequest {
   bytes data = 11;
 }
 
+// InstallSnapshotResponse is the response returned from an InstallSnapshotRequest.
 message InstallSnapshotResponse {
   RpcHeader rpc_header = 1;
   uint64 term = 2;
   bool success = 3;
 }
 
+// TimeoutNowRequest is the command used by a leader to signal another server to start an election.
 message TimeoutNowRequest {
   RpcHeader rpc_header = 1;
 }
 
+// TimeoutNowResponse is the response to TimeoutNowRequest.
 message TimeoutNowResponse {
   RpcHeader rpc_header = 1;
 }
 
+// Log represents an entry in the replicated log.
 message Log {
   uint64 index = 1;
   uint64 term = 2;
@@ -101,13 +116,11 @@ message Log {
   google.protobuf.Timestamp appended_at = 6;
 }
 
+// RPCHeader is a common sub-structure used to pass along protocol version and other information about the cluster.
+// For older Raft implementations before versioning was added this will default to a zero-valued structure when
+// read by newer Raft versions.
 message RpcHeader {
   int32 protocol_version = 1;
   bytes id = 2;
   bytes addr = 3;
-}
-
-message Peer {
-  string server_id = 1;
-  string server_address = 2;
 }

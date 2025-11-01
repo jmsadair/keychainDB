@@ -31,11 +31,17 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type RaftServiceClient interface {
+	// AppendEntries is used to append entries to the replicated log.
 	AppendEntries(ctx context.Context, in *AppendEntriesRequest, opts ...grpc.CallOption) (*AppendEntriesResponse, error)
+	// AppendEntries is the same as AppendEntries but it streams the requests and responses.
 	AppendEntriesPipeline(ctx context.Context, opts ...grpc.CallOption) (grpc.BidiStreamingClient[AppendEntriesRequest, AppendEntriesResponse], error)
+	// RequestVote is used by a candidate to ask a peer for a vote in an election.
 	RequestVote(ctx context.Context, in *RequestVoteRequest, opts ...grpc.CallOption) (*RequestVoteResponse, error)
+	// RequestPreVoteRequest is used by a candidate to ask a peer for a vote in an election.
 	RequestPreVote(ctx context.Context, in *RequestPreVoteRequest, opts ...grpc.CallOption) (*RequestPreVoteResponse, error)
+	// InstallSnapshotRequest is invoked by a peer to bootstrap this node's log and state machine from a snapshot.
 	InstallSnapshot(ctx context.Context, opts ...grpc.CallOption) (grpc.ClientStreamingClient[InstallSnapshotRequest, InstallSnapshotResponse], error)
+	// TimeoutNow is used to start a leadership transfer to this node.
 	TimeoutNow(ctx context.Context, in *TimeoutNowRequest, opts ...grpc.CallOption) (*TimeoutNowResponse, error)
 }
 
@@ -117,11 +123,17 @@ func (c *raftServiceClient) TimeoutNow(ctx context.Context, in *TimeoutNowReques
 // All implementations must embed UnimplementedRaftServiceServer
 // for forward compatibility.
 type RaftServiceServer interface {
+	// AppendEntries is used to append entries to the replicated log.
 	AppendEntries(context.Context, *AppendEntriesRequest) (*AppendEntriesResponse, error)
+	// AppendEntries is the same as AppendEntries but it streams the requests and responses.
 	AppendEntriesPipeline(grpc.BidiStreamingServer[AppendEntriesRequest, AppendEntriesResponse]) error
+	// RequestVote is used by a candidate to ask a peer for a vote in an election.
 	RequestVote(context.Context, *RequestVoteRequest) (*RequestVoteResponse, error)
+	// RequestPreVoteRequest is used by a candidate to ask a peer for a vote in an election.
 	RequestPreVote(context.Context, *RequestPreVoteRequest) (*RequestPreVoteResponse, error)
+	// InstallSnapshotRequest is invoked by a peer to bootstrap this node's log and state machine from a snapshot.
 	InstallSnapshot(grpc.ClientStreamingServer[InstallSnapshotRequest, InstallSnapshotResponse]) error
+	// TimeoutNow is used to start a leadership transfer to this node.
 	TimeoutNow(context.Context, *TimeoutNowRequest) (*TimeoutNowResponse, error)
 	mustEmbedUnimplementedRaftServiceServer()
 }

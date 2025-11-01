@@ -22,6 +22,7 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// AppendEntriesRequest is the command used to append entries to the replicated log.
 type AppendEntriesRequest struct {
 	state             protoimpl.MessageState `protogen:"open.v1"`
 	RpcHeader         *RpcHeader             `protobuf:"bytes,1,opt,name=rpc_header,json=rpcHeader,proto3" json:"rpc_header,omitempty"`
@@ -114,6 +115,7 @@ func (x *AppendEntriesRequest) GetEntries() []*Log {
 	return nil
 }
 
+// AppendEntriesResponse is the response returned from an AppendEntriesRequest.
 type AppendEntriesResponse struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
 	RpcHeader      *RpcHeader             `protobuf:"bytes,1,opt,name=rpc_header,json=rpcHeader,proto3" json:"rpc_header,omitempty"`
@@ -320,6 +322,7 @@ func (x *RequestPreVoteResponse) GetGranted() bool {
 	return false
 }
 
+// RequestVoteRequest is the command used by a candidate to ask a Rpeer for a vote in an election.
 type RequestVoteRequest struct {
 	state              protoimpl.MessageState `protogen:"open.v1"`
 	RpcHeader          *RpcHeader             `protobuf:"bytes,1,opt,name=rpc_header,json=rpcHeader,proto3" json:"rpc_header,omitempty"`
@@ -404,6 +407,7 @@ func (x *RequestVoteRequest) GetLeadershipTransfer() bool {
 	return false
 }
 
+// RequestVoteResponse is the response returned from a RequestVoteRequest.
 type RequestVoteResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	RpcHeader     *RpcHeader             `protobuf:"bytes,1,opt,name=rpc_header,json=rpcHeader,proto3" json:"rpc_header,omitempty"`
@@ -472,6 +476,7 @@ func (x *RequestVoteResponse) GetGranted() bool {
 	return false
 }
 
+// InstallSnapshotRequest is the command sent to a peer to bootstrap its log (and state machine) from a snapshot on another peer.
 type InstallSnapshotRequest struct {
 	state              protoimpl.MessageState `protogen:"open.v1"`
 	RpcHeader          *RpcHeader             `protobuf:"bytes,1,opt,name=rpc_header,json=rpcHeader,proto3" json:"rpc_header,omitempty"`
@@ -596,6 +601,7 @@ func (x *InstallSnapshotRequest) GetData() []byte {
 	return nil
 }
 
+// InstallSnapshotResponse is the response returned from an InstallSnapshotRequest.
 type InstallSnapshotResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	RpcHeader     *RpcHeader             `protobuf:"bytes,1,opt,name=rpc_header,json=rpcHeader,proto3" json:"rpc_header,omitempty"`
@@ -656,6 +662,7 @@ func (x *InstallSnapshotResponse) GetSuccess() bool {
 	return false
 }
 
+// TimeoutNowRequest is the command used by a leader to signal another server to start an election.
 type TimeoutNowRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	RpcHeader     *RpcHeader             `protobuf:"bytes,1,opt,name=rpc_header,json=rpcHeader,proto3" json:"rpc_header,omitempty"`
@@ -700,6 +707,7 @@ func (x *TimeoutNowRequest) GetRpcHeader() *RpcHeader {
 	return nil
 }
 
+// TimeoutNowResponse is the response to TimeoutNowRequest.
 type TimeoutNowResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	RpcHeader     *RpcHeader             `protobuf:"bytes,1,opt,name=rpc_header,json=rpcHeader,proto3" json:"rpc_header,omitempty"`
@@ -744,6 +752,7 @@ func (x *TimeoutNowResponse) GetRpcHeader() *RpcHeader {
 	return nil
 }
 
+// Log represents an entry in the replicated log.
 type Log struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Index         uint64                 `protobuf:"varint,1,opt,name=index,proto3" json:"index,omitempty"`
@@ -828,6 +837,9 @@ func (x *Log) GetAppendedAt() *timestamppb.Timestamp {
 	return nil
 }
 
+// RPCHeader is a common sub-structure used to pass along protocol version and other information about the cluster.
+// For older Raft implementations before versioning was added this will default to a zero-valued structure when
+// read by newer Raft versions.
 type RpcHeader struct {
 	state           protoimpl.MessageState `protogen:"open.v1"`
 	ProtocolVersion int32                  `protobuf:"varint,1,opt,name=protocol_version,json=protocolVersion,proto3" json:"protocol_version,omitempty"`
@@ -886,58 +898,6 @@ func (x *RpcHeader) GetAddr() []byte {
 		return x.Addr
 	}
 	return nil
-}
-
-type Peer struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	ServerId      string                 `protobuf:"bytes,1,opt,name=server_id,json=serverId,proto3" json:"server_id,omitempty"`
-	ServerAddress string                 `protobuf:"bytes,2,opt,name=server_address,json=serverAddress,proto3" json:"server_address,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *Peer) Reset() {
-	*x = Peer{}
-	mi := &file_proto_raft_raft_proto_msgTypes[12]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *Peer) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*Peer) ProtoMessage() {}
-
-func (x *Peer) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_raft_raft_proto_msgTypes[12]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use Peer.ProtoReflect.Descriptor instead.
-func (*Peer) Descriptor() ([]byte, []int) {
-	return file_proto_raft_raft_proto_rawDescGZIP(), []int{12}
-}
-
-func (x *Peer) GetServerId() string {
-	if x != nil {
-		return x.ServerId
-	}
-	return ""
-}
-
-func (x *Peer) GetServerAddress() string {
-	if x != nil {
-		return x.ServerAddress
-	}
-	return ""
 }
 
 var File_proto_raft_raft_proto protoreflect.FileDescriptor
@@ -1024,10 +984,7 @@ const file_proto_raft_raft_proto_rawDesc = "" +
 	"\tRpcHeader\x12)\n" +
 	"\x10protocol_version\x18\x01 \x01(\x05R\x0fprotocolVersion\x12\x0e\n" +
 	"\x02id\x18\x02 \x01(\fR\x02id\x12\x12\n" +
-	"\x04addr\x18\x03 \x01(\fR\x04addr\"J\n" +
-	"\x04Peer\x12\x1b\n" +
-	"\tserver_id\x18\x01 \x01(\tR\bserverId\x12%\n" +
-	"\x0eserver_address\x18\x02 \x01(\tR\rserverAddress2\xdd\x03\n" +
+	"\x04addr\x18\x03 \x01(\fR\x04addr2\xdd\x03\n" +
 	"\vRaftService\x12J\n" +
 	"\rAppendEntries\x12\x1a.raft.AppendEntriesRequest\x1a\x1b.raft.AppendEntriesResponse\"\x00\x12V\n" +
 	"\x15AppendEntriesPipeline\x12\x1a.raft.AppendEntriesRequest\x1a\x1b.raft.AppendEntriesResponse\"\x00(\x010\x01\x12D\n" +
@@ -1049,7 +1006,7 @@ func file_proto_raft_raft_proto_rawDescGZIP() []byte {
 	return file_proto_raft_raft_proto_rawDescData
 }
 
-var file_proto_raft_raft_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
+var file_proto_raft_raft_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
 var file_proto_raft_raft_proto_goTypes = []any{
 	(*AppendEntriesRequest)(nil),    // 0: raft.AppendEntriesRequest
 	(*AppendEntriesResponse)(nil),   // 1: raft.AppendEntriesResponse
@@ -1063,8 +1020,7 @@ var file_proto_raft_raft_proto_goTypes = []any{
 	(*TimeoutNowResponse)(nil),      // 9: raft.TimeoutNowResponse
 	(*Log)(nil),                     // 10: raft.Log
 	(*RpcHeader)(nil),               // 11: raft.RpcHeader
-	(*Peer)(nil),                    // 12: raft.Peer
-	(*timestamppb.Timestamp)(nil),   // 13: google.protobuf.Timestamp
+	(*timestamppb.Timestamp)(nil),   // 12: google.protobuf.Timestamp
 }
 var file_proto_raft_raft_proto_depIdxs = []int32{
 	11, // 0: raft.AppendEntriesRequest.rpc_header:type_name -> raft.RpcHeader
@@ -1078,7 +1034,7 @@ var file_proto_raft_raft_proto_depIdxs = []int32{
 	11, // 8: raft.InstallSnapshotResponse.rpc_header:type_name -> raft.RpcHeader
 	11, // 9: raft.TimeoutNowRequest.rpc_header:type_name -> raft.RpcHeader
 	11, // 10: raft.TimeoutNowResponse.rpc_header:type_name -> raft.RpcHeader
-	13, // 11: raft.Log.appended_at:type_name -> google.protobuf.Timestamp
+	12, // 11: raft.Log.appended_at:type_name -> google.protobuf.Timestamp
 	0,  // 12: raft.RaftService.AppendEntries:input_type -> raft.AppendEntriesRequest
 	0,  // 13: raft.RaftService.AppendEntriesPipeline:input_type -> raft.AppendEntriesRequest
 	4,  // 14: raft.RaftService.RequestVote:input_type -> raft.RequestVoteRequest
@@ -1109,7 +1065,7 @@ func file_proto_raft_raft_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_raft_raft_proto_rawDesc), len(file_proto_raft_raft_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   13,
+			NumMessages:   12,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
