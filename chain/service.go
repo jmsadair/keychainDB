@@ -4,7 +4,6 @@ import (
 	"context"
 	"log/slog"
 
-	"github.com/jmsadair/keychain/chain/client"
 	"github.com/jmsadair/keychain/chain/node"
 	"github.com/jmsadair/keychain/chain/storage"
 	"github.com/jmsadair/keychain/internal/transport"
@@ -41,7 +40,7 @@ type Service struct {
 
 // NewService creates a new chain service.
 func NewService(cfg ServiceConfig) (*Service, error) {
-	tn, err := client.NewClient(cfg.DialOptions...)
+	tn, err := NewClient(cfg.DialOptions...)
 	if err != nil {
 		return nil, err
 	}

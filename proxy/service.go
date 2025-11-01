@@ -5,8 +5,8 @@ import (
 	"log/slog"
 
 	"github.com/jmsadair/keychain/api/types"
-	chainclient "github.com/jmsadair/keychain/chain/client"
-	coordinatorclient "github.com/jmsadair/keychain/coordinator/client"
+	"github.com/jmsadair/keychain/chain"
+	"github.com/jmsadair/keychain/coordinator"
 	"github.com/jmsadair/keychain/internal/transport"
 	proxypb "github.com/jmsadair/keychain/proto/proxy"
 	"github.com/jmsadair/keychain/proxy/node"
@@ -50,11 +50,11 @@ type Service struct {
 
 // NewService creates a new proxy service.
 func NewService(cfg ServiceConfig) (*Service, error) {
-	chainTn, err := chainclient.NewClient(cfg.DialOptions...)
+	chainTn, err := chain.NewClient(cfg.DialOptions...)
 	if err != nil {
 		return nil, err
 	}
-	coordinatorTn, err := coordinatorclient.NewClient(cfg.DialOptions...)
+	coordinatorTn, err := coordinator.NewClient(cfg.DialOptions...)
 	if err != nil {
 		return nil, err
 	}
