@@ -13,8 +13,11 @@ import (
 )
 
 const (
-	defaultApplyTimeout  = 1 * time.Millisecond
-	numSpapshotsToRetain = 10
+	// The default timeout for applying an operation to the raft cluster
+	// if no other timeout is provided.
+	defaultApplyTimeout = 1 * time.Second
+	// The maximum number of snapshots to retain.
+	numSnapshotsToRetain = 10
 )
 
 // timeoutFromContext derives a timeout from the context deadline if it has one otherwise
@@ -64,7 +67,7 @@ func NewRaftBackend(id string, address string, storageDir string, dialOpts ...gr
 	if err != nil {
 		return nil, err
 	}
-	snapshotStore, err := raft.NewFileSnapshotStore(storageDir, numSpapshotsToRetain, os.Stderr)
+	snapshotStore, err := raft.NewFileSnapshotStore(storageDir, numSnapshotsToRetain, os.Stderr)
 	if err != nil {
 		return nil, err
 	}
@@ -103,7 +106,7 @@ func (r *RaftBackend) Bootstrap(config raft.Configuration) error {
 	return future.Error()
 }
 
-// Shutdown shuts dowm this node.
+// Shutdown shuts down this node.
 func (r *RaftBackend) Shutdown() error {
 	defer r.store.Close()
 	future := r.consensus.Shutdown()
@@ -133,6 +136,7 @@ func (r *RaftBackend) RemoveMember(ctx context.Context, id string) (*chainnode.C
 }
 
 // GetMembers is used to read the chain configuration. This operation requires cluster quorum.
+// If strong consistency is not required, then ChainConfiguration should be used instead.
 func (r *RaftBackend) GetMembers(ctx context.Context) (*chainnode.Configuration, error) {
 	op := &ReadMembershipOperation{}
 	applied, err := r.apply(ctx, op)
@@ -163,7 +167,7 @@ func (r *RaftBackend) JoinCluster(ctx context.Context, nodeID string, address st
 	return handleError(indexFuture.Error())
 }
 
-// RemoveFromCluster is used to remoe a node from the raft cluster.
+// RemoveFromCluster is used to remove a node from the raft cluster.
 func (r *RaftBackend) RemoveFromCluster(ctx context.Context, nodeID string) error {
 	configFuture := r.consensus.GetConfiguration()
 	if err := configFuture.Error(); err != nil {

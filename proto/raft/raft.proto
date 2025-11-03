@@ -56,7 +56,7 @@ message RequestPreVoteResponse {
   bool granted = 3;
 }
 
-// RequestVoteRequest is the command used by a candidate to ask a Rpeer for a vote in an election.
+// RequestVoteRequest is the command used by a candidate to ask a peer for a vote in an election.
 message RequestVoteRequest {
   RpcHeader rpc_header = 1;
   uint64 term = 2;

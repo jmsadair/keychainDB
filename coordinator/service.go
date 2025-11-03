@@ -6,7 +6,7 @@ import (
 
 	"github.com/hashicorp/raft"
 	"github.com/jmsadair/keychain/api/types"
-	chainclient "github.com/jmsadair/keychain/chain/client"
+	"github.com/jmsadair/keychain/chain"
 	"github.com/jmsadair/keychain/coordinator/node"
 	"github.com/jmsadair/keychain/internal/transport"
 	coordinatorpb "github.com/jmsadair/keychain/proto/coordinator"
@@ -48,7 +48,7 @@ type ServiceConfig struct {
 
 // Service is the coordinator service.
 type Service struct {
-	// HTTP gateway for translating .
+	// HTTP gateway for translating HTTP requests to gRPC.
 	Gateway *transport.HTTPGateway
 	// gRPC server implementation.
 	Server *transport.Server
@@ -62,12 +62,12 @@ type Service struct {
 
 // NewService creates a new coordinator service.
 func NewService(cfg ServiceConfig) (*Service, error) {
-	chainClient, err := chainclient.NewClient(cfg.DialOptions...)
+	chainClient, err := chain.NewClient(cfg.DialOptions...)
 	if err != nil {
 		return nil, err
 	}
 
-	// Create a raft node and bootstap it if requested.
+	// Create a raft node and bootstrap it if requested.
 	rb, err := node.NewRaftBackend(cfg.ID, cfg.Advertise, cfg.StorageDir, cfg.DialOptions...)
 	if err != nil {
 		return nil, err
@@ -107,7 +107,8 @@ func NewService(cfg ServiceConfig) (*Service, error) {
 func (s *Service) Run(ctx context.Context) error {
 	g, ctx := errgroup.WithContext(ctx)
 	g.Go(func() error {
-		return s.Coordinator.Run(ctx)
+		s.Coordinator.Run(ctx)
+		return nil
 	})
 	g.Go(func() error {
 		return s.Gateway.Run(ctx)

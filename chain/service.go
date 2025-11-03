@@ -14,15 +14,15 @@ import (
 
 // ServiceConfig contains the configurations for a chain service.
 type ServiceConfig struct {
-	// Unique ID that identifies the server.
+	// Unique ID that identifies the service.
 	ID string
-	// Address tht a server will listen for incoming requests on.
-	ListenAddr string
-	// Path to where a server will store on-disk data.
-	StoragePath string
-	// gRPC Dial options a erver will use when making RPCs to other servers.
+	// Address that the service will listen for incoming RPCs on.
+	Listen string
+	// Directory where the service will store on-disk data.
+	StorageDir string
+	// The gRPC Dial options a service will use when making RPCs to other services.
 	DialOptions []grpc.DialOption
-	// Logger that a server will use for logging.
+	// Logger that the service will use for logging.
 	Log *slog.Logger
 }
 
@@ -44,12 +44,12 @@ func NewService(cfg ServiceConfig) (*Service, error) {
 	if err != nil {
 		return nil, err
 	}
-	store, err := storage.NewPersistentStorage(cfg.StoragePath)
+	store, err := storage.NewPersistentStorage(cfg.StorageDir)
 	if err != nil {
 		return nil, err
 	}
-	node := node.NewChainNode(cfg.ID, cfg.ListenAddr, store, tn, cfg.Log)
-	srv := transport.NewServer(cfg.ListenAddr, func(s *grpc.Server) { pb.RegisterChainServiceServer(s, node) })
+	node := node.NewChainNode(cfg.ID, cfg.Listen, store, tn, cfg.Log)
+	srv := transport.NewServer(cfg.Listen, func(s *grpc.Server) { pb.RegisterChainServiceServer(s, node) })
 	return &Service{Server: srv, Node: node, Config: cfg, store: store}, nil
 }
 
@@ -62,6 +62,6 @@ func (s *Service) Run(ctx context.Context) error {
 		return nil
 	})
 	g.Go(func() error { return s.Server.Run(ctx) })
-	s.Config.Log.InfoContext(ctx, "running chain service", "local-id", s.Config.ID, "listen", s.Config.ListenAddr)
+	s.Config.Log.InfoContext(ctx, "running chain service", "local-id", s.Config.ID, "listen", s.Config.Listen)
 	return g.Wait()
 }

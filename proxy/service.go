@@ -70,6 +70,8 @@ func NewService(cfg ServiceConfig) (*Service, error) {
 
 // Run runs the service.
 func (s *Service) Run(ctx context.Context) error {
+	defer s.Proxy.Shutdown()
+
 	g, ctx := errgroup.WithContext(ctx)
 	g.Go(func() error {
 		return s.Server.Run(ctx)
