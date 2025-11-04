@@ -19,34 +19,34 @@ This project is currently under active development and is **not** yet ready for 
 ## Architecture
 KeychainDB consists of three components.
 ```
-                                                 +----------------------+
-                                                 |      Clients         |
-                                                 | (Read/Write Requests)|
-                                                 +----------+-----------+
-                                                            |
-                                                            v
-                                                 +----------------------+
-                                                 |       Proxies        |
-                                                 | (HTTP/RPC Gateway)   |
-                                                 +----+-----------+-----+
-                                                      |           |
-                                                      |           |
-                                      +---------------+           +----------------+
-                                      |                                            |
-                                      v                                            v
-                            +---------------------+                      +--------------------+
-                            |  Coordinator        |                      |     Chain Nodes    |
-                            |  (Raft Cluster)     |                      | (Head → ... → Tail)|
-                            |---------------------|                      +--------------------+
-                            | - Manages chain     |                               ^
-                            |   membership        |                               |
-                            | - Heartbeats nodes  |                               |
-                            | - Detects failures  |                               |
-                            +---------+-----------+                               |
-                                      |                                           |
-                                      | Membership & Health Info                  |
-                                      |                                           |
-                                      +-------------------------------------------+
+                           +----------------------+
+                           |      Clients         |
+                           | (Read/Write Requests)|
+                           +----------+-----------+
+                                      |
+                                      v
+                           +----------------------+
+                           |       Proxies        |
+                           | (HTTP/RPC Gateway)   |
+                           +----+-----------+-----+
+                                |           |
+                                |           |
+                +---------------+           +----------------+
+                |                                            |
+                v                                            v
+      +---------------------+                      +--------------------+
+      |  Coordinator        |                      |     Chain Nodes    |
+      |  (Raft Cluster)     |                      | (Head → ... → Tail)|
+      |---------------------|                      +--------------------+
+      | - Manages chain     |                               ^
+      |   membership        |                               |
+      | - Heartbeats nodes  |                               |
+      | - Detects failures  |                               |
+      +---------+-----------+                               |
+                |                                           |
+                | Membership & Health Info                  |
+                |                                           |
+                +-------------------------------------------+
 ```
 ### Chain Nodes
 Chain nodes are responsible for storing key-value pairs and are organized into a sequential chain. Writes are always initiated at the head node, which writes the key-value pair to disk and forwards the request to its successor. Each node repeats this process until the request reaches the tail, which finalizes the write by committing it and sending a commit acknowledgment back up the chain. Once the commit propagates to all nodes, the key-value pair becomes visible to readers.
