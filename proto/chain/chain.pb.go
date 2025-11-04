@@ -7,7 +7,7 @@
 package chain
 
 import (
-	storage "github.com/jmsadair/keychain/proto/storage"
+	storage "github.com/jmsadair/keychainDB/proto/storage"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -811,7 +811,7 @@ const file_proto_chain_chain_proto_rawDesc = "" +
 	"\x06Commit\x12\x14.chain.CommitRequest\x1a\x15.chain.CommitResponse\"\x00\x12?\n" +
 	"\tPropagate\x12\x17.chain.PropagateRequest\x1a\x15.storage.KeyValuePair\"\x000\x01\x12^\n" +
 	"\x13UpdateConfiguration\x12!.chain.UpdateConfigurationRequest\x1a\".chain.UpdateConfigurationResponse\"\x00\x121\n" +
-	"\x04Ping\x12\x12.chain.PingRequest\x1a\x13.chain.PingResponse\"\x00B*Z(github.com/jmsadair/keychain/proto/chainb\x06proto3"
+	"\x04Ping\x12\x12.chain.PingRequest\x1a\x13.chain.PingResponse\"\x00B,Z*github.com/jmsadair/keychainDB/proto/chainb\x06proto3"
 
 var (
 	file_proto_chain_chain_proto_rawDescOnce sync.Once

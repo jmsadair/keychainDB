@@ -6,9 +6,9 @@ import (
 	"log/slog"
 	"testing"
 
-	"github.com/jmsadair/keychain/chain/storage"
-	pb "github.com/jmsadair/keychain/proto/chain"
-	storagepb "github.com/jmsadair/keychain/proto/storage"
+	"github.com/jmsadair/keychainDB/chain/storage"
+	pb "github.com/jmsadair/keychainDB/proto/chain"
+	storagepb "github.com/jmsadair/keychainDB/proto/storage"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"

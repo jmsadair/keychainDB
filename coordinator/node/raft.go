@@ -6,9 +6,9 @@ import (
 	"time"
 
 	"github.com/hashicorp/raft"
-	chainnode "github.com/jmsadair/keychain/chain/node"
-	"github.com/jmsadair/keychain/coordinator/raftnet"
-	"github.com/jmsadair/keychain/coordinator/raftstore"
+	chainnode "github.com/jmsadair/keychainDB/chain/node"
+	"github.com/jmsadair/keychainDB/coordinator/raftnet"
+	"github.com/jmsadair/keychainDB/coordinator/raftstore"
 	"google.golang.org/grpc"
 )
 

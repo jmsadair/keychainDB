@@ -7,7 +7,7 @@
 package coordinator
 
 import (
-	chain "github.com/jmsadair/keychain/proto/chain"
+	chain "github.com/jmsadair/keychainDB/proto/chain"
 	_ "google.golang.org/genproto/googleapis/api/annotations"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
@@ -821,7 +821,7 @@ const file_proto_coordinator_coordinator_proto_rawDesc = "" +
 	"\fRemoveMember\x12 .coordinator.RemoveMemberRequest\x1a!.coordinator.RemoveMemberResponse\"\x1e\x82\xd3\xe4\x93\x02\x18*\x16/v1/chain/members/{id}\x12p\n" +
 	"\vJoinCluster\x12\x1f.coordinator.JoinClusterRequest\x1a .coordinator.JoinClusterResponse\"\x1e\x82\xd3\xe4\x93\x02\x18:\x01*\"\x13/v1/cluster/members\x12\x84\x01\n" +
 	"\x11RemoveFromCluster\x12%.coordinator.RemoveFromClusterRequest\x1a&.coordinator.RemoveFromClusterResponse\" \x82\xd3\xe4\x93\x02\x1a*\x18/v1/cluster/members/{id}\x12r\n" +
-	"\rClusterStatus\x12!.coordinator.ClusterStatusRequest\x1a\".coordinator.ClusterStatusResponse\"\x1a\x82\xd3\xe4\x93\x02\x14\x12\x12/v1/cluster/statusB0Z.github.com/jmsadair/keychain/proto/coordinatorb\x06proto3"
+	"\rClusterStatus\x12!.coordinator.ClusterStatusRequest\x1a\".coordinator.ClusterStatusResponse\"\x1a\x82\xd3\xe4\x93\x02\x14\x12\x12/v1/cluster/statusB2Z0github.com/jmsadair/keychainDB/proto/coordinatorb\x06proto3"
 
 var (
 	file_proto_coordinator_coordinator_proto_rawDescOnce sync.Once

@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/raft"
-	chainnode "github.com/jmsadair/keychain/chain/node"
+	chainnode "github.com/jmsadair/keychainDB/chain/node"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )

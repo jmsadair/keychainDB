@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package api;
 
-option go_package = "github.com/jmsadair/keychain/proto/api";
+option go_package = "github.com/jmsadair/keychainDB/proto/api";
 
 // GetRequest is a request to read a key-value pair.
 message GetRequest {

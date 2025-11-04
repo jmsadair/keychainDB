@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package raft;
 
-option go_package = "github.com/jmsadair/keychain/proto/raft";
+option go_package = "github.com/jmsadair/keychainDB/proto/raft";
 
 import "google/protobuf/timestamp.proto";
 

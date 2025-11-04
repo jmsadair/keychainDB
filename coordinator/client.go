@@ -3,8 +3,8 @@ package coordinator
 import (
 	"context"
 
-	"github.com/jmsadair/keychain/internal/transport"
-	pb "github.com/jmsadair/keychain/proto/coordinator"
+	"github.com/jmsadair/keychainDB/internal/transport"
+	pb "github.com/jmsadair/keychainDB/proto/coordinator"
 	"google.golang.org/grpc"
 )
 

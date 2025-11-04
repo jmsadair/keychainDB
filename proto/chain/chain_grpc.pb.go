@@ -8,7 +8,7 @@ package chain
 
 import (
 	context "context"
-	storage "github.com/jmsadair/keychain/proto/storage"
+	storage "github.com/jmsadair/keychainDB/proto/storage"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"

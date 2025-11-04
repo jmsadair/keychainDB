@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/raft"
-	chainnode "github.com/jmsadair/keychain/chain/node"
+	chainnode "github.com/jmsadair/keychainDB/chain/node"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"

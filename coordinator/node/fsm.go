@@ -5,8 +5,8 @@ import (
 	"sync"
 
 	"github.com/hashicorp/raft"
-	chainnode "github.com/jmsadair/keychain/chain/node"
-	pb "github.com/jmsadair/keychain/proto/coordinator"
+	chainnode "github.com/jmsadair/keychainDB/chain/node"
+	pb "github.com/jmsadair/keychainDB/proto/coordinator"
 	"google.golang.org/protobuf/proto"
 )
 

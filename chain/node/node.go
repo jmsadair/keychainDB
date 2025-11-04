@@ -8,8 +8,8 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/jmsadair/keychain/chain/storage"
-	pb "github.com/jmsadair/keychain/proto/chain"
+	"github.com/jmsadair/keychainDB/chain/storage"
+	pb "github.com/jmsadair/keychainDB/proto/chain"
 )
 
 var (

@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package coordinator;
 
-option go_package = "github.com/jmsadair/keychain/proto/coordinator";
+option go_package = "github.com/jmsadair/keychainDB/proto/coordinator";
 
 import "google/api/annotations.proto";
 import "proto/chain/chain.proto";

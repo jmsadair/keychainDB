@@ -8,7 +8,7 @@ package proxy
 
 import (
 	context "context"
-	api "github.com/jmsadair/keychain/proto/api"
+	api "github.com/jmsadair/keychainDB/proto/api"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"

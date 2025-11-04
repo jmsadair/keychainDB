@@ -7,7 +7,7 @@
 package proxy
 
 import (
-	api "github.com/jmsadair/keychain/proto/api"
+	api "github.com/jmsadair/keychainDB/proto/api"
 	_ "google.golang.org/genproto/googleapis/api/annotations"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
@@ -29,7 +29,7 @@ const file_proto_proxy_proxy_proto_rawDesc = "" +
 	"\x17proto/proxy/proxy.proto\x12\x05proxy\x1a\x13proto/api/api.proto\x1a\x1cgoogle/api/annotations.proto2\x8f\x01\n" +
 	"\fProxyService\x12@\n" +
 	"\x03Get\x12\x0f.api.GetRequest\x1a\x10.api.GetResponse\"\x16\x82\xd3\xe4\x93\x02\x10\x12\x0e/v1/keys/{key}\x12=\n" +
-	"\x03Set\x12\x0f.api.SetRequest\x1a\x10.api.SetResponse\"\x13\x82\xd3\xe4\x93\x02\r:\x01*\"\b/v1/keysB*Z(github.com/jmsadair/keychain/proto/proxyb\x06proto3"
+	"\x03Set\x12\x0f.api.SetRequest\x1a\x10.api.SetResponse\"\x13\x82\xd3\xe4\x93\x02\r:\x01*\"\b/v1/keysB,Z*github.com/jmsadair/keychainDB/proto/proxyb\x06proto3"
 
 var file_proto_proxy_proxy_proto_goTypes = []any{
 	(*api.GetRequest)(nil),  // 0: api.GetRequest
