@@ -9,9 +9,9 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/jmsadair/keychain/chain/node"
-	"github.com/jmsadair/keychain/chain/storage"
-	pb "github.com/jmsadair/keychain/proto/chain"
+	"github.com/jmsadair/keychainDB/chain/node"
+	"github.com/jmsadair/keychainDB/chain/storage"
+	pb "github.com/jmsadair/keychainDB/proto/chain"
 	"github.com/stretchr/testify/require"
 )
 

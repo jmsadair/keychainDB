@@ -992,7 +992,7 @@ const file_proto_raft_raft_proto_rawDesc = "" +
 	"\x0eRequestPreVote\x12\x1b.raft.RequestPreVoteRequest\x1a\x1c.raft.RequestPreVoteResponse\"\x00\x12R\n" +
 	"\x0fInstallSnapshot\x12\x1c.raft.InstallSnapshotRequest\x1a\x1d.raft.InstallSnapshotResponse\"\x00(\x01\x12A\n" +
 	"\n" +
-	"TimeoutNow\x12\x17.raft.TimeoutNowRequest\x1a\x18.raft.TimeoutNowResponse\"\x00B)Z'github.com/jmsadair/keychain/proto/raftb\x06proto3"
+	"TimeoutNow\x12\x17.raft.TimeoutNowRequest\x1a\x18.raft.TimeoutNowResponse\"\x00B+Z)github.com/jmsadair/keychainDB/proto/raftb\x06proto3"
 
 var (
 	file_proto_raft_raft_proto_rawDescOnce sync.Once

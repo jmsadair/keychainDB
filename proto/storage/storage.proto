@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package storage;
 
-option go_package = "github.com/jmsadair/keychain/proto/storage";
+option go_package = "github.com/jmsadair/keychainDB/proto/storage";
 
 // ObjectMetadata includes metadata about a particular object.
 message ObjectMetadata {

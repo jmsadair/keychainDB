@@ -3,7 +3,7 @@ package tests
 import (
 	"testing"
 
-	chainnode "github.com/jmsadair/keychain/chain/node"
+	chainnode "github.com/jmsadair/keychainDB/chain/node"
 	"github.com/stretchr/testify/require"
 )
 

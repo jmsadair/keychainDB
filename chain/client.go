@@ -3,9 +3,9 @@ package chain
 import (
 	"context"
 
-	"github.com/jmsadair/keychain/internal/transport"
-	pb "github.com/jmsadair/keychain/proto/chain"
-	storagepb "github.com/jmsadair/keychain/proto/storage"
+	"github.com/jmsadair/keychainDB/internal/transport"
+	pb "github.com/jmsadair/keychainDB/proto/chain"
+	storagepb "github.com/jmsadair/keychainDB/proto/storage"
 	"google.golang.org/grpc"
 )
 

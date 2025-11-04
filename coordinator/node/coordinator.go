@@ -8,9 +8,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	chainnode "github.com/jmsadair/keychain/chain/node"
-	chainpb "github.com/jmsadair/keychain/proto/chain"
-	pb "github.com/jmsadair/keychain/proto/coordinator"
+	chainnode "github.com/jmsadair/keychainDB/chain/node"
+	chainpb "github.com/jmsadair/keychainDB/proto/chain"
+	pb "github.com/jmsadair/keychainDB/proto/coordinator"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/status"

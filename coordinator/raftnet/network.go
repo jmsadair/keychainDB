@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/raft"
-	pb "github.com/jmsadair/keychain/proto/raft"
+	pb "github.com/jmsadair/keychainDB/proto/raft"
 	"google.golang.org/grpc"
 )
 

@@ -4,10 +4,10 @@ import (
 	"context"
 
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/retry"
-	"github.com/jmsadair/keychain/api/types"
-	"github.com/jmsadair/keychain/internal/transport"
-	apipb "github.com/jmsadair/keychain/proto/api"
-	proxypb "github.com/jmsadair/keychain/proto/proxy"
+	"github.com/jmsadair/keychainDB/api/types"
+	"github.com/jmsadair/keychainDB/internal/transport"
+	apipb "github.com/jmsadair/keychainDB/proto/api"
+	proxypb "github.com/jmsadair/keychainDB/proto/proxy"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
@@ -21,7 +21,7 @@ type Config struct {
 	MaxRetries  int
 }
 
-// Client exposes the main keychain API.
+// Client exposes the main keychainDB API.
 type Client struct {
 	config      Config
 	clientCache *transport.ClientCache[proxypb.ProxyServiceClient]

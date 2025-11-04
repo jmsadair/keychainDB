@@ -6,10 +6,10 @@ import (
 	"log/slog"
 	"testing"
 
-	chainnode "github.com/jmsadair/keychain/chain/node"
-	apipb "github.com/jmsadair/keychain/proto/api"
-	chainpb "github.com/jmsadair/keychain/proto/chain"
-	coordinatorpb "github.com/jmsadair/keychain/proto/coordinator"
+	chainnode "github.com/jmsadair/keychainDB/chain/node"
+	apipb "github.com/jmsadair/keychainDB/proto/api"
+	chainpb "github.com/jmsadair/keychainDB/proto/chain"
+	coordinatorpb "github.com/jmsadair/keychainDB/proto/coordinator"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )

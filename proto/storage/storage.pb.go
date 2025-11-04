@@ -228,7 +228,7 @@ const file_proto_storage_storage_proto_rawDesc = "" +
 	"\aKeyType\x12\x0f\n" +
 	"\vKEYTYPE_ALL\x10\x00\x12\x15\n" +
 	"\x11KEYTYPE_COMMITTED\x10\x01\x12\x11\n" +
-	"\rKEYTYPE_DIRTY\x10\x02B,Z*github.com/jmsadair/keychain/proto/storageb\x06proto3"
+	"\rKEYTYPE_DIRTY\x10\x02B.Z,github.com/jmsadair/keychainDB/proto/storageb\x06proto3"
 
 var (
 	file_proto_storage_storage_proto_rawDescOnce sync.Once

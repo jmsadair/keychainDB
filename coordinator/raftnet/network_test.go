@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/raft"
-	pb "github.com/jmsadair/keychain/proto/raft"
+	pb "github.com/jmsadair/keychainDB/proto/raft"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/metadata"

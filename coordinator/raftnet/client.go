@@ -3,8 +3,8 @@ package raftnet
 import (
 	"context"
 
-	"github.com/jmsadair/keychain/internal/transport"
-	pb "github.com/jmsadair/keychain/proto/raft"
+	"github.com/jmsadair/keychainDB/internal/transport"
+	pb "github.com/jmsadair/keychainDB/proto/raft"
 	"google.golang.org/grpc"
 )
 

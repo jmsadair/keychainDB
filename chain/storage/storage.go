@@ -6,7 +6,7 @@ import (
 
 	badger "github.com/dgraph-io/badger/v4"
 	"github.com/dgraph-io/ristretto/v2/z"
-	pb "github.com/jmsadair/keychain/proto/storage"
+	pb "github.com/jmsadair/keychainDB/proto/storage"
 )
 
 // KeyFilter is a filter for selecting specific keys when listing keys from storage.

@@ -4,11 +4,11 @@ import (
 	"context"
 	"log/slog"
 
-	"github.com/jmsadair/keychain/api/types"
-	"github.com/jmsadair/keychain/chain/node"
-	"github.com/jmsadair/keychain/chain/storage"
-	"github.com/jmsadair/keychain/internal/transport"
-	pb "github.com/jmsadair/keychain/proto/chain"
+	"github.com/jmsadair/keychainDB/api/types"
+	"github.com/jmsadair/keychainDB/chain/node"
+	"github.com/jmsadair/keychainDB/chain/storage"
+	"github.com/jmsadair/keychainDB/internal/transport"
+	pb "github.com/jmsadair/keychainDB/proto/chain"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 )
