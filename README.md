@@ -59,9 +59,9 @@ If a node fails to respond within a configured timeout, the coordinator automati
 Proxy nodes act as intermediaries between clients and the chain. When a client sends a request, the proxy determines the appropriate chain node to handle it and forwards the request accordingly.  
 This allows clients to interact with the system through a single, simplified interface without needing to know the chain’s internal structure.
 
-# Future Work
+## Future Work
 This a non-exhaustive list of things that need to be done in the near term.
 - [ ] Leader forwarding. Coordinators should forward client requests to the leader.
-- [ ] More testing. There needs to be more thorough integration and E2E tests. Especially for various failure scenarios.
-- [ ] A `cmd` directory for with the logic for running the coordinator, chain nodes, and proxy nodes.
+- [ ] More testing. There needs to be more integration and E2E tests. Especially for various failure scenarios.
+- [ ] A `cmd` directory with the logic for running the coordinator, chain nodes, and proxy nodes.
 - [ ] Various package documentation.
