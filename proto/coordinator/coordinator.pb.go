@@ -62,9 +62,8 @@ func (*GetMembersRequest) Descriptor() ([]byte, []int) {
 
 // GetMembersResponse is a response to a GetMembersRequest.
 type GetMembersResponse struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// A chain membership configuration.
-	Configuration *chain.Configuration `protobuf:"bytes,1,opt,name=configuration,proto3" json:"configuration,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Configuration *chain.Configuration   `protobuf:"bytes,1,opt,name=configuration,proto3" json:"configuration,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -108,11 +107,9 @@ func (x *GetMembersResponse) GetConfiguration() *chain.Configuration {
 
 // AddMemberRequest is a request to add a member to the chain.
 type AddMemberRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// The ID of the member being added.
-	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	// The address of the member being added.
-	Address       string `protobuf:"bytes,2,opt,name=address,proto3" json:"address,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Address       string                 `protobuf:"bytes,2,opt,name=address,proto3" json:"address,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -200,9 +197,8 @@ func (*AddMemberResponse) Descriptor() ([]byte, []int) {
 
 // RemoveMemberRequest is a request to remove a member from the chain.
 type RemoveMemberRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// The ID of the member being removed.
-	Id            string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -283,11 +279,9 @@ func (*RemoveMemberResponse) Descriptor() ([]byte, []int) {
 
 // JoinClusterRequest is a request to join the coordinator cluster.
 type JoinClusterRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// The ID of the coordinator joining the cluster.
-	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	// The address of the coordinator joining the cluster.
-	Address       string `protobuf:"bytes,2,opt,name=address,proto3" json:"address,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Address       string                 `protobuf:"bytes,2,opt,name=address,proto3" json:"address,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -375,9 +369,8 @@ func (*JoinClusterResponse) Descriptor() ([]byte, []int) {
 
 // RemoveFromClusterRequest is a request to remove a coordinator from the cluster.
 type RemoveFromClusterRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// The ID of the coordinator being removed.
-	Id            string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -495,11 +488,9 @@ func (*ClusterStatusRequest) Descriptor() ([]byte, []int) {
 
 // ClusterStatusResponse is a response to a ClusterStatusRequest.
 type ClusterStatusResponse struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// The cluster members (ID -> Address mapping).
-	Members map[string]string `protobuf:"bytes,1,rep,name=members,proto3" json:"members,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	// The leader ID.
-	Leader        string `protobuf:"bytes,2,opt,name=leader,proto3" json:"leader,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Members       map[string]string      `protobuf:"bytes,1,rep,name=members,proto3" json:"members,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	Leader        string                 `protobuf:"bytes,2,opt,name=leader,proto3" json:"leader,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -550,11 +541,9 @@ func (x *ClusterStatusResponse) GetLeader() string {
 
 // An operation that adds a member to a chain.
 type AddMemberOperation struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// The ID of the member being added.
-	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	// The address of the member being added.
-	Address       string `protobuf:"bytes,2,opt,name=address,proto3" json:"address,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Address       string                 `protobuf:"bytes,2,opt,name=address,proto3" json:"address,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -605,9 +594,8 @@ func (x *AddMemberOperation) GetAddress() string {
 
 // An operation that removes a member from a chain.
 type RemoveMemberOperation struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// The ID of the member being removed.
-	Id            string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }

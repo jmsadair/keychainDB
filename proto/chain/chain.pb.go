@@ -24,11 +24,9 @@ const (
 
 // ChainMember represents a member of the chain with an ID and address.
 type ChainMember struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// The unique ID of the chain member.
-	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	// The address of the chain member.
-	Address       string `protobuf:"bytes,2,opt,name=address,proto3" json:"address,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Address       string                 `protobuf:"bytes,2,opt,name=address,proto3" json:"address,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -79,11 +77,9 @@ func (x *ChainMember) GetAddress() string {
 
 // Configuration contains the membership configuration of the chain.
 type Configuration struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// The version of this configuration.
-	Version uint64 `protobuf:"varint,1,opt,name=version,proto3" json:"version,omitempty"`
-	// The members of the chain with their IDs and addresses.
-	Members       []*ChainMember `protobuf:"bytes,2,rep,name=members,proto3" json:"members,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Version       uint64                 `protobuf:"varint,1,opt,name=version,proto3" json:"version,omitempty"`
+	Members       []*ChainMember         `protobuf:"bytes,2,rep,name=members,proto3" json:"members,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -134,9 +130,8 @@ func (x *Configuration) GetMembers() []*ChainMember {
 
 // UpdateConfigurationRequest is a request for a node to update its chain membership configuration.
 type UpdateConfigurationRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// The new configuration for the chain.
-	Configuration *Configuration `protobuf:"bytes,1,opt,name=configuration,proto3" json:"configuration,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Configuration *Configuration         `protobuf:"bytes,1,opt,name=configuration,proto3" json:"configuration,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -217,13 +212,10 @@ func (*UpdateConfigurationResponse) Descriptor() ([]byte, []int) {
 
 // ReplicateRequest is a request sent to the head of a chain to initiate replication of a key-value pair.
 type ReplicateRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// The key being written.
-	Key string `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
-	// The value for the key.
-	Value []byte `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
-	// The configuration version.
-	ConfigVersion uint64 `protobuf:"varint,3,opt,name=config_version,json=configVersion,proto3" json:"config_version,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Key           string                 `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	Value         []byte                 `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
+	ConfigVersion uint64                 `protobuf:"varint,3,opt,name=config_version,json=configVersion,proto3" json:"config_version,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -318,15 +310,11 @@ func (*ReplicateResponse) Descriptor() ([]byte, []int) {
 
 // WriteRequest is a request sent from one node of a chain to another to write a new version of a key.
 type WriteRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// The key being written.
-	Key string `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
-	// The value for the key.
-	Value []byte `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
-	// The version of the key.
-	Version uint64 `protobuf:"varint,3,opt,name=version,proto3" json:"version,omitempty"`
-	// The configuration version.
-	ConfigVersion uint64 `protobuf:"varint,4,opt,name=config_version,json=configVersion,proto3" json:"config_version,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Key           string                 `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	Value         []byte                 `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
+	Version       uint64                 `protobuf:"varint,3,opt,name=version,proto3" json:"version,omitempty"`
+	ConfigVersion uint64                 `protobuf:"varint,4,opt,name=config_version,json=configVersion,proto3" json:"config_version,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -428,13 +416,10 @@ func (*WriteResponse) Descriptor() ([]byte, []int) {
 
 // ReadRequest is a request sent from one node of chain to another to read the value of a key.
 type ReadRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// The key being read.
-	Key string `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
-	// The configuration version.
-	ConfigVersion uint64 `protobuf:"varint,2,opt,name=config_version,json=configVersion,proto3" json:"config_version,omitempty"`
-	// Indicates whether this request was forwarded from another node in the chain.
-	Forwarded     bool `protobuf:"varint,3,opt,name=forwarded,proto3" json:"forwarded,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Key           string                 `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	ConfigVersion uint64                 `protobuf:"varint,2,opt,name=config_version,json=configVersion,proto3" json:"config_version,omitempty"`
+	Forwarded     bool                   `protobuf:"varint,3,opt,name=forwarded,proto3" json:"forwarded,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -492,9 +477,8 @@ func (x *ReadRequest) GetForwarded() bool {
 
 // ReadResponse is the response to a ReadRequest and contains the value of the key read.
 type ReadResponse struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// The value of the key that was read.
-	Value         []byte `protobuf:"bytes,1,opt,name=value,proto3" json:"value,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Value         []byte                 `protobuf:"bytes,1,opt,name=value,proto3" json:"value,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -538,11 +522,9 @@ func (x *ReadResponse) GetValue() []byte {
 
 // PropagateRequest is used to initiate a server-to-client stream of key-value pairs.
 type PropagateRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// Which type of key should be listed.
-	KeyType storage.KeyType `protobuf:"varint,1,opt,name=key_type,json=keyType,proto3,enum=storage.KeyType" json:"key_type,omitempty"`
-	// The configuration version.
-	ConfigVersion uint64 `protobuf:"varint,4,opt,name=config_version,json=configVersion,proto3" json:"config_version,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	KeyType       storage.KeyType        `protobuf:"varint,1,opt,name=key_type,json=keyType,proto3,enum=storage.KeyType" json:"key_type,omitempty"`
+	ConfigVersion uint64                 `protobuf:"varint,2,opt,name=config_version,json=configVersion,proto3" json:"config_version,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -593,13 +575,10 @@ func (x *PropagateRequest) GetConfigVersion() uint64 {
 
 // CommitRequest is a request to commit a version of a key.
 type CommitRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// The key being committed.
-	Key string `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
-	// The version of the key being committed.
-	Version uint64 `protobuf:"varint,2,opt,name=version,proto3" json:"version,omitempty"`
-	// The configuration version.
-	ConfigVersion uint64 `protobuf:"varint,4,opt,name=config_version,json=configVersion,proto3" json:"config_version,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Key           string                 `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	Version       uint64                 `protobuf:"varint,2,opt,name=version,proto3" json:"version,omitempty"`
+	ConfigVersion uint64                 `protobuf:"varint,3,opt,name=config_version,json=configVersion,proto3" json:"config_version,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -815,11 +794,11 @@ const file_proto_chain_chain_proto_rawDesc = "" +
 	"\x05value\x18\x01 \x01(\fR\x05value\"f\n" +
 	"\x10PropagateRequest\x12+\n" +
 	"\bkey_type\x18\x01 \x01(\x0e2\x10.storage.KeyTypeR\akeyType\x12%\n" +
-	"\x0econfig_version\x18\x04 \x01(\x04R\rconfigVersion\"b\n" +
+	"\x0econfig_version\x18\x02 \x01(\x04R\rconfigVersion\"b\n" +
 	"\rCommitRequest\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x18\n" +
 	"\aversion\x18\x02 \x01(\x04R\aversion\x12%\n" +
-	"\x0econfig_version\x18\x04 \x01(\x04R\rconfigVersion\"\x10\n" +
+	"\x0econfig_version\x18\x03 \x01(\x04R\rconfigVersion\"\x10\n" +
 	"\x0eCommitResponse\"\r\n" +
 	"\vPingRequest\"M\n" +
 	"\fPingResponse\x12%\n" +

@@ -23,9 +23,8 @@ const (
 
 // GetRequest is a request to read a key-value pair.
 type GetRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// The key to read.
-	Key           string `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Key           string                 `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -69,9 +68,8 @@ func (x *GetRequest) GetKey() string {
 
 // GetResponse is a response to a GetRequest.
 type GetResponse struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// The value read.
-	Value         []byte `protobuf:"bytes,1,opt,name=value,proto3" json:"value,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Value         []byte                 `protobuf:"bytes,1,opt,name=value,proto3" json:"value,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -115,11 +113,9 @@ func (x *GetResponse) GetValue() []byte {
 
 // SetRequest is a request to set the value for a key.
 type SetRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// The key to set the value for.
-	Key string `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
-	// The value.
-	Value         []byte `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Key           string                 `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	Value         []byte                 `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }

@@ -322,7 +322,7 @@ func (x *RequestPreVoteResponse) GetGranted() bool {
 	return false
 }
 
-// RequestVoteRequest is the command used by a candidate to ask a Rpeer for a vote in an election.
+// RequestVoteRequest is the command used by a candidate to ask a peer for a vote in an election.
 type RequestVoteRequest struct {
 	state              protoimpl.MessageState `protogen:"open.v1"`
 	RpcHeader          *RpcHeader             `protobuf:"bytes,1,opt,name=rpc_header,json=rpcHeader,proto3" json:"rpc_header,omitempty"`
