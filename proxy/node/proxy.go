@@ -150,7 +150,7 @@ func (p *Proxy) Set(ctx context.Context, request *apipb.SetRequest) (*apipb.SetR
 
 	replicateReq := &chainpb.ReplicateRequest{Key: request.GetKey(), Value: request.GetValue(), ConfigVersion: config.Version}
 	_, err = p.chainClient.Replicate(ctx, head.Address, replicateReq)
-	if err != nil && errors.Is(err, chainnode.ErrInvalidConfigVersion) {
+	if err != nil && errors.Is(err, types.ErrGRPCInvalidConfigVersion) {
 		p.log.WarnContext(ctx, "proxy configuration version does not match chain configuration version")
 		config, err := p.getChainMembership(ctx, true)
 		if err != nil {

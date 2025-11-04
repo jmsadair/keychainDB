@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 
+	"github.com/jmsadair/keychain/api/types"
 	"github.com/jmsadair/keychain/chain/node"
 	"github.com/jmsadair/keychain/chain/storage"
 	"github.com/jmsadair/keychain/internal/transport"
@@ -11,6 +12,18 @@ import (
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 )
+
+// Maps service errors to gRPC errors.
+var errToGRPCError = map[error]error{
+	node.ErrInvalidConfigVersion: types.ErrGRPCInvalidConfigVersion,
+	node.ErrNotHead:              types.ErrGRPCNotHead,
+	node.ErrNotMemberOfChain:     types.ErrNotMemberOfChain,
+	node.ErrSyncing:              types.ErrGRPCSyncing,
+	storage.ErrConflict:          types.ErrGRPCConflict,
+	storage.ErrEmptyKey:          types.ErrGRPCEmptyKey,
+	storage.ErrKeyNotFound:       types.ErrGRPCKeyNotFound,
+	storage.ErrUncommittedRead:   types.ErrUncommittedRead,
+}
 
 // ServiceConfig contains the configurations for a chain service.
 type ServiceConfig struct {
@@ -49,7 +62,8 @@ func NewService(cfg ServiceConfig) (*Service, error) {
 		return nil, err
 	}
 	node := node.NewChainNode(cfg.ID, cfg.Listen, store, tn, cfg.Log)
-	srv := transport.NewServer(cfg.Listen, func(s *grpc.Server) { pb.RegisterChainServiceServer(s, node) })
+	srv := transport.NewServer(cfg.Listen, func(s *grpc.Server) { pb.RegisterChainServiceServer(s, node) },
+		grpc.UnaryInterceptor(transport.UnaryServerErrorInterceptor(errToGRPCError)))
 	return &Service{Server: srv, Node: node, Config: cfg, store: store}, nil
 }
 

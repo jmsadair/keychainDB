@@ -27,23 +27,18 @@ service ChainService {
 
 // ChainMember represents a member of the chain with an ID and address.
 message ChainMember {
-	// The unique ID of the chain member.
 	string id = 1;
-	// The address of the chain member.
 	string address = 2;
 }
 
 // Configuration contains the membership configuration of the chain.
 message Configuration {
-	// The version of this configuration.
 	uint64 version = 1;
-	// The members of the chain with their IDs and addresses.
 	repeated ChainMember members = 2;
 }
 
 // UpdateConfigurationRequest is a request for a node to update its chain membership configuration.
 message UpdateConfigurationRequest {
-	// The new configuration for the chain.
 	Configuration configuration = 1;
 }
 
@@ -52,11 +47,8 @@ message UpdateConfigurationResponse {}
 
 // ReplicateRequest is a request sent to the head of a chain to initiate replication of a key-value pair.
 message ReplicateRequest {
-	// The key being written.
 	string key = 1;
-	// The value for the key.
 	bytes value = 2;
-	// The configuration version.
 	uint64 config_version = 3;
 }
 
@@ -65,13 +57,9 @@ message ReplicateResponse {}
 
 // WriteRequest is a request sent from one node of a chain to another to write a new version of a key.
 message WriteRequest {
-	// The key being written.
 	string key = 1;
-	// The value for the key.
 	bytes value = 2;
-	// The version of the key.
 	uint64 version = 3;
-	// The configuration version.
 	uint64 config_version = 4;
 }
 
@@ -80,36 +68,27 @@ message WriteResponse {}
 
 // ReadRequest is a request sent from one node of chain to another to read the value of a key.
 message ReadRequest {
-	// The key being read.
 	string key = 1;
-	// The configuration version.
 	uint64 config_version = 2;
-	// Indicates whether this request was forwarded from another node in the chain.
 	bool forwarded = 3;
 }
 
 // ReadResponse is the response to a ReadRequest and contains the value of the key read.
 message ReadResponse {
-	// The value of the key that was read.
 	bytes value = 1;
 }
 
 // PropagateRequest is used to initiate a server-to-client stream of key-value pairs.
 message PropagateRequest {
-	// Which type of key should be listed.
 	storage.KeyType key_type = 1;
-	// The configuration version.
-	uint64 config_version = 4;
+	uint64 config_version = 2;
 }
 
 // CommitRequest is a request to commit a version of a key.
 message CommitRequest {
-	// The key being committed.
 	string key = 1;
-	// The version of the key being committed.
 	uint64 version = 2;
-	// The configuration version.
-	uint64 config_version = 4;
+	uint64 config_version = 3;
 }
 
 // CommitResponse is a response to a CommitRequest.

@@ -69,12 +69,9 @@ func TestDirtyKeysNotRead(t *testing.T) {
 	updateChainConfiguration(t, client, config, srv1, srv2, srv3)
 	waitForActiveChainStatus(t, client, srv1, srv2, srv3)
 
-	store := srv1.server.Node.Store()
-	require.NoError(t, store.UncommittedWrite("key-1", []byte("value-1"), 1))
-	store = srv2.server.Node.Store()
-	require.NoError(t, store.UncommittedWrite("key-1", []byte("value-1"), 1))
-	store = srv3.server.Node.Store()
-	require.NoError(t, store.CommittedWrite("key-1", []byte("value-2"), 2))
+	require.NoError(t, srv1.server.Node.Store.UncommittedWrite("key-1", []byte("value-1"), 1))
+	require.NoError(t, srv2.server.Node.Store.UncommittedWrite("key-1", []byte("value-1"), 1))
+	require.NoError(t, srv3.server.Node.Store.CommittedWrite("key-1", []byte("value-2"), 2))
 
 	// Reads of dirty keys should be forwarded to the tail of the chain.
 	req1 := &pb.ReadRequest{Key: "key-1", ConfigVersion: config.Version}
@@ -391,7 +388,7 @@ func TestPropagate(t *testing.T) {
 
 	numKeys := 1000
 	kvPairs := makeKeyValuePairs(numKeys)
-	store := srv.server.Node.Store()
+	store := srv.server.Node.Store
 	dirtyKeys := make(map[string][]byte, 500)
 	committedKeys := make(map[string][]byte, 500)
 	allKeys := make(map[string][]byte, 1000)

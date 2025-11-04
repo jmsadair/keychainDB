@@ -27,11 +27,11 @@ func (m *mockClientStream) Recv() (*storagepb.KeyValuePair, error) {
 	return args.Get(0).(*storagepb.KeyValuePair), args.Error(1)
 }
 
-type mockTransport struct {
+type mockChainClient struct {
 	mock.Mock
 }
 
-func (m *mockTransport) Write(ctx context.Context, address string, request *pb.WriteRequest) (*pb.WriteResponse, error) {
+func (m *mockChainClient) Write(ctx context.Context, address string, request *pb.WriteRequest) (*pb.WriteResponse, error) {
 	args := m.MethodCalled("Write", ctx, address, request)
 	if resp := args.Get(0); resp != nil {
 		return resp.(*pb.WriteResponse), nil
@@ -39,7 +39,7 @@ func (m *mockTransport) Write(ctx context.Context, address string, request *pb.W
 	return nil, args.Error(1)
 }
 
-func (m *mockTransport) Read(ctx context.Context, address string, request *pb.ReadRequest) (*pb.ReadResponse, error) {
+func (m *mockChainClient) Read(ctx context.Context, address string, request *pb.ReadRequest) (*pb.ReadResponse, error) {
 	args := m.MethodCalled("Read", ctx, address, request)
 	if resp := args.Get(0); resp != nil {
 		return resp.(*pb.ReadResponse), nil
@@ -47,7 +47,7 @@ func (m *mockTransport) Read(ctx context.Context, address string, request *pb.Re
 	return nil, args.Error(1)
 }
 
-func (m *mockTransport) Commit(ctx context.Context, address string, request *pb.CommitRequest) (*pb.CommitResponse, error) {
+func (m *mockChainClient) Commit(ctx context.Context, address string, request *pb.CommitRequest) (*pb.CommitResponse, error) {
 	args := m.MethodCalled("Commit", ctx, address, request)
 	if resp := args.Get(0); resp != nil {
 		return resp.(*pb.CommitResponse), nil
@@ -55,12 +55,17 @@ func (m *mockTransport) Commit(ctx context.Context, address string, request *pb.
 	return nil, args.Error(1)
 }
 
-func (m *mockTransport) Propagate(ctx context.Context, address string, request *pb.PropagateRequest) (grpc.ServerStreamingClient[storagepb.KeyValuePair], error) {
+func (m *mockChainClient) Propagate(ctx context.Context, address string, request *pb.PropagateRequest) (pb.ChainService_PropagateClient, error) {
 	args := m.MethodCalled("Propagate", ctx, address, request)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(grpc.ServerStreamingClient[storagepb.KeyValuePair]), args.Error(1)
+	return args.Get(0).(pb.ChainService_PropagateClient), args.Error(1)
+}
+
+func (m *mockChainClient) Close() error {
+	args := m.MethodCalled("Close")
+	return args.Error(0)
 }
 
 type mockStorage struct {
@@ -109,9 +114,9 @@ func TestReplicate(t *testing.T) {
 	member1 := &ChainMember{ID: "member-1", Address: "127.0.0.1:8080"}
 	member2 := &ChainMember{ID: "member-2", Address: "127.0.0.2:8080"}
 
-	transport := new(mockTransport)
+	chainClient := new(mockChainClient)
 	store := new(mockStorage)
-	node := NewChainNode(member1.ID, member1.Address, store, transport, slog.Default())
+	node := NewChainNode(member1.ID, member1.Address, store, chainClient, slog.Default())
 
 	// Node is not a member of a chain.
 	request := &pb.ReplicateRequest{Key: "key", Value: []byte("value")}
@@ -133,7 +138,7 @@ func TestReplicate(t *testing.T) {
 	state = node.state.Load()
 	state.Config = config
 	store.On("UncommittedWriteNewVersion", request.Key, request.Value).Return(version, nil).Once()
-	transport.On("Write", mock.Anything, member2.Address, &pb.WriteRequest{
+	chainClient.On("Write", mock.Anything, member2.Address, &pb.WriteRequest{
 		Key:           request.Key,
 		Value:         request.Value,
 		Version:       version,
@@ -142,7 +147,7 @@ func TestReplicate(t *testing.T) {
 	_, err = node.Replicate(context.Background(), request)
 	require.NoError(t, err)
 	store.AssertExpectations(t)
-	transport.AssertExpectations(t)
+	chainClient.AssertExpectations(t)
 
 	// Node is not the head.
 	config = NewConfiguration([]*ChainMember{member2, member1}, 0)
@@ -159,21 +164,21 @@ func TestReplicate(t *testing.T) {
 	require.ErrorIs(t, err, ErrInvalidConfigVersion)
 }
 
-func TestWriteWithVersion(t *testing.T) {
+func TestWrite(t *testing.T) {
 	member1 := &ChainMember{ID: "member-1", Address: "127.0.0.1:8080"}
 	member2 := &ChainMember{ID: "member-2", Address: "127.0.0.2:8080"}
 	member3 := &ChainMember{ID: "member-3", Address: "127.0.0.3:8080"}
 
 	store := new(mockStorage)
-	transport := new(mockTransport)
-	node := NewChainNode(member1.ID, member1.Address, store, transport, slog.Default())
+	chainClient := new(mockChainClient)
+	node := NewChainNode(member1.ID, member1.Address, store, chainClient, slog.Default())
 
 	// Node is not a member of a chain.
 	key := "key"
 	value := []byte("value")
 	version := uint64(1)
 	req := &pb.WriteRequest{Key: key, Value: value, Version: version}
-	_, err := node.WriteWithVersion(context.Background(), req)
+	_, err := node.Write(context.Background(), req)
 	require.ErrorIs(t, err, ErrNotMemberOfChain)
 
 	// Node is the the tail of the chain. It should immediately commit the key-value pair.
@@ -181,7 +186,7 @@ func TestWriteWithVersion(t *testing.T) {
 	state := node.state.Load()
 	state.Config = config
 	store.On("CommittedWrite", key, value, version).Return(nil).Once()
-	_, err = node.WriteWithVersion(context.Background(), req)
+	_, err = node.Write(context.Background(), req)
 	require.NoError(t, err)
 	store.AssertExpectations(t)
 
@@ -190,21 +195,21 @@ func TestWriteWithVersion(t *testing.T) {
 	state = node.state.Load()
 	state.Config = config
 	store.On("UncommittedWrite", key, value, version).Return(nil).Once()
-	transport.On("Write", mock.Anything, member3.Address, &pb.WriteRequest{
+	chainClient.On("Write", mock.Anything, member3.Address, &pb.WriteRequest{
 		Key:     key,
 		Value:   value,
 		Version: version,
 	}).Return(&pb.WriteResponse{}, nil).Once()
-	_, err = node.WriteWithVersion(context.Background(), req)
+	_, err = node.Write(context.Background(), req)
 	require.NoError(t, err)
 	store.AssertExpectations(t)
-	transport.AssertExpectations(t)
+	chainClient.AssertExpectations(t)
 
 	// There is a mismatch between the node configuration version and the request configuration version.
 	config = NewConfiguration([]*ChainMember{member2, member1, member3}, 1)
 	state = node.state.Load()
 	state.Config = config
-	_, err = node.WriteWithVersion(context.Background(), req)
+	_, err = node.Write(context.Background(), req)
 	require.ErrorIs(t, err, ErrInvalidConfigVersion)
 }
 
@@ -214,8 +219,8 @@ func TestRead(t *testing.T) {
 	member3 := &ChainMember{ID: "member-3", Address: "127.0.0.3:8080"}
 
 	store := new(mockStorage)
-	transport := new(mockTransport)
-	node := NewChainNode(member1.ID, member1.Address, store, transport, slog.Default())
+	chainClient := new(mockChainClient)
+	node := NewChainNode(member1.ID, member1.Address, store, chainClient, slog.Default())
 
 	// Node is not a member of a chain.
 	key := "key"
@@ -238,12 +243,12 @@ func TestRead(t *testing.T) {
 	// It should forward the read to the tail.
 	forwardedReq := &pb.ReadRequest{Key: key, ConfigVersion: 0, Forwarded: true}
 	store.On("CommittedRead", key).Return(nil, storage.ErrUncommittedRead).Once()
-	transport.On("Read", mock.Anything, member3.Address, forwardedReq).Return(&pb.ReadResponse{Value: value}, nil).Once()
+	chainClient.On("Read", mock.Anything, member3.Address, forwardedReq).Return(&pb.ReadResponse{Value: value}, nil).Once()
 	resp, err = node.Read(context.Background(), req)
 	require.NoError(t, err)
 	require.Equal(t, value, resp.Value)
 	store.AssertExpectations(t)
-	transport.AssertExpectations(t)
+	chainClient.AssertExpectations(t)
 
 	// There is a mismatch between the node configuration version and the request configuration version.
 	config = NewConfiguration([]*ChainMember{member1, member2, member3}, 1)
@@ -257,8 +262,8 @@ func TestCommit(t *testing.T) {
 	member1 := &ChainMember{ID: "member-1", Address: "127.0.0.1:8080"}
 
 	store := new(mockStorage)
-	transport := new(mockTransport)
-	node := NewChainNode(member1.ID, member1.Address, store, transport, slog.Default())
+	chainClient := new(mockChainClient)
+	node := NewChainNode(member1.ID, member1.Address, store, chainClient, slog.Default())
 
 	// Node is not a member of a chain.
 	key := "key"
@@ -294,8 +299,8 @@ func TestRequestPropagation(t *testing.T) {
 	member2 := &ChainMember{ID: "member-2", Address: "127.0.0.2:8080"}
 
 	store := new(mockStorage)
-	transport := new(mockTransport)
-	node := NewChainNode(member1.ID, member1.Address, store, transport, slog.Default())
+	chainClient := new(mockChainClient)
+	node := NewChainNode(member1.ID, member1.Address, store, chainClient, slog.Default())
 
 	stream := new(mockClientStream)
 	kv1 := storage.KeyValuePair{Key: "key-1", Value: []byte("value-1"), Committed: false}
@@ -308,12 +313,12 @@ func TestRequestPropagation(t *testing.T) {
 	stream.On("Recv").Return(kv1.Proto(), nil).Once()
 	stream.On("Recv").Return(kv2.Proto(), nil).Once()
 	stream.On("Recv").Return(nil, io.EOF).Once()
-	transport.On("Propagate", mock.Anything, member2.Address, &pb.PropagateRequest{KeyType: storage.AllKeys.Proto(), ConfigVersion: 0}).Return(stream, nil).Once()
+	chainClient.On("Propagate", mock.Anything, member2.Address, &pb.PropagateRequest{KeyType: storage.AllKeys.Proto(), ConfigVersion: 0}).Return(stream, nil).Once()
 	store.On("UncommittedWrite", kv1.Key, kv1.Value, kv1.Version).Return(nil).Once()
 	store.On("CommittedWrite", kv2.Key, kv2.Value, kv2.Version).Return(nil).Once()
 	require.NoError(t, node.requestPropagation(context.Background(), member2, storage.AllKeys, config))
 	stream.AssertExpectations(t)
-	transport.AssertExpectations(t)
+	chainClient.AssertExpectations(t)
 	store.AssertExpectations(t)
 
 	// All keys are propagated. Dirty keys should be committed since this node is the tail.
@@ -323,12 +328,12 @@ func TestRequestPropagation(t *testing.T) {
 	stream.On("Recv").Return(kv1.Proto(), nil).Once()
 	stream.On("Recv").Return(kv2.Proto(), nil).Once()
 	stream.On("Recv").Return(nil, io.EOF).Once()
-	transport.On("Propagate", mock.Anything, member2.Address, &pb.PropagateRequest{KeyType: storage.AllKeys.Proto(), ConfigVersion: 0}).Return(stream, nil).Once()
+	chainClient.On("Propagate", mock.Anything, member2.Address, &pb.PropagateRequest{KeyType: storage.AllKeys.Proto(), ConfigVersion: 0}).Return(stream, nil).Once()
 	store.On("CommittedWrite", kv1.Key, kv1.Value, kv1.Version).Return(nil).Once()
 	store.On("CommittedWrite", kv2.Key, kv2.Value, kv2.Version).Return(nil).Once()
 	require.NoError(t, node.requestPropagation(context.Background(), member2, storage.AllKeys, config))
 	stream.AssertExpectations(t)
-	transport.AssertExpectations(t)
+	chainClient.AssertExpectations(t)
 	store.AssertExpectations(t)
 }
 
@@ -338,8 +343,8 @@ func TestOnNewPredecessor(t *testing.T) {
 	member3 := &ChainMember{ID: "member-3", Address: "127.0.0.3:8080"}
 
 	store := new(mockStorage)
-	transport := new(mockTransport)
-	node := NewChainNode(member1.ID, member1.Address, store, transport, slog.Default())
+	chainClient := new(mockChainClient)
+	node := NewChainNode(member1.ID, member1.Address, store, chainClient, slog.Default())
 
 	stream := new(mockClientStream)
 	kv1 := storage.KeyValuePair{Key: "key-1", Value: []byte("value-1"), Committed: false}
@@ -353,14 +358,14 @@ func TestOnNewPredecessor(t *testing.T) {
 	stream.On("Recv").Return(kv1.Proto(), nil).Once()
 	stream.On("Recv").Return(kv2.Proto(), nil).Once()
 	stream.On("Recv").Return(nil, io.EOF).Once()
-	transport.On("Propagate", mock.Anything, member2.Address, &pb.PropagateRequest{KeyType: storage.AllKeys.Proto(), ConfigVersion: 0}).Return(stream, nil).Once()
+	chainClient.On("Propagate", mock.Anything, member2.Address, &pb.PropagateRequest{KeyType: storage.AllKeys.Proto(), ConfigVersion: 0}).Return(stream, nil).Once()
 	store.On("CommittedWrite", kv1.Key, kv1.Value, kv1.Version).Return(nil).Once()
 	store.On("CommittedWrite", kv2.Key, kv2.Value, kv2.Version).Return(nil).Once()
 	node.onNewPredecessor(context.Background(), config, true)
 	require.Len(t, node.syncCompleteCh, 1)
 	node.syncCompleteCh = make(chan any)
 	stream.AssertExpectations(t)
-	transport.AssertExpectations(t)
+	chainClient.AssertExpectations(t)
 	store.AssertExpectations(t)
 
 	// Node is an existing member of the chain and gets a new predecessor.
@@ -371,12 +376,12 @@ func TestOnNewPredecessor(t *testing.T) {
 	stream.On("Recv").Return(kv1.Proto(), nil).Once()
 	stream.On("Recv").Return(kv2.Proto(), nil).Once()
 	stream.On("Recv").Return(nil, io.EOF).Once()
-	transport.On("Propagate", mock.Anything, member3.Address, &pb.PropagateRequest{KeyType: storage.DirtyKeys.Proto(), ConfigVersion: 0}).Return(stream, nil).Once()
+	chainClient.On("Propagate", mock.Anything, member3.Address, &pb.PropagateRequest{KeyType: storage.DirtyKeys.Proto(), ConfigVersion: 0}).Return(stream, nil).Once()
 	store.On("CommittedWrite", kv1.Key, kv1.Value, kv1.Version).Return(nil).Once()
 	store.On("CommittedWrite", kv2.Key, kv2.Value, kv2.Version).Return(nil).Once()
 	node.onNewPredecessor(context.Background(), config, false)
 	stream.AssertExpectations(t)
-	transport.AssertExpectations(t)
+	chainClient.AssertExpectations(t)
 	store.AssertExpectations(t)
 }
 
@@ -386,8 +391,8 @@ func TestOnNewSuccessor(t *testing.T) {
 	member3 := &ChainMember{ID: "member-3", Address: "127.0.0.3:8080"}
 
 	store := new(mockStorage)
-	transport := new(mockTransport)
-	node := NewChainNode(member1.ID, member1.Address, store, transport, slog.Default())
+	chainClient := new(mockChainClient)
+	node := NewChainNode(member1.ID, member1.Address, store, chainClient, slog.Default())
 
 	stream := new(mockClientStream)
 	kv1 := storage.KeyValuePair{Key: "key-1", Value: []byte("value-1"), Committed: false}
@@ -401,14 +406,14 @@ func TestOnNewSuccessor(t *testing.T) {
 	stream.On("Recv").Return(kv1.Proto(), nil).Once()
 	stream.On("Recv").Return(kv2.Proto(), nil).Once()
 	stream.On("Recv").Return(nil, io.EOF).Once()
-	transport.On("Propagate", mock.Anything, member2.Address, &pb.PropagateRequest{KeyType: storage.AllKeys.Proto(), ConfigVersion: 0}).Return(stream, nil).Once()
+	chainClient.On("Propagate", mock.Anything, member2.Address, &pb.PropagateRequest{KeyType: storage.AllKeys.Proto(), ConfigVersion: 0}).Return(stream, nil).Once()
 	store.On("UncommittedWrite", kv1.Key, kv1.Value, kv1.Version).Return(nil).Once()
 	store.On("CommittedWrite", kv2.Key, kv2.Value, kv2.Version).Return(nil).Once()
 	node.onNewSuccessor(context.Background(), config, true)
 	require.Len(t, node.syncCompleteCh, 1)
 	node.syncCompleteCh = make(chan any)
 	stream.AssertExpectations(t)
-	transport.AssertExpectations(t)
+	chainClient.AssertExpectations(t)
 	store.AssertExpectations(t)
 
 	// Node is an existing member of the chain and gets a new successor.
@@ -417,11 +422,11 @@ func TestOnNewSuccessor(t *testing.T) {
 	config = NewConfiguration([]*ChainMember{member1, member3}, 0)
 	stream.On("Recv").Return(kv2.Proto(), nil).Once()
 	stream.On("Recv").Return(nil, io.EOF).Once()
-	transport.On("Propagate", mock.Anything, member3.Address, &pb.PropagateRequest{KeyType: storage.CommittedKeys.Proto(), ConfigVersion: 0}).Return(stream, nil).Once()
+	chainClient.On("Propagate", mock.Anything, member3.Address, &pb.PropagateRequest{KeyType: storage.CommittedKeys.Proto(), ConfigVersion: 0}).Return(stream, nil).Once()
 	store.On("CommittedWrite", kv2.Key, kv2.Value, kv2.Version).Return(nil).Once()
 	node.onNewSuccessor(context.Background(), config, false)
 	stream.AssertExpectations(t)
-	transport.AssertExpectations(t)
+	chainClient.AssertExpectations(t)
 	store.AssertExpectations(t)
 
 	// Node is an existing member of the chain and becomes the new tail.
@@ -438,8 +443,8 @@ func TestPing(t *testing.T) {
 	member3 := &ChainMember{ID: "member-3", Address: "127.0.0.3:8080"}
 
 	store := new(mockStorage)
-	transport := new(mockTransport)
-	node := NewChainNode(member1.ID, member1.Address, store, transport, slog.Default())
+	chainClient := new(mockChainClient)
+	node := NewChainNode(member1.ID, member1.Address, store, chainClient, slog.Default())
 
 	version := uint64(3)
 	status := Syncing
@@ -449,7 +454,8 @@ func TestPing(t *testing.T) {
 	state.Status = status
 
 	req := &pb.PingRequest{}
-	resp := node.Ping(req)
+	resp, err := node.Ping(context.Background(), req)
+	require.NoError(t, err)
 	require.Equal(t, version, resp.ConfigVersion)
 	require.Equal(t, int32(Syncing), resp.Status)
 }

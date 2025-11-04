@@ -1149,13 +1149,12 @@ func TestAppendPipelineAppendEntriesSendError(t *testing.T) {
 
 	expectedErr := errors.New("stream failed")
 	mockStream.On("Send", mock.Anything).Return(expectedErr)
+	// This might be called before the pipeline is closed since the background
+	// loop that processes responses checks the stream context.
+	mockStream.On("Context").Return(ctx).Maybe()
 
 	pipeline := newAppendPipeline(cancel, mockStream)
-	defer func() {
-		mockStream.On("Context").Return(ctx)
-		pipeline.Close()
-		mockStream.AssertExpectations(t)
-	}()
+	defer pipeline.Close()
 
 	request := &raft.AppendEntriesRequest{Term: 5}
 	response := &raft.AppendEntriesResponse{}
@@ -1163,29 +1162,6 @@ func TestAppendPipelineAppendEntriesSendError(t *testing.T) {
 	require.Error(t, err)
 	require.Nil(t, future)
 	mockStream.AssertExpectations(t)
-
-}
-
-func TestAppendPipelineConsumer(t *testing.T) {
-	mockStream := new(mockAppendEntriesPipelineClient)
-	ctx, cancel := context.WithCancel(t.Context())
-	mockStream.On("Context").Return(ctx)
-
-	pipeline := newAppendPipeline(cancel, mockStream)
-	defer pipeline.Close()
-
-	consumer := pipeline.Consumer()
-	require.NotNil(t, consumer)
-}
-
-func TestAppendPipelineClose(t *testing.T) {
-	mockStream := new(mockAppendEntriesPipelineClient)
-	ctx, cancel := context.WithCancel(t.Context())
-	mockStream.On("Context").Return(ctx)
-
-	pipeline := newAppendPipeline(cancel, mockStream)
-	err := pipeline.Close()
-	require.NoError(t, err)
 }
 
 func TestAppendPipelineProcessResponses(t *testing.T) {

@@ -30,6 +30,11 @@ func (m *mockCoordinatorClient) GetMembers(
 	return nil, args.Error(1)
 }
 
+func (m *mockCoordinatorClient) Close() error {
+	args := m.MethodCalled("Close")
+	return args.Error(0)
+}
+
 type mockChainClient struct {
 	mock.Mock
 }
@@ -48,6 +53,11 @@ func (m *mockChainClient) Replicate(ctx context.Context, target string, request 
 		return resp.(*chainpb.ReplicateResponse), nil
 	}
 	return nil, args.Error(1)
+}
+
+func (m *mockChainClient) Close() error {
+	args := m.MethodCalled("Close")
+	return args.Error(0)
 }
 
 func TestSetValue(t *testing.T) {

@@ -3,56 +3,13 @@ package chain
 import (
 	"context"
 
-	"github.com/jmsadair/keychain/chain/node"
-	"github.com/jmsadair/keychain/chain/storage"
 	"github.com/jmsadair/keychain/internal/transport"
 	pb "github.com/jmsadair/keychain/proto/chain"
 	storagepb "github.com/jmsadair/keychain/proto/storage"
-	"google.golang.org/genproto/googleapis/rpc/errdetails"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/status"
 )
 
 var defaultCallOps = []grpc.CallOption{grpc.WaitForReady(true)}
-
-// ChainClientErrorInterceptor is an UnaryClientInterceptor that can be used to convert
-// gRPC errors to service errors.
-func ChainClientErrorInterceptor() grpc.UnaryClientInterceptor {
-	return func(
-		ctx context.Context,
-		method string,
-		req, reply any,
-		cc *grpc.ClientConn,
-		invoker grpc.UnaryInvoker,
-		opts ...grpc.CallOption,
-	) error {
-		err := invoker(ctx, method, req, reply, cc, opts...)
-		if err == nil {
-			return nil
-		}
-		st, ok := status.FromError(err)
-		if !ok {
-			return err
-		}
-
-		for _, detail := range st.Details() {
-			if info, ok := detail.(*errdetails.ErrorInfo); ok {
-				switch info.Reason {
-				case "node.ErrSyncing":
-					return node.ErrSyncing
-				case "node.ErrNotHead":
-					return node.ErrNotHead
-				case "storage.ErrKeyNotFound":
-					return storage.ErrKeyNotFound
-				case "storage.ErrConflict":
-					return storage.ErrConflict
-				}
-			}
-		}
-
-		return err
-	}
-}
 
 // Client is a gRPC client for the chain service.
 type Client struct {

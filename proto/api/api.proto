@@ -6,21 +6,17 @@ option go_package = "github.com/jmsadair/keychain/proto/api";
 
 // GetRequest is a request to read a key-value pair.
 message GetRequest {
-	// The key to read.
 	string key = 1;
 }
 
 // GetResponse is a response to a GetRequest.
 message GetResponse {
-	// The value read.
 	bytes value = 1;
 }
 
 // SetRequest is a request to set the value for a key.
 message SetRequest {
-	// The key to set the value for.
 	string key = 1;
-	// The value.
 	bytes value = 2;
 }
 

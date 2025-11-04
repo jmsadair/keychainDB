@@ -145,7 +145,7 @@ type ChainNode struct {
 	// Address for this node.
 	Address string
 	// Persistent storage for this node.
-	store Storage
+	Store Storage
 	// Client used to communicate with other nodes in the chain.
 	chainClient ChainClient
 	// The membership configuration and status of this node.
@@ -164,8 +164,8 @@ func NewChainNode(id, address string, store Storage, chainClient ChainClient, lo
 	node := &ChainNode{
 		ID:               id,
 		Address:          address,
+		Store:            store,
 		log:              log.With("local-id", id),
-		store:            store,
 		chainClient:      chainClient,
 		onCommitCh:       make(chan onCommitMessage, defaultBufferedChSize),
 		onConfigChangeCh: make(chan onConfigChangeMessage),
@@ -209,7 +209,7 @@ func (c *ChainNode) Write(ctx context.Context, request *pb.WriteRequest) (*pb.Wr
 	// If this node is the tail then it is safe to immediately commit the key-value pair.
 	succ := state.Config.Successor(c.ID)
 	if succ == nil {
-		err := c.store.CommittedWrite(request.Key, request.Value, request.Version)
+		err := c.Store.CommittedWrite(request.Key, request.Value, request.Version)
 		if err != nil {
 			return nil, err
 		}
@@ -217,7 +217,7 @@ func (c *ChainNode) Write(ctx context.Context, request *pb.WriteRequest) (*pb.Wr
 		return &pb.WriteResponse{}, nil
 	}
 	// Otherwise, the key-value pair should be written to storage but not committed.
-	if err := c.store.UncommittedWrite(request.Key, request.Value, request.Version); err != nil {
+	if err := c.Store.UncommittedWrite(request.Key, request.Value, request.Version); err != nil {
 		return nil, err
 	}
 
@@ -242,12 +242,12 @@ func (c *ChainNode) Replicate(ctx context.Context, request *pb.ReplicateRequest)
 	// If this node is the tail then it is safe to immediately commit the key-value pair.
 	succ := state.Config.Successor(c.ID)
 	if succ == nil {
-		if _, err := c.store.CommittedWriteNewVersion(request.Key, request.Value); err != nil {
+		if _, err := c.Store.CommittedWriteNewVersion(request.Key, request.Value); err != nil {
 			return nil, err
 		}
 		return &pb.ReplicateResponse{}, nil
 	}
-	version, err := c.store.UncommittedWriteNewVersion(request.Key, request.Value)
+	version, err := c.Store.UncommittedWriteNewVersion(request.Key, request.Value)
 	if err != nil {
 		return nil, err
 	}
@@ -270,7 +270,7 @@ func (c *ChainNode) Commit(ctx context.Context, request *pb.CommitRequest) (*pb.
 		return nil, ErrNotMemberOfChain
 	}
 
-	if err := c.store.CommitVersion(request.Key, request.Version); err != nil {
+	if err := c.Store.CommitVersion(request.Key, request.Version); err != nil {
 		return nil, err
 	}
 	c.onCommitCh <- onCommitMessage{key: request.Key, version: request.Version}
@@ -302,7 +302,7 @@ func (c *ChainNode) Read(ctx context.Context, request *pb.ReadRequest) (*pb.Read
 		return c.chainClient.Read(ctx, pred.Address, req)
 	}
 
-	value, err := c.store.CommittedRead(request.Key)
+	value, err := c.Store.CommittedRead(request.Key)
 
 	// If the key-value pair is dirty, forward the request to the tail.
 	if err != nil && errors.Is(err, storage.ErrUncommittedRead) {
@@ -349,7 +349,7 @@ func (c *ChainNode) Propagate(request *pb.PropagateRequest, stream pb.ChainServi
 		return nil
 	}
 
-	return c.store.SendKeyValuePairs(stream.Context(), sendFunc, storage.KeyFilterFromProto(request.KeyType))
+	return c.Store.SendKeyValuePairs(stream.Context(), sendFunc, storage.KeyFilterFromProto(request.KeyType))
 }
 
 // UpdateConfiguration is used to update the membership configuration of this node. This should only be invoked by the coordinator.
@@ -433,7 +433,7 @@ func (c *ChainNode) requestPropagation(ctx context.Context, member *ChainMember,
 		// it is safe to immediately commit.
 		shouldCommit := kvPair.GetIsCommitted() || isTail
 		if shouldCommit {
-			err = c.store.CommittedWrite(kvPair.GetKey(), kvPair.GetValue(), kvPair.GetVersion())
+			err = c.Store.CommittedWrite(kvPair.GetKey(), kvPair.GetValue(), kvPair.GetVersion())
 			if err == nil {
 				select {
 				case <-ctx.Done():
@@ -442,7 +442,7 @@ func (c *ChainNode) requestPropagation(ctx context.Context, member *ChainMember,
 				}
 			}
 		} else {
-			err = c.store.UncommittedWrite(kvPair.GetKey(), kvPair.GetValue(), kvPair.GetVersion())
+			err = c.Store.UncommittedWrite(kvPair.GetKey(), kvPair.GetValue(), kvPair.GetVersion())
 		}
 
 		if err != nil {
@@ -484,7 +484,7 @@ func (c *ChainNode) onCommit(ctx context.Context, key string, version uint64) er
 		return ErrNotMemberOfChain
 	}
 
-	err := c.store.CommitVersion(key, version)
+	err := c.Store.CommitVersion(key, version)
 	if err != nil {
 		return err
 	}
@@ -650,7 +650,7 @@ func (c *ChainNode) onNewSuccessor(ctx context.Context, config *Configuration, i
 					}
 					return nil
 				}
-				if err := c.store.CommitAll(ctx, onCommit); err != nil {
+				if err := c.Store.CommitAll(ctx, onCommit); err != nil {
 					continue
 				}
 			}

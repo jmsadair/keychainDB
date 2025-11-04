@@ -409,8 +409,8 @@ type testChainServer struct {
 func newTestChainServer(t *testing.T, id string, port int, bootstrap bool) *testChainServer {
 	serverConfig := chain.ServiceConfig{
 		ID:          id,
-		ListenAddr:  fmt.Sprintf("%s:%d", chainAddress, port),
-		StoragePath: t.TempDir(),
+		Listen:      fmt.Sprintf("%s:%d", chainAddress, port),
+		StorageDir:  t.TempDir(),
 		DialOptions: []grpc.DialOption{creds},
 		Log:         slog.Default(),
 	}
