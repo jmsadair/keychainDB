@@ -2,6 +2,7 @@ package kv
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/retry"
 	"github.com/jmsadair/keychainDB/api/types"
@@ -65,6 +66,7 @@ func (c *Client) Get(ctx context.Context, key string) ([]byte, error) {
 	req := &apipb.GetRequest{Key: key}
 	resp, err := client.Get(ctx, req, defaultCallOps...)
 	if err != nil {
+		fmt.Println(err.Error())
 		return nil, types.Error(err)
 	}
 	return resp.GetValue(), nil
