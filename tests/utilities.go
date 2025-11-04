@@ -14,10 +14,8 @@ import (
 
 	"github.com/jmsadair/keychain/api/kv"
 	"github.com/jmsadair/keychain/chain"
-	chainclient "github.com/jmsadair/keychain/chain/client"
 	"github.com/jmsadair/keychain/chain/node"
 	"github.com/jmsadair/keychain/coordinator"
-	coordinatorclient "github.com/jmsadair/keychain/coordinator/client"
 	chainpb "github.com/jmsadair/keychain/proto/chain"
 	coordinatorpb "github.com/jmsadair/keychain/proto/coordinator"
 	"github.com/jmsadair/keychain/proxy"
@@ -87,14 +85,14 @@ func (sr *serverRunner) stop() {
 	sr.wg.Wait()
 }
 
-func newTestCoordinatorClient(t *testing.T) *coordinatorclient.Client {
-	client, err := coordinatorclient.NewClient(creds)
+func newTestCoordinatorClient(t *testing.T) *coordinator.Client {
+	client, err := coordinator.NewClient(creds)
 	require.NoError(t, err)
 	return client
 }
 
-func newTestChainClient(t *testing.T) *chainclient.Client {
-	client, err := chainclient.NewClient(creds)
+func newTestChainClient(t *testing.T) *chain.Client {
+	client, err := chain.NewClient(creds)
 	require.NoError(t, err)
 	return client
 }
@@ -128,7 +126,7 @@ func waitForHealthy(t *testing.T, addr string) {
 	}, eventuallyTimeout, eventuallyTick)
 }
 
-func updateChainConfiguration(t *testing.T, client *chainclient.Client, config *node.Configuration, srvs ...*testChainServer) {
+func updateChainConfiguration(t *testing.T, client *chain.Client, config *node.Configuration, srvs ...*testChainServer) {
 	req := &chainpb.UpdateConfigurationRequest{Configuration: config.Proto()}
 	for _, srv := range srvs {
 		_, err := client.UpdateConfiguration(context.Background(), srv.server.Node.Address, req)
@@ -136,7 +134,7 @@ func updateChainConfiguration(t *testing.T, client *chainclient.Client, config *
 	}
 }
 
-func waitForActiveChainStatus(t *testing.T, client *chainclient.Client, srvs ...*testChainServer) {
+func waitForActiveChainStatus(t *testing.T, client *chain.Client, srvs ...*testChainServer) {
 	var req chainpb.PingRequest
 	for _, srv := range srvs {
 		require.Eventually(t, func() bool {
@@ -182,7 +180,7 @@ func newTestCoordinatorCluster(t *testing.T, bootstrapID string) *testCluster {
 	return tc
 }
 
-func (tc *testCluster) addServerToClusterRPC(t *testing.T, client *coordinatorclient.Client, id string) {
+func (tc *testCluster) addServerToClusterRPC(t *testing.T, client *coordinator.Client, id string) {
 	ports := tc.allocator.allocate(2)
 	srv := newTestCoordinator(t, id, ports[0], ports[1], false)
 	tc.srvs = append(tc.srvs, srv)
@@ -193,20 +191,20 @@ func (tc *testCluster) addServerToClusterRPC(t *testing.T, client *coordinatorcl
 	require.NoError(t, err)
 }
 
-func (tc *testCluster) removeServerFromClusterRPC(t *testing.T, client *coordinatorclient.Client, id string) {
+func (tc *testCluster) removeServerFromClusterRPC(t *testing.T, client *coordinator.Client, id string) {
 	req := &coordinatorpb.RemoveFromClusterRequest{Id: id}
 	_, err := client.RemoveFromCluster(context.Background(), tc.leader.server.Coordinator.Address, req)
 	require.NoError(t, err)
 	delete(tc.members, id)
 }
 
-func (tc *testCluster) addChainMemberRPC(t *testing.T, client *coordinatorclient.Client, id string, addr string) {
+func (tc *testCluster) addChainMemberRPC(t *testing.T, client *coordinator.Client, id string, addr string) {
 	req := &coordinatorpb.AddMemberRequest{Id: id, Address: addr}
 	_, err := client.AddMember(context.Background(), tc.leader.server.Coordinator.Address, req)
 	require.NoError(t, err)
 }
 
-func (tc *testCluster) removeChainMemberRPC(t *testing.T, client *coordinatorclient.Client, id string) {
+func (tc *testCluster) removeChainMemberRPC(t *testing.T, client *coordinator.Client, id string) {
 	req := &coordinatorpb.RemoveMemberRequest{Id: id}
 	_, err := client.RemoveMember(context.Background(), tc.leader.server.Coordinator.Address, req)
 	require.NoError(t, err)
@@ -270,7 +268,7 @@ func (tc *testCluster) removeChainMemberHTTP(t *testing.T, id string) {
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 }
 
-func (tc *testCluster) clusterStatusRPC(t *testing.T, client *coordinatorclient.Client) *coordinatorpb.ClusterStatusResponse {
+func (tc *testCluster) clusterStatusRPC(t *testing.T, client *coordinator.Client) *coordinatorpb.ClusterStatusResponse {
 	var req coordinatorpb.ClusterStatusRequest
 	resp, err := client.ClusterStatus(context.Background(), tc.leader.server.Coordinator.Address, &req)
 	require.NoError(t, err)
@@ -290,7 +288,7 @@ func (tc *testCluster) clusterStatusHTTP(t *testing.T) *coordinatorpb.ClusterSta
 	return &clusterStatusResp
 }
 
-func (tc *testCluster) getChainMembersRPC(t *testing.T, client *coordinatorclient.Client) *coordinatorpb.GetMembersResponse {
+func (tc *testCluster) getChainMembersRPC(t *testing.T, client *coordinator.Client) *coordinatorpb.GetMembersResponse {
 	var req coordinatorpb.GetMembersRequest
 	resp, err := client.GetMembers(context.Background(), tc.leader.server.Coordinator.Address, &req)
 	require.NoError(t, err)
@@ -386,14 +384,14 @@ func newTestChain(cluster *testCluster) *testChain {
 	}
 }
 
-func (tc *testChain) addServer(t *testing.T, client *coordinatorclient.Client, id string) {
+func (tc *testChain) addServer(t *testing.T, client *coordinator.Client, id string) {
 	ports := tc.allocator.allocate(1)
 	srv := newTestChainServer(t, id, ports[0], false)
 	tc.srvs = append(tc.srvs, srv)
 	tc.cluster.addChainMemberRPC(t, client, srv.server.Node.ID, srv.server.Node.Address)
 }
 
-func (tc *testChain) removeServer(t *testing.T, client *coordinatorclient.Client, id string) {
+func (tc *testChain) removeServer(t *testing.T, client *coordinator.Client, id string) {
 	tc.cluster.removeChainMemberRPC(t, client, id)
 }
 
@@ -411,8 +409,8 @@ type testChainServer struct {
 func newTestChainServer(t *testing.T, id string, port int, bootstrap bool) *testChainServer {
 	serverConfig := chain.ServiceConfig{
 		ID:          id,
-		ListenAddr:  fmt.Sprintf("%s:%d", chainAddress, port),
-		StoragePath: t.TempDir(),
+		Listen:      fmt.Sprintf("%s:%d", chainAddress, port),
+		StorageDir:  t.TempDir(),
 		DialOptions: []grpc.DialOption{creds},
 		Log:         slog.Default(),
 	}

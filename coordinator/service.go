@@ -6,11 +6,10 @@ import (
 
 	"github.com/hashicorp/raft"
 	"github.com/jmsadair/keychain/api/types"
-	chainclient "github.com/jmsadair/keychain/chain/client"
+	"github.com/jmsadair/keychain/chain"
 	"github.com/jmsadair/keychain/coordinator/node"
 	"github.com/jmsadair/keychain/internal/transport"
 	coordinatorpb "github.com/jmsadair/keychain/proto/coordinator"
-	raftclient "github.com/jmsadair/keychain/raft/client"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/health"
@@ -49,7 +48,7 @@ type ServiceConfig struct {
 
 // Service is the coordinator service.
 type Service struct {
-	// HTTP gateway for translating .
+	// HTTP gateway for translating HTTP requests to gRPC.
 	Gateway *transport.HTTPGateway
 	// gRPC server implementation.
 	Server *transport.Server
@@ -63,15 +62,13 @@ type Service struct {
 
 // NewService creates a new coordinator service.
 func NewService(cfg ServiceConfig) (*Service, error) {
-	raftClient, err := raftclient.NewClient(cfg.DialOptions...)
+	chainClient, err := chain.NewClient(cfg.DialOptions...)
 	if err != nil {
 		return nil, err
 	}
-	chainClient, err := chainclient.NewClient(cfg.DialOptions...)
-	if err != nil {
-		return nil, err
-	}
-	rb, err := node.NewRaftBackend(cfg.ID, cfg.Advertise, raftClient, cfg.StorageDir)
+
+	// Create a raft node and bootstrap it if requested.
+	rb, err := node.NewRaftBackend(cfg.ID, cfg.Advertise, cfg.StorageDir, cfg.DialOptions...)
 	if err != nil {
 		return nil, err
 	}
@@ -90,7 +87,6 @@ func NewService(cfg ServiceConfig) (*Service, error) {
 		rb.Register(grpcServer)
 		grpc_health_v1.RegisterHealthServer(grpcServer, health.NewServer())
 	}, grpc.UnaryInterceptor(transport.UnaryServerErrorInterceptor(errToGRPCError)))
-
 	gw := transport.NewHTTPGateway(
 		cfg.HTTPListen,
 		cfg.Listen,
@@ -111,7 +107,8 @@ func NewService(cfg ServiceConfig) (*Service, error) {
 func (s *Service) Run(ctx context.Context) error {
 	g, ctx := errgroup.WithContext(ctx)
 	g.Go(func() error {
-		return s.Coordinator.Run(ctx)
+		s.Coordinator.Run(ctx)
+		return nil
 	})
 	g.Go(func() error {
 		return s.Gateway.Run(ctx)

@@ -1,4 +1,4 @@
-package network
+package raftnet
 
 import (
 	"context"
@@ -19,21 +19,13 @@ const (
 	bufferedChSize = 32
 )
 
-// Client is used to make RPCs to other nodes in the cluster.
-type Client interface {
-	// AppendEntries sends the appropriate RPC to the target node.
+type rpcClient interface {
 	AppendEntries(ctx context.Context, address string, request *pb.AppendEntriesRequest) (*pb.AppendEntriesResponse, error)
-	// RequestVote sends the appropriate RPC to the target node.
 	AppendEntriesPipeline(ctx context.Context, address string) (pb.RaftService_AppendEntriesPipelineClient, error)
-	// RequestVote sends the appropriate RPC to the target node.
 	RequestVote(ctx context.Context, address string, request *pb.RequestVoteRequest) (*pb.RequestVoteResponse, error)
-	// RequestPreVote sends the appropriate RPC to the target node.
 	RequestPreVote(ctx context.Context, address string, request *pb.RequestPreVoteRequest) (*pb.RequestPreVoteResponse, error)
-	// TimeoutNow is used to start a leadership transfer to the target node.
 	TimeoutNow(ctx context.Context, address string, request *pb.TimeoutNowRequest) (*pb.TimeoutNowResponse, error)
-	// InstallSnapshot is used to stream a snapshot down to a follower.
 	InstallSnapshot(ctx context.Context, address string) (pb.RaftService_InstallSnapshotClient, error)
-	// Close closes all connections managed by this client.
 	Close() error
 }
 
@@ -54,14 +46,22 @@ func isHeartbeat(cmd any) bool {
 // Network manages the client and server that are used by raft.
 type Network struct {
 	rpcCh            chan raft.RPC
-	client           Client
+	client           rpcClient
 	address          string
 	heartbeatHandler func(raft.RPC)
 	mu               sync.RWMutex
 }
 
 // NewNetwork creates a new network.
-func NewNetwork(address string, client Client) *Network {
+func NewNetwork(address string, dialOpts ...grpc.DialOption) (*Network, error) {
+	client, err := newClient(dialOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return &Network{address: address, client: client, rpcCh: make(chan raft.RPC)}, nil
+}
+
+func newNetworkWithClient(address string, client rpcClient) *Network {
 	return &Network{address: address, client: client, rpcCh: make(chan raft.RPC)}
 }
 
@@ -181,6 +181,7 @@ func executeRPC[T any](ctx context.Context, command any, reader io.Reader, rpcCh
 	rpc := raft.RPC{Command: command, Reader: reader, RespChan: respCh}
 	var zero T
 
+	// If the command is a heartbeat and a heartbeat handler is registered then skip the RPC queue.
 	isHeartbeatCmd := isHeartbeat(command)
 	if !isHeartbeatCmd || heartbeatHandler == nil {
 		select {
@@ -233,20 +234,28 @@ func (s *snapshotStream) Read(p []byte) (int, error) {
 	return n, nil
 }
 
+// Transport implements the raft transport interface.
 type Transport struct {
 	nw *Network
 }
 
+// Consumer returns a channel that can be used to consume and respond to RPC requests.
 func (t Transport) Consumer() <-chan raft.RPC {
 	return t.nw.rpcCh
 }
 
+// LocalAddr is used to return our local address to distinguish from our peers.
 func (t Transport) LocalAddr() raft.ServerAddress {
 	return raft.ServerAddress(t.nw.address)
 }
 
+// SetHeartbeatHandler is used to setup a heartbeat handler
+// as a fast-pass. This is to avoid head-of-line blocking from
+// disk IO. If a Transport does not support this, it can simply
+// ignore the call, and push the heartbeat onto the Consumer channel.
 func (t Transport) SetHeartbeatHandler(cb func(rpc raft.RPC)) {}
 
+// RequestVote sends the appropriate RPC to the target node.
 func (t Transport) RequestVote(
 	id raft.ServerID,
 	target raft.ServerAddress,
@@ -263,6 +272,7 @@ func (t Transport) RequestVote(
 	return nil
 }
 
+// RequestPreVote sends the appropriate RPC to the target node.
 func (t Transport) RequestPreVote(
 	id raft.ServerID,
 	target raft.ServerAddress,
@@ -279,6 +289,7 @@ func (t Transport) RequestPreVote(
 	return nil
 }
 
+// AppendEntries sends the appropriate RPC to the target node.
 func (t Transport) AppendEntries(
 	id raft.ServerID,
 	target raft.ServerAddress,
@@ -295,6 +306,7 @@ func (t Transport) AppendEntries(
 	return nil
 }
 
+// AppendEntriesPipeline returns an interface that can be used to pipeline AppendEntries requests.
 func (t Transport) AppendEntriesPipeline(id raft.ServerID, target raft.ServerAddress) (raft.AppendPipeline, error) {
 	ctx, cancel := context.WithCancel(context.TODO())
 	stream, err := t.nw.client.AppendEntriesPipeline(ctx, string(target))
@@ -305,6 +317,7 @@ func (t Transport) AppendEntriesPipeline(id raft.ServerID, target raft.ServerAdd
 	return newAppendPipeline(cancel, stream), nil
 }
 
+// TimeoutNow is used to start a leadership transfer to the target node.
 func (t Transport) TimeoutNow(
 	id raft.ServerID,
 	target raft.ServerAddress,
@@ -321,6 +334,7 @@ func (t Transport) TimeoutNow(
 	return nil
 }
 
+// InstallSnapshot is used to push a snapshot down to a follower. The data is read from the Reader and streamed to the client.
 func (t Transport) InstallSnapshot(
 	id raft.ServerID,
 	target raft.ServerAddress,
@@ -360,14 +374,17 @@ func (t Transport) InstallSnapshot(
 	return nil
 }
 
+// Close permanently closes a transport, stopping any associated goroutines and freeing other resources.
 func (t Transport) Close() error {
 	return t.nw.client.Close()
 }
 
+// EncodePeer is used to serialize a peer's address.
 func (t Transport) EncodePeer(id raft.ServerID, addr raft.ServerAddress) []byte {
 	return []byte(addr)
 }
 
+// DecodePeer is used to deserialize a peer's address.
 func (t Transport) DecodePeer(peer []byte) raft.ServerAddress {
 	return raft.ServerAddress(peer)
 }

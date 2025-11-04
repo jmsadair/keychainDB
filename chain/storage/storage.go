@@ -21,6 +21,7 @@ const (
 	CommittedKeys
 )
 
+// String returns the string representation of the key filter.
 func (kf KeyFilter) String() string {
 	switch kf {
 	case AllKeys:
@@ -34,6 +35,7 @@ func (kf KeyFilter) String() string {
 	}
 }
 
+// Proto returns the protobuf equivalent of the key filter.
 func (kf KeyFilter) Proto() pb.KeyType {
 	switch kf {
 	case AllKeys:
@@ -47,6 +49,7 @@ func (kf KeyFilter) Proto() pb.KeyType {
 	}
 }
 
+// KeyFilterFromProto returns the key filter equivalent of the protobuf key filter.
 func KeyFilterFromProto(kf pb.KeyType) KeyFilter {
 	switch kf {
 	case pb.KeyType_KEYTYPE_ALL:
@@ -72,22 +75,22 @@ type KeyValuePair struct {
 	Committed bool
 }
 
+// Proto returns the protobuf equivalent of the key-value pair.
 func (kv *KeyValuePair) Proto() *pb.KeyValuePair {
 	return &pb.KeyValuePair{Key: kv.Key, Value: kv.Value, Version: kv.Version, IsCommitted: kv.Committed}
 }
 
+// KeyValuePairFromProto returns key-value equivalent of the protobuf key-value pair.
 func KeyValuePairFromProto(kv *pb.KeyValuePair) *KeyValuePair {
 	return &KeyValuePair{Key: kv.GetKey(), Value: kv.GetValue(), Version: kv.GetVersion(), Committed: kv.GetIsCommitted()}
 }
 
-// PersistentStorage is a disk-backed key-value storage system that is
-// capable of performing transactional reads and writes.
+// PersistentStorage is a disk-backed key-value storage system that is capable of performing transactional reads and writes.
 type PersistentStorage struct {
 	db *badger.DB
 }
 
-// NewPersistentStorage opens the storage located at the provided path.
-// If the storage does not exist, one will be created.
+// NewPersistentStorage opens the storage located at the provided path. If the storage does not exist, one will be created.
 func NewPersistentStorage(dbpath string) (*PersistentStorage, error) {
 	db, err := badger.Open(badger.DefaultOptions(dbpath))
 	if err != nil {
@@ -102,7 +105,8 @@ func (ps *PersistentStorage) Close() error {
 	return ps.db.Close()
 }
 
-// UncommittedWriteNewVersion will transactionally generate a new version of the key and write the key-value pair to storage.
+// UncommittedWriteNewVersion will transactionally generate a new version number for the key and write the key-value pair to storage.
+// The key-value pair will not be committed until CommitVersion is called for the version that was generated.
 func (ps *PersistentStorage) UncommittedWriteNewVersion(key string, value []byte) (uint64, error) {
 	var err error
 	var version uint64
@@ -115,7 +119,9 @@ func (ps *PersistentStorage) UncommittedWriteNewVersion(key string, value []byte
 	return version, handleError(err)
 }
 
-// UncommittedWrite will transactionally write the provided version of key to storage but will not commit it.
+// UncommittedWrite will transactionally write the provided version of key to storage.
+// This is the same as UncommittedWriteNewVersion except it accepts an already generated version number for the key.
+// It is the caller's responsibility to ensure that the provided version number is valid.
 func (ps *PersistentStorage) UncommittedWrite(key string, value []byte, version uint64) error {
 	return handleError(ps.db.Update(func(txn *badger.Txn) error {
 		_, err := write(txn, key, value, version, false, false)
@@ -123,7 +129,9 @@ func (ps *PersistentStorage) UncommittedWrite(key string, value []byte, version 
 	}))
 }
 
-// CommittedWrite will transactionally write the provided version of key to storage and will immediately commit it.
+// CommittedWrite will transactionally write the key-value pair to storage and will immediately commit it.
+// This is the same as CommittedWriteNewVersion except it accepts an already generated version number for the key.
+// It is the caller's responsibility to ensure that the provided version number is valid.
 func (ps *PersistentStorage) CommittedWrite(key string, value []byte, version uint64) error {
 	return handleError(ps.db.Update(func(txn *badger.Txn) error {
 		_, err := write(txn, key, value, version, true, false)
@@ -131,8 +139,8 @@ func (ps *PersistentStorage) CommittedWrite(key string, value []byte, version ui
 	}))
 }
 
-// CommittedWriteNewVersion will transactionally generate a new version of the key, write the key-value pair to storage,
-// and immediately commit the new version.
+// CommittedWriteNewVersion will transactionally generate a new version number for the key, write the key-value pair
+// to storage, and immediately commit it.
 func (ps *PersistentStorage) CommittedWriteNewVersion(key string, value []byte) (uint64, error) {
 	var err error
 	var version uint64
@@ -145,17 +153,17 @@ func (ps *PersistentStorage) CommittedWriteNewVersion(key string, value []byte) 
 	return version, handleError(err)
 }
 
-// CommitVersion will transactionally commit the provided version of the key.
+// CommitVersion will transactionally commit the provided version of the key-value pair.
 // All versions of the key earlier than the committed version will be deleted.
-// Commiting a version earlier than the currently committed version is a no-op.
+// Commiting a version that is older than the currently committed version is a no-op.
 func (ps *PersistentStorage) CommitVersion(key string, version uint64) error {
 	return handleError(ps.db.Update(func(txn *badger.Txn) error {
 		return commit(txn, key, version)
 	}))
 }
 
-// CommittedRead will transactionally read the value of the key.
-// If there are uncommitted writes, an error will be returned.
+// CommittedRead will transactionally read the value associated with the provided key.
+// If there are one or more uncommitted versions, then an error will be returned.
 func (ps *PersistentStorage) CommittedRead(key string) ([]byte, error) {
 	var err error
 	var value []byte
@@ -168,10 +176,14 @@ func (ps *PersistentStorage) CommittedRead(key string) ([]byte, error) {
 	return value, handleError(err)
 }
 
-// SendKeyValuePairs will iterate over the key-value pairs in storage that satisfy the provided keyFilter, group them
-// into batches, and call the provided sendFunc with the batch as the argument. If at any point during the
-// process an error occurs, the process will be terminated and the error will be returned.
-func (ps *PersistentStorage) SendKeyValuePairs(ctx context.Context, sendFunc func(context.Context, []KeyValuePair) error, keyFilter KeyFilter) error {
+// SendKeyValuePairs will iterate over the key-value pairs in storage that satisfy the provided filter,
+// group them into batches, and call the provided function with the batch as the argument. If at any
+// point during the process an error occurs, the process will be terminated and the error will be returned.
+func (ps *PersistentStorage) SendKeyValuePairs(
+	ctx context.Context,
+	sendFunc func(context.Context, []KeyValuePair) error,
+	keyFilter KeyFilter,
+) error {
 	stream := ps.db.NewStream()
 
 	switch keyFilter {
@@ -201,7 +213,7 @@ func (ps *PersistentStorage) SendKeyValuePairs(ctx context.Context, sendFunc fun
 	}
 
 	// This is specifically for the case where all keys are being sent.
-	// The client should never have access to metadata keys.
+	// The caller should never have access to metadata keys.
 	stream.ChooseKey = func(item *badger.Item) bool {
 		return !internalKey(item.Key()).isMetadata()
 	}
@@ -209,11 +221,10 @@ func (ps *PersistentStorage) SendKeyValuePairs(ctx context.Context, sendFunc fun
 	return handleError(stream.Orchestrate(ctx))
 }
 
-// CommitAll will commit all dirty keys from the current snapshot of the storage immediately.
-// For each key that is committed, the provided onCommit callback will be invoked. If committing
-// any of the keys fails, the process will be terminated and the error will be returned. This is
-// not transactional. It is possible that some keys will have been committed while others will not
-// have if an error occurs.
+// CommitAll will commit all uncommitted key-value pairs from the current snapshot of the storage immediately.
+// For each key that is committed, the provided callback will be invoked. If committing any of the key-value
+// pairs fails, the process will be terminated and the error will be returned. Note that this is not transactional.
+// It is possible that some keys will have been committed while others remain uncommitted if an error occurs.
 func (ps *PersistentStorage) CommitAll(ctx context.Context, onCommit func(ctx context.Context, key string, version uint64) error) error {
 	stream := ps.db.NewStream()
 	stream.Prefix = []byte{byte(dirty)}
@@ -291,6 +302,7 @@ func commit(txn *badger.Txn, key string, version uint64) error {
 }
 
 func read(txn *badger.Txn, key string) ([]byte, error) {
+	// Ensure that the key exists and is not uncommitted.
 	md, err := getMetadata(txn, key)
 	if errors.Is(err, badger.ErrKeyNotFound) {
 		return nil, err

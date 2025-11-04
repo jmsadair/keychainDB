@@ -4,32 +4,45 @@ import (
 	"context"
 	"log/slog"
 
-	"github.com/jmsadair/keychain/chain/client"
+	"github.com/jmsadair/keychain/api/types"
 	"github.com/jmsadair/keychain/chain/node"
-	"github.com/jmsadair/keychain/chain/server"
 	"github.com/jmsadair/keychain/chain/storage"
+	"github.com/jmsadair/keychain/internal/transport"
+	pb "github.com/jmsadair/keychain/proto/chain"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 )
 
+// Maps service errors to gRPC errors.
+var errToGRPCError = map[error]error{
+	node.ErrInvalidConfigVersion: types.ErrGRPCInvalidConfigVersion,
+	node.ErrNotHead:              types.ErrGRPCNotHead,
+	node.ErrNotMemberOfChain:     types.ErrNotMemberOfChain,
+	node.ErrSyncing:              types.ErrGRPCSyncing,
+	storage.ErrConflict:          types.ErrGRPCConflict,
+	storage.ErrEmptyKey:          types.ErrGRPCEmptyKey,
+	storage.ErrKeyNotFound:       types.ErrGRPCKeyNotFound,
+	storage.ErrUncommittedRead:   types.ErrUncommittedRead,
+}
+
 // ServiceConfig contains the configurations for a chain service.
 type ServiceConfig struct {
-	// Unique ID that identifies the server.
+	// Unique ID that identifies the service.
 	ID string
-	// Address tht a server will listen for incoming requests on.
-	ListenAddr string
-	// Path to where a server will store on-disk data.
-	StoragePath string
-	// gRPC Dial options a erver will use when making RPCs to other servers.
+	// Address that the service will listen for incoming RPCs on.
+	Listen string
+	// Directory where the service will store on-disk data.
+	StorageDir string
+	// The gRPC Dial options a service will use when making RPCs to other services.
 	DialOptions []grpc.DialOption
-	// Logger that a server will use for logging.
+	// Logger that the service will use for logging.
 	Log *slog.Logger
 }
 
 // Service is the chain service.
 type Service struct {
-	// A gRPC server.
-	GRPCServer *server.RPCServer
+	// The gRPC server.
+	Server *transport.Server
 	// Chain node implementation.
 	Node *node.ChainNode
 	// The configuration for this server.
@@ -40,17 +53,18 @@ type Service struct {
 
 // NewService creates a new chain service.
 func NewService(cfg ServiceConfig) (*Service, error) {
-	tn, err := client.NewClient(cfg.DialOptions...)
+	tn, err := NewClient(cfg.DialOptions...)
 	if err != nil {
 		return nil, err
 	}
-	store, err := storage.NewPersistentStorage(cfg.StoragePath)
+	store, err := storage.NewPersistentStorage(cfg.StorageDir)
 	if err != nil {
 		return nil, err
 	}
-	node := node.NewChainNode(cfg.ID, cfg.ListenAddr, store, tn, cfg.Log)
-	gRPCServer := server.NewServer(cfg.ListenAddr, node)
-	return &Service{GRPCServer: gRPCServer, Node: node, Config: cfg, store: store}, nil
+	node := node.NewChainNode(cfg.ID, cfg.Listen, store, tn, cfg.Log)
+	srv := transport.NewServer(cfg.Listen, func(s *grpc.Server) { pb.RegisterChainServiceServer(s, node) },
+		grpc.UnaryInterceptor(transport.UnaryServerErrorInterceptor(errToGRPCError)))
+	return &Service{Server: srv, Node: node, Config: cfg, store: store}, nil
 }
 
 // Run runs the service.
@@ -61,7 +75,7 @@ func (s *Service) Run(ctx context.Context) error {
 		s.Node.Run(ctx)
 		return nil
 	})
-	g.Go(func() error { return s.GRPCServer.Run(ctx) })
-	s.Config.Log.InfoContext(ctx, "running chain server", "local-id", s.Config.ID, "listen", s.Config.ListenAddr)
+	g.Go(func() error { return s.Server.Run(ctx) })
+	s.Config.Log.InfoContext(ctx, "running chain service", "local-id", s.Config.ID, "listen", s.Config.Listen)
 	return g.Wait()
 }

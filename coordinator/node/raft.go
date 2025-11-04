@@ -2,16 +2,23 @@ package node
 
 import (
 	"context"
+	"os"
 	"time"
 
 	"github.com/hashicorp/raft"
 	chainnode "github.com/jmsadair/keychain/chain/node"
-	"github.com/jmsadair/keychain/raft/network"
-	"github.com/jmsadair/keychain/raft/storage"
+	"github.com/jmsadair/keychain/coordinator/raftnet"
+	"github.com/jmsadair/keychain/coordinator/raftstore"
 	"google.golang.org/grpc"
 )
 
-const defaultApplyTimeout = 1 * time.Millisecond
+const (
+	// The default timeout for applying an operation to the raft cluster
+	// if no other timeout is provided.
+	defaultApplyTimeout = 1 * time.Second
+	// The maximum number of snapshots to retain.
+	numSnapshotsToRetain = 10
+)
 
 // timeoutFromContext derives a timeout from the context deadline if it has one otherwise
 // it will return the provided default timeout.
@@ -43,29 +50,32 @@ type RaftBackend struct {
 	// The advertised address of the raft node.
 	Address string
 	// Network layer used for cluster communication.
-	nw *network.Network
+	nw *raftnet.Network
 	// The underlying consensus mechanism.
 	consensus *raft.Raft
 	// The state that is replicated across the cluster.
 	fsm *FSM
 	// Storage for logs.
-	store *storage.PersistentStorage
+	store *logstore.PersistentStorage
 	// Storage for snapshots.
 	snapshotStore *raft.FileSnapshotStore
 }
 
 // NewRaftBackend creates a new raft backend.
-func NewRaftBackend(id string, address string, raftTn network.Client, storageDir string) (*RaftBackend, error) {
-	store, err := storage.NewPersistentStorage(storageDir)
+func NewRaftBackend(id string, address string, storageDir string, dialOpts ...grpc.DialOption) (*RaftBackend, error) {
+	store, err := logstore.NewPersistentStorage(storageDir)
 	if err != nil {
 		return nil, err
 	}
-	snapshotStore, err := storage.NewSnapshotStorage(storageDir)
+	snapshotStore, err := raft.NewFileSnapshotStore(storageDir, numSnapshotsToRetain, os.Stderr)
 	if err != nil {
 		return nil, err
 	}
 
-	netLayer := network.NewNetwork(address, raftTn)
+	netLayer, err := raftnet.NewNetwork(address, dialOpts...)
+	if err != nil {
+		return nil, err
+	}
 	fsm := NewFSM()
 	raftCfg := raft.DefaultConfig()
 	raftCfg.LocalID = raft.ServerID(id)
@@ -96,7 +106,7 @@ func (r *RaftBackend) Bootstrap(config raft.Configuration) error {
 	return future.Error()
 }
 
-// Shutdown shuts dowm this node.
+// Shutdown shuts down this node.
 func (r *RaftBackend) Shutdown() error {
 	defer r.store.Close()
 	future := r.consensus.Shutdown()
@@ -126,6 +136,7 @@ func (r *RaftBackend) RemoveMember(ctx context.Context, id string) (*chainnode.C
 }
 
 // GetMembers is used to read the chain configuration. This operation requires cluster quorum.
+// If strong consistency is not required, then ChainConfiguration should be used instead.
 func (r *RaftBackend) GetMembers(ctx context.Context) (*chainnode.Configuration, error) {
 	op := &ReadMembershipOperation{}
 	applied, err := r.apply(ctx, op)
@@ -156,7 +167,7 @@ func (r *RaftBackend) JoinCluster(ctx context.Context, nodeID string, address st
 	return handleError(indexFuture.Error())
 }
 
-// RemoveFromCluster is used to remoe a node from the raft cluster.
+// RemoveFromCluster is used to remove a node from the raft cluster.
 func (r *RaftBackend) RemoveFromCluster(ctx context.Context, nodeID string) error {
 	configFuture := r.consensus.GetConfiguration()
 	if err := configFuture.Error(); err != nil {
