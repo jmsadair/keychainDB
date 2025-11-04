@@ -2,6 +2,7 @@ package chain
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 
 	"github.com/jmsadair/keychainDB/api/types"
@@ -13,16 +14,34 @@ import (
 	"google.golang.org/grpc"
 )
 
-// Maps service errors to gRPC errors.
-var errToGRPCError = map[error]error{
-	node.ErrInvalidConfigVersion: types.ErrGRPCInvalidConfigVersion,
-	node.ErrNotHead:              types.ErrGRPCNotHead,
-	node.ErrNotMemberOfChain:     types.ErrNotMemberOfChain,
-	node.ErrSyncing:              types.ErrGRPCSyncing,
-	storage.ErrConflict:          types.ErrGRPCConflict,
-	storage.ErrEmptyKey:          types.ErrGRPCEmptyKey,
-	storage.ErrKeyNotFound:       types.ErrGRPCKeyNotFound,
-	storage.ErrUncommittedRead:   types.ErrUncommittedRead,
+// toGRPCError maps a service error to its gRPC equivalent.
+// If no equivalent exists, this function will return nil.
+func toGRPCError(err error) error {
+	if err == nil {
+		return nil
+	}
+
+	switch {
+	case errors.Is(err, node.ErrInvalidConfigVersion):
+		return types.ErrGRPCInvalidConfigVersion
+	case errors.Is(err, node.ErrNotHead):
+		return types.ErrGRPCNotHead
+	case errors.Is(err, node.ErrNotMemberOfChain):
+		return types.ErrGRPCNotMemberOfChain
+	case errors.Is(err, node.ErrSyncing):
+		return types.ErrGRPCSyncing
+	case errors.Is(err, storage.ErrConflict):
+		return types.ErrGRPCConflict
+	case errors.Is(err, storage.ErrEmptyKey):
+		return types.ErrGRPCEmptyKey
+	case errors.Is(err, storage.ErrKeyNotFound):
+		return types.ErrGRPCKeyNotFound
+	case errors.Is(err, storage.ErrUncommittedRead):
+		return types.ErrGRPCUncommittedRead
+	}
+
+	// No known gRPC equivalent.
+	return nil
 }
 
 // ServiceConfig contains the configurations for a chain service.
@@ -63,7 +82,7 @@ func NewService(cfg ServiceConfig) (*Service, error) {
 	}
 	node := node.NewChainNode(cfg.ID, cfg.Listen, store, tn, cfg.Log)
 	srv := transport.NewServer(cfg.Listen, func(s *grpc.Server) { pb.RegisterChainServiceServer(s, node) },
-		grpc.UnaryInterceptor(transport.UnaryServerErrorInterceptor(errToGRPCError)))
+		grpc.UnaryInterceptor(transport.UnaryServerErrorInterceptor(toGRPCError)))
 	return &Service{Server: srv, Node: node, Config: cfg, store: store}, nil
 }
 

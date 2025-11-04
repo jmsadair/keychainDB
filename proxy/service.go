@@ -2,6 +2,7 @@ package proxy
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 
 	"github.com/jmsadair/keychainDB/api/types"
@@ -16,10 +17,22 @@ import (
 	"google.golang.org/grpc/health/grpc_health_v1"
 )
 
-// Maps service errors to gRPC errors.
-var errToGRPCError = map[error]error{
-	node.ErrCoordinatorUnavailable: types.ErrGRPCCoordinatorUnavailable,
-	node.ErrNoMembers:              types.ErrGRPCNoMembers,
+// toGRPCError maps a service error to its gRPC equivalent.
+// If no equivalent exists, this function will return nil.
+func toGRPCError(err error) error {
+	if err == nil {
+		return nil
+	}
+
+	switch {
+	case errors.Is(err, node.ErrCoordinatorUnavailable):
+		return types.ErrGRPCCoordinatorUnavailable
+	case errors.Is(err, node.ErrNoMembers):
+		return types.ErrGRPCNoMembers
+	}
+
+	// No known gRPC equivalent.
+	return nil
 }
 
 // ServiceConfig contains the configurations for a proxy service.
@@ -63,7 +76,7 @@ func NewService(cfg ServiceConfig) (*Service, error) {
 	srv := transport.NewServer(cfg.Listen, func(grpcServer *grpc.Server) {
 		proxypb.RegisterProxyServiceServer(grpcServer, p)
 		grpc_health_v1.RegisterHealthServer(grpcServer, health.NewServer())
-	}, grpc.ChainUnaryInterceptor(transport.UnaryServerErrorInterceptor(errToGRPCError)))
+	}, grpc.ChainUnaryInterceptor(transport.UnaryServerErrorInterceptor(toGRPCError)))
 	gw := transport.NewHTTPGateway(cfg.HTTPListen, cfg.Listen, proxypb.RegisterProxyServiceHandlerFromEndpoint, cfg.DialOptions...)
 	return &Service{Gateway: gw, Server: srv, Proxy: p, Config: cfg}, nil
 }

@@ -2,6 +2,7 @@ package coordinator
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 
 	"github.com/hashicorp/raft"
@@ -16,14 +17,30 @@ import (
 	"google.golang.org/grpc/health/grpc_health_v1"
 )
 
-// Maps service errors to gRPC errors.
-var errToGRPCError = map[error]error{
-	node.ErrConfigurationUpdateFailed: types.ErrGRPCConfigurationUpdateFailed,
-	node.ErrEnqueueTimeout:            types.ErrGRPCEnqueueTimeout,
-	node.ErrLeader:                    types.ErrGRPCLeader,
-	node.ErrNodeExists:                types.ErrGRPCNodeExists,
-	node.ErrLeadershipLost:            types.ErrGRPCLeadershipLost,
-	node.ErrNotLeader:                 types.ErrGRPCNotLeader,
+// toGRPCError maps a service error to its gRPC equivalent.
+// If no equivalent exists, this function will return nil.
+func toGRPCError(err error) error {
+	if err == nil {
+		return nil
+	}
+
+	switch {
+	case errors.Is(err, node.ErrConfigurationUpdateFailed):
+		return types.ErrGRPCConfigurationUpdateFailed
+	case errors.Is(err, node.ErrEnqueueTimeout):
+		return types.ErrGRPCEnqueueTimeout
+	case errors.Is(err, node.ErrLeader):
+		return types.ErrGRPCLeader
+	case errors.Is(err, node.ErrNodeExists):
+		return types.ErrGRPCNodeExists
+	case errors.Is(err, node.ErrLeadershipLost):
+		return types.ErrGRPCLeadershipLost
+	case errors.Is(err, node.ErrNotLeader):
+		return types.ErrGRPCNotLeader
+	}
+
+	// No known gRPC equivalent.
+	return nil
 }
 
 // ServiceConfig contains the configurations for a coordinator service.
@@ -86,7 +103,7 @@ func NewService(cfg ServiceConfig) (*Service, error) {
 		coordinatorpb.RegisterCoordinatorServiceServer(grpcServer, coordinatorNode)
 		rb.Register(grpcServer)
 		grpc_health_v1.RegisterHealthServer(grpcServer, health.NewServer())
-	}, grpc.UnaryInterceptor(transport.UnaryServerErrorInterceptor(errToGRPCError)))
+	}, grpc.UnaryInterceptor(transport.UnaryServerErrorInterceptor(toGRPCError)))
 	gw := transport.NewHTTPGateway(
 		cfg.HTTPListen,
 		cfg.Listen,

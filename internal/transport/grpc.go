@@ -13,7 +13,7 @@ import (
 )
 
 // UnaryServerErrorInterceptor maps server errors to their gRPC equivalent.
-func UnaryServerErrorInterceptor(errToGRPCErrorMapping map[error]error) grpc.UnaryServerInterceptor {
+func UnaryServerErrorInterceptor(toGRPCError func(error) error) grpc.UnaryServerInterceptor {
 	return func(
 		ctx context.Context,
 		req any,
@@ -25,11 +25,15 @@ func UnaryServerErrorInterceptor(errToGRPCErrorMapping map[error]error) grpc.Una
 			if _, ok := status.FromError(err); ok {
 				return nil, err
 			}
-			grpcErr, ok := errToGRPCErrorMapping[err]
-			if !ok {
+
+			grpcErr := toGRPCError(err)
+
+			// The error does not have a known gRPC equivalent.
+			if grpcErr == nil {
 				grpcErr := status.New(codes.Internal, err.Error())
 				return nil, grpcErr.Err()
 			}
+
 			return nil, grpcErr
 		}
 		return resp, nil
@@ -37,18 +41,21 @@ func UnaryServerErrorInterceptor(errToGRPCErrorMapping map[error]error) grpc.Una
 }
 
 // StreamServerErrorInterceptor maps server errors to their gRPC equivalent.
-func StreamServerErrorInterceptor(errToGRPCErrorMapping map[error]error) grpc.StreamServerInterceptor {
+func StreamServerErrorInterceptor(toGRPCError func(error) error) grpc.StreamServerInterceptor {
 	return func(srv any, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
 		err := handler(srv, ss)
 		if err != nil {
 			if _, ok := status.FromError(err); ok {
 				return err
 			}
-			grpcErr, ok := errToGRPCErrorMapping[err]
-			if !ok {
+			grpcErr := toGRPCError(err)
+
+			// The error does not have a known gRPC equivalent.
+			if grpcErr == nil {
 				grpcErr := status.New(codes.Internal, err.Error())
 				return grpcErr.Err()
 			}
+
 			return grpcErr
 		}
 		return nil
