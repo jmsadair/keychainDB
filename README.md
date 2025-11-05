@@ -1,3 +1,5 @@
+![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/jmsadair/keychainDB/test.yml)
+
 # KeychainDB
 KeychainDB is a distributed key-value storage system that provides fault tolerance, strong consistency, and high read throughput through *Chain Replication with Apportioned Queries (CRAQ)*.
 
