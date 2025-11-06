@@ -8,7 +8,6 @@ import (
 	"github.com/hashicorp/raft"
 	"github.com/jmsadair/keychainDB/api/types"
 	"github.com/jmsadair/keychainDB/chain"
-	"github.com/jmsadair/keychainDB/coordinator/node"
 	"github.com/jmsadair/keychainDB/internal/transport"
 	coordinatorpb "github.com/jmsadair/keychainDB/proto/coordinator"
 	"golang.org/x/sync/errgroup"
@@ -25,17 +24,17 @@ func toGRPCError(err error) error {
 	}
 
 	switch {
-	case errors.Is(err, node.ErrConfigurationUpdateFailed):
+	case errors.Is(err, ErrConfigurationUpdateFailed):
 		return types.ErrGRPCConfigurationUpdateFailed
-	case errors.Is(err, node.ErrEnqueueTimeout):
+	case errors.Is(err, ErrEnqueueTimeout):
 		return types.ErrGRPCEnqueueTimeout
-	case errors.Is(err, node.ErrLeader):
+	case errors.Is(err, ErrLeader):
 		return types.ErrGRPCLeader
-	case errors.Is(err, node.ErrNodeExists):
+	case errors.Is(err, ErrNodeExists):
 		return types.ErrGRPCNodeExists
-	case errors.Is(err, node.ErrLeadershipLost):
+	case errors.Is(err, ErrLeadershipLost):
 		return types.ErrGRPCLeadershipLost
-	case errors.Is(err, node.ErrNotLeader):
+	case errors.Is(err, ErrNotLeader):
 		return types.ErrGRPCNotLeader
 	}
 
@@ -70,9 +69,9 @@ type Service struct {
 	// gRPC server implementation.
 	Server *transport.Server
 	// The coordinator implementation.
-	Coordinator *node.Coordinator
+	Coordinator *Coordinator
 	// The raft implementation.
-	Raft *node.RaftBackend
+	Raft *RaftBackend
 	// The configuration for this service.
 	Config ServiceConfig
 }
@@ -90,7 +89,7 @@ func NewService(cfg ServiceConfig) (*Service, error) {
 	}
 
 	// Create a raft node and bootstrap it if requested.
-	rb, err := node.NewRaftBackend(cfg.ID, cfg.Advertise, cfg.StorageDir, cfg.DialOptions...)
+	rb, err := NewRaftBackend(cfg.ID, cfg.Advertise, cfg.StorageDir, cfg.DialOptions...)
 	if err != nil {
 		return nil, err
 	}
@@ -103,7 +102,7 @@ func NewService(cfg ServiceConfig) (*Service, error) {
 		}
 	}
 
-	coordinatorNode := node.NewCoordinator(cfg.ID, cfg.Advertise, chainClient, coordinatorClient, rb, cfg.Log)
+	coordinatorNode := NewCoordinator(cfg.ID, cfg.Advertise, chainClient, coordinatorClient, rb, cfg.Log)
 	srv := transport.NewServer(cfg.Listen, func(grpcServer *grpc.Server) {
 		coordinatorpb.RegisterCoordinatorServiceServer(grpcServer, coordinatorNode)
 		rb.Register(grpcServer)

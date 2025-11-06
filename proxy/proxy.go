@@ -1,4 +1,4 @@
-package node
+package proxy
 
 import (
 	"context"
@@ -7,7 +7,7 @@ import (
 	"sync/atomic"
 
 	"github.com/jmsadair/keychainDB/api/types"
-	chainnode "github.com/jmsadair/keychainDB/chain/node"
+	"github.com/jmsadair/keychainDB/chain"
 	apipb "github.com/jmsadair/keychainDB/proto/api"
 	chainpb "github.com/jmsadair/keychainDB/proto/chain"
 	coordinatorpb "github.com/jmsadair/keychainDB/proto/coordinator"
@@ -67,7 +67,7 @@ type Proxy struct {
 	chainClient       ChainClient
 	coordinatorClient CoordinatorClient
 	raftMembers       []string
-	chainConfig       atomic.Pointer[chainnode.Configuration]
+	chainConfig       atomic.Pointer[chain.Configuration]
 	log               *slog.Logger
 }
 
@@ -163,7 +163,7 @@ func (p *Proxy) Watch(req *grpc_health_v1.HealthCheckRequest, _ grpc_health_v1.H
 	return status.Error(codes.Unimplemented, "unimplemented")
 }
 
-func (p *Proxy) getChainMembership(ctx context.Context, forceRefresh bool) (*chainnode.Configuration, error) {
+func (p *Proxy) getChainMembership(ctx context.Context, forceRefresh bool) (*chain.Configuration, error) {
 	config := p.chainConfig.Load()
 	if !forceRefresh && config != nil {
 		return config, nil
@@ -178,7 +178,7 @@ func (p *Proxy) getChainMembership(ctx context.Context, forceRefresh bool) (*cha
 		return nil, err
 	}
 
-	config = chainnode.NewConfigurationFromProto(resp.GetConfiguration())
+	config = chain.NewConfigurationFromProto(resp.GetConfiguration())
 	p.chainConfig.Store(config)
 
 	return config, nil

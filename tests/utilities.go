@@ -14,7 +14,6 @@ import (
 
 	"github.com/jmsadair/keychainDB/api/kv"
 	"github.com/jmsadair/keychainDB/chain"
-	"github.com/jmsadair/keychainDB/chain/node"
 	"github.com/jmsadair/keychainDB/coordinator"
 	chainpb "github.com/jmsadair/keychainDB/proto/chain"
 	coordinatorpb "github.com/jmsadair/keychainDB/proto/coordinator"
@@ -126,7 +125,7 @@ func waitForHealthy(t *testing.T, addr string) {
 	}, eventuallyTimeout, eventuallyTick)
 }
 
-func updateChainConfiguration(t *testing.T, client *chain.Client, config *node.Configuration, srvs ...*testChainServer) {
+func updateChainConfiguration(t *testing.T, client *chain.Client, config *chain.Configuration, srvs ...*testChainServer) {
 	req := &chainpb.UpdateConfigurationRequest{Configuration: config.Proto()}
 	for _, srv := range srvs {
 		_, err := client.UpdateConfiguration(context.Background(), srv.server.Node.Address, req)
@@ -142,7 +141,7 @@ func waitForActiveChainStatus(t *testing.T, client *chain.Client, srvs ...*testC
 			if err != nil {
 				return false
 			}
-			return node.Status(resp.GetStatus()) == node.Active
+			return chain.Status(resp.GetStatus()) == chain.Active
 		}, eventuallyTimeout, eventuallyTick)
 	}
 }
@@ -422,7 +421,7 @@ func newTestChainServer(t *testing.T, id string, port int, bootstrap bool) *test
 
 	// Directly bootstrap the service as a single node chain.
 	if bootstrap {
-		config := node.EmptyChain.AddMember(srv.Node.ID, srv.Node.Address)
+		config := chain.EmptyChain.AddMember(srv.Node.ID, srv.Node.Address)
 		req := &chainpb.UpdateConfigurationRequest{Configuration: config.Proto()}
 		_, err := srv.Node.UpdateConfiguration(context.Background(), req)
 		require.NoError(t, err)

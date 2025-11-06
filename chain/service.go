@@ -6,7 +6,6 @@ import (
 	"log/slog"
 
 	"github.com/jmsadair/keychainDB/api/types"
-	"github.com/jmsadair/keychainDB/chain/node"
 	"github.com/jmsadair/keychainDB/chain/storage"
 	"github.com/jmsadair/keychainDB/internal/transport"
 	pb "github.com/jmsadair/keychainDB/proto/chain"
@@ -22,13 +21,13 @@ func toGRPCError(err error) error {
 	}
 
 	switch {
-	case errors.Is(err, node.ErrInvalidConfigVersion):
+	case errors.Is(err, ErrInvalidConfigVersion):
 		return types.ErrGRPCInvalidConfigVersion
-	case errors.Is(err, node.ErrNotHead):
+	case errors.Is(err, ErrNotHead):
 		return types.ErrGRPCNotHead
-	case errors.Is(err, node.ErrNotMemberOfChain):
+	case errors.Is(err, ErrNotMemberOfChain):
 		return types.ErrGRPCNotMemberOfChain
-	case errors.Is(err, node.ErrSyncing):
+	case errors.Is(err, ErrSyncing):
 		return types.ErrGRPCSyncing
 	case errors.Is(err, storage.ErrConflict):
 		return types.ErrGRPCConflict
@@ -63,7 +62,7 @@ type Service struct {
 	// The gRPC server.
 	Server *transport.Server
 	// Chain node implementation.
-	Node *node.ChainNode
+	Node *ChainNode
 	// The configuration for this server.
 	Config ServiceConfig
 	// Storage for the chain node.
@@ -80,7 +79,7 @@ func NewService(cfg ServiceConfig) (*Service, error) {
 	if err != nil {
 		return nil, err
 	}
-	node := node.NewChainNode(cfg.ID, cfg.Listen, store, tn, cfg.Log)
+	node := NewChainNode(cfg.ID, cfg.Listen, store, tn, cfg.Log)
 	srv := transport.NewServer(cfg.Listen, func(s *grpc.Server) { pb.RegisterChainServiceServer(s, node) },
 		grpc.UnaryInterceptor(transport.UnaryServerErrorInterceptor(toGRPCError)))
 	return &Service{Server: srv, Node: node, Config: cfg, store: store}, nil

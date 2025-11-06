@@ -1,4 +1,4 @@
-package node
+package coordinator
 
 import (
 	"context"
@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/raft"
-	chainnode "github.com/jmsadair/keychainDB/chain/node"
+	"github.com/jmsadair/keychainDB/chain"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -145,7 +145,7 @@ func TestAddRemoveMember(t *testing.T) {
 	// Chain configuration should initially not contain any members.
 	readConfig, err := leader.rb.GetMembers(context.Background())
 	require.NoError(t, err)
-	require.True(t, readConfig.Equal(chainnode.EmptyChain))
+	require.True(t, readConfig.Equal(chain.EmptyChain))
 
 	// Add three members to the chain.
 	memberID1 := "member-1"
@@ -167,10 +167,10 @@ func TestAddRemoveMember(t *testing.T) {
 	// Verify the configuration contains all the members.
 	readConfig, err = leader.rb.GetMembers(context.Background())
 	require.NoError(t, err)
-	member1 := &chainnode.ChainMember{ID: memberID1, Address: memberAddr1}
-	member2 := &chainnode.ChainMember{ID: memberID2, Address: memberAddr2}
-	member3 := &chainnode.ChainMember{ID: memberID3, Address: memberAddr3}
-	expectedConfig := chainnode.NewConfiguration([]*chainnode.ChainMember{member1, member2, member3}, 3)
+	member1 := &chain.ChainMember{ID: memberID1, Address: memberAddr1}
+	member2 := &chain.ChainMember{ID: memberID2, Address: memberAddr2}
+	member3 := &chain.ChainMember{ID: memberID3, Address: memberAddr3}
+	expectedConfig := chain.NewConfiguration([]*chain.ChainMember{member1, member2, member3}, 3)
 	require.True(t, expectedConfig.Equal(readConfig))
 
 	// Remove two of the chain members that were added.
@@ -189,6 +189,6 @@ func TestAddRemoveMember(t *testing.T) {
 
 	readConfig, err = leader.rb.GetMembers(context.Background())
 	require.NoError(t, err)
-	expectedConfig = chainnode.NewConfiguration([]*chainnode.ChainMember{member2}, 5)
+	expectedConfig = chain.NewConfiguration([]*chain.ChainMember{member2}, 5)
 	require.True(t, expectedConfig.Equal(readConfig))
 }

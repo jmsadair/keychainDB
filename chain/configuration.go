@@ -1,4 +1,4 @@
-package node
+package chain
 
 import (
 	pb "github.com/jmsadair/keychainDB/proto/chain"

@@ -1,8 +1,8 @@
-package node
+package coordinator
 
 import (
 	"context"
-	chainnode "github.com/jmsadair/keychainDB/chain/node"
+	"github.com/jmsadair/keychainDB/chain"
 	chainpb "github.com/jmsadair/keychainDB/proto/chain"
 	pb "github.com/jmsadair/keychainDB/proto/coordinator"
 	"github.com/stretchr/testify/mock"
@@ -20,19 +20,19 @@ func (m *mockRaft) RemoveFromCluster(ctx context.Context, id string) error {
 	return m.MethodCalled("RemoveFromCluster", ctx, id).Error(0)
 }
 
-func (m *mockRaft) AddMember(ctx context.Context, id, address string) (*chainnode.Configuration, error) {
+func (m *mockRaft) AddMember(ctx context.Context, id, address string) (*chain.Configuration, error) {
 	args := m.MethodCalled("AddMember", ctx, id, address)
-	return args.Get(0).(*chainnode.Configuration), args.Error(1)
+	return args.Get(0).(*chain.Configuration), args.Error(1)
 }
 
-func (m *mockRaft) RemoveMember(ctx context.Context, id string) (*chainnode.Configuration, *chainnode.ChainMember, error) {
+func (m *mockRaft) RemoveMember(ctx context.Context, id string) (*chain.Configuration, *chain.ChainMember, error) {
 	args := m.MethodCalled("RemoveMember", ctx, id)
-	return args.Get(0).(*chainnode.Configuration), args.Get(1).(*chainnode.ChainMember), args.Error(2)
+	return args.Get(0).(*chain.Configuration), args.Get(1).(*chain.ChainMember), args.Error(2)
 }
 
-func (m *mockRaft) GetMembers(ctx context.Context) (*chainnode.Configuration, error) {
+func (m *mockRaft) GetMembers(ctx context.Context) (*chain.Configuration, error) {
 	args := m.MethodCalled("GetMembers", ctx)
-	return args.Get(0).(*chainnode.Configuration), args.Error(1)
+	return args.Get(0).(*chain.Configuration), args.Error(1)
 }
 
 func (m *mockRaft) LeaderCh() <-chan bool {
@@ -44,8 +44,8 @@ func (m *mockRaft) LeaderWithID() (string, string) {
 	return args.Get(0).(string), args.Get(1).(string)
 }
 
-func (m *mockRaft) ChainConfiguration() *chainnode.Configuration {
-	return m.MethodCalled("ChainConfiguration").Get(0).(*chainnode.Configuration)
+func (m *mockRaft) ChainConfiguration() *chain.Configuration {
+	return m.MethodCalled("ChainConfiguration").Get(0).(*chain.Configuration)
 }
 
 func (m *mockRaft) ClusterStatus() (Status, error) {
