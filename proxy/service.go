@@ -10,7 +10,6 @@ import (
 	"github.com/jmsadair/keychainDB/coordinator"
 	"github.com/jmsadair/keychainDB/internal/transport"
 	proxypb "github.com/jmsadair/keychainDB/proto/proxy"
-	"github.com/jmsadair/keychainDB/proxy/node"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/health"
@@ -25,9 +24,9 @@ func toGRPCError(err error) error {
 	}
 
 	switch {
-	case errors.Is(err, node.ErrCoordinatorUnavailable):
+	case errors.Is(err, ErrCoordinatorUnavailable):
 		return types.ErrGRPCCoordinatorUnavailable
-	case errors.Is(err, node.ErrNoMembers):
+	case errors.Is(err, ErrNoMembers):
 		return types.ErrGRPCNoMembers
 	}
 
@@ -56,7 +55,7 @@ type Service struct {
 	// The proxy RPC service.
 	Server *transport.Server
 	// The proxy implementation.
-	Proxy *node.Proxy
+	Proxy *Proxy
 	// The configuration for this service.
 	Config ServiceConfig
 }
@@ -72,7 +71,7 @@ func NewService(cfg ServiceConfig) (*Service, error) {
 		return nil, err
 	}
 
-	p := node.NewProxy(cfg.Coordinators, coordinatorTn, chainTn, cfg.Log)
+	p := NewProxy(cfg.Coordinators, coordinatorTn, chainTn, cfg.Log)
 	srv := transport.NewServer(cfg.Listen, func(grpcServer *grpc.Server) {
 		proxypb.RegisterProxyServiceServer(grpcServer, p)
 		grpc_health_v1.RegisterHealthServer(grpcServer, health.NewServer())

@@ -9,7 +9,7 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/jmsadair/keychainDB/chain/node"
+	"github.com/jmsadair/keychainDB/chain"
 	"github.com/jmsadair/keychainDB/chain/storage"
 	pb "github.com/jmsadair/keychainDB/proto/chain"
 	"github.com/stretchr/testify/require"
@@ -27,7 +27,7 @@ func TestPing(t *testing.T) {
 	var req pb.PingRequest
 	resp, err := client.Ping(ctx, srv.server.Node.Address, &req)
 	require.NoError(t, err)
-	require.Equal(t, int32(node.Active), resp.GetStatus())
+	require.Equal(t, int32(chain.Active), resp.GetStatus())
 	require.Equal(t, config.Version, resp.GetConfigVersion())
 }
 
@@ -254,7 +254,7 @@ func TestRemoveMember(t *testing.T) {
 
 		client := newTestChainClient(t)
 
-		var atomicConfig atomic.Pointer[node.Configuration]
+		var atomicConfig atomic.Pointer[chain.Configuration]
 		config := srv1.server.Node.Configuration()
 		config = config.AddMember(srv2.server.Node.ID, srv2.server.Node.Address)
 		config = config.AddMember(srv3.server.Node.ID, srv3.server.Node.Address)
@@ -325,7 +325,7 @@ func TestRemoveMultiple(t *testing.T) {
 	ctx := context.Background()
 	client := newTestChainClient(t)
 
-	var atomicConfig atomic.Pointer[node.Configuration]
+	var atomicConfig atomic.Pointer[chain.Configuration]
 	config := srv1.server.Node.Configuration()
 	config = config.AddMember(srv2.server.Node.ID, srv2.server.Node.Address)
 	config = config.AddMember(srv3.server.Node.ID, srv3.server.Node.Address)

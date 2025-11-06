@@ -1,4 +1,4 @@
-package node
+package coordinator
 
 import (
 	"context"
@@ -8,7 +8,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	chainnode "github.com/jmsadair/keychainDB/chain/node"
+	"github.com/jmsadair/keychainDB/chain"
 	chainpb "github.com/jmsadair/keychainDB/proto/chain"
 	pb "github.com/jmsadair/keychainDB/proto/coordinator"
 	"google.golang.org/grpc/codes"
@@ -56,11 +56,11 @@ type CoordinatorClient interface {
 // RaftProtocol defines the interface for interacting with the underlying consensus protocol.
 type RaftProtocol interface {
 	// AddMember is used to add a new member to the chain membership configuration.
-	AddMember(ctx context.Context, id, address string) (*chainnode.Configuration, error)
+	AddMember(ctx context.Context, id, address string) (*chain.Configuration, error)
 	// RemoveMember is used to remove a member from the chain membership configuration.
-	RemoveMember(ctx context.Context, id string) (*chainnode.Configuration, *chainnode.ChainMember, error)
+	RemoveMember(ctx context.Context, id string) (*chain.Configuration, *chain.ChainMember, error)
 	// GetMembers is used to list the members of the chain membership configuration.
-	GetMembers(ctx context.Context) (*chainnode.Configuration, error)
+	GetMembers(ctx context.Context) (*chain.Configuration, error)
 	// LeaderCh is used to get a channel which delivers signals on acquiring or losing leadership.
 	// It sends true if this node gains leadership and false if it loses leadership.
 	LeaderCh() <-chan bool
@@ -69,7 +69,7 @@ type RaftProtocol interface {
 	LeaderWithID() (string, string)
 	// ChainConfiguration is used to read the local chain membership configuration this node has.
 	// This operation does not require quorum. Hence, the value read may be stale
-	ChainConfiguration() *chainnode.Configuration
+	ChainConfiguration() *chain.Configuration
 	// JoinCluster is used to add a node to the cluster.
 	JoinCluster(ctx context.Context, id, address string) error
 	// RemoveFromCluster is used to remove a node from the cluster.
@@ -100,7 +100,7 @@ func forwardIfNotLeader[Req any, Resp any](
 
 type memberState struct {
 	lastContact   time.Time
-	status        chainnode.Status
+	status        chain.Status
 	configVersion uint64
 }
 
@@ -278,7 +278,7 @@ func (c *Coordinator) Watch(req *grpc_health_v1.HealthCheckRequest, _ grpc_healt
 
 // updateChainMemberConfigurations is used to apply a new configuration to the nodes in the chain.
 // This function will return an error if the configuration is not applied to one or more members of the chain.
-func (c *Coordinator) updateChainMemberConfigurations(ctx context.Context, config *chainnode.Configuration, removed *chainnode.ChainMember) error {
+func (c *Coordinator) updateChainMemberConfigurations(ctx context.Context, config *chain.Configuration, removed *chain.ChainMember) error {
 	members := config.Members()
 	if removed != nil {
 		members = append(members, removed)
@@ -488,7 +488,7 @@ func (c *Coordinator) onHeartbeat(ctx context.Context) {
 	c.sendHeartbeats(ctx, config)
 }
 
-func (c *Coordinator) sendHeartbeats(ctx context.Context, config *chainnode.Configuration) {
+func (c *Coordinator) sendHeartbeats(ctx context.Context, config *chain.Configuration) {
 	var wg sync.WaitGroup
 	wg.Add(len(config.Members()))
 
@@ -504,7 +504,7 @@ func (c *Coordinator) sendHeartbeats(ctx context.Context, config *chainnode.Conf
 				if ok {
 					state.lastContact = time.Now()
 					state.configVersion = resp.GetConfigVersion()
-					state.status = chainnode.Status(resp.GetStatus())
+					state.status = chain.Status(resp.GetStatus())
 				}
 				c.mu.Unlock()
 

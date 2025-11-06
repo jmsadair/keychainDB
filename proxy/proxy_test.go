@@ -1,11 +1,11 @@
-package node
+package proxy
 
 import (
 	"context"
 	"log/slog"
 	"testing"
 
-	chainnode "github.com/jmsadair/keychainDB/chain/node"
+	"github.com/jmsadair/keychainDB/chain"
 	apipb "github.com/jmsadair/keychainDB/proto/api"
 	chainpb "github.com/jmsadair/keychainDB/proto/chain"
 	coordinatorpb "github.com/jmsadair/keychainDB/proto/coordinator"
@@ -23,9 +23,9 @@ func TestSetValue(t *testing.T) {
 	ctx := context.Background()
 	key := "key"
 	value := []byte("value")
-	head := chainnode.ChainMember{Address: "node-1.chain.local", ID: "node-1"}
-	tail := chainnode.ChainMember{Address: "node-2.chain.local", ID: "node-2"}
-	config := chainnode.NewConfiguration([]*chainnode.ChainMember{&head, &tail}, 0)
+	head := chain.ChainMember{Address: "node-1.chain.local", ID: "node-1"}
+	tail := chain.ChainMember{Address: "node-2.chain.local", ID: "node-2"}
+	config := chain.NewConfiguration([]*chain.ChainMember{&head, &tail}, 0)
 
 	chainClient.On(
 		"Replicate",
@@ -73,9 +73,9 @@ func TestGetValue(t *testing.T) {
 	ctx := context.Background()
 	key := "key"
 	value := []byte("value")
-	head := chainnode.ChainMember{Address: "node-1.chain.local", ID: "node-1"}
-	tail := chainnode.ChainMember{Address: "node-2.chain.local", ID: "node-2"}
-	config := chainnode.NewConfiguration([]*chainnode.ChainMember{&head, &tail}, 0)
+	head := chain.ChainMember{Address: "node-1.chain.local", ID: "node-1"}
+	tail := chain.ChainMember{Address: "node-2.chain.local", ID: "node-2"}
+	config := chain.NewConfiguration([]*chain.ChainMember{&head, &tail}, 0)
 
 	chainClient.On(
 		"Read",

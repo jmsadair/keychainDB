@@ -1,11 +1,11 @@
-package node
+package coordinator
 
 import (
 	"io"
 	"sync"
 
 	"github.com/hashicorp/raft"
-	chainnode "github.com/jmsadair/keychainDB/chain/node"
+	"github.com/jmsadair/keychainDB/chain"
 	pb "github.com/jmsadair/keychainDB/proto/coordinator"
 	"google.golang.org/protobuf/proto"
 )
@@ -16,7 +16,7 @@ type AddMemberOperation struct {
 }
 
 type AddMemberResult struct {
-	Config *chainnode.Configuration
+	Config *chain.Configuration
 }
 
 func (op *AddMemberOperation) Bytes() ([]byte, error) {
@@ -36,8 +36,8 @@ type RemoveMemberOperation struct {
 }
 
 type RemoveMemberResult struct {
-	Config  *chainnode.Configuration
-	Removed *chainnode.ChainMember
+	Config  *chain.Configuration
+	Removed *chain.ChainMember
 }
 
 func (op *RemoveMemberOperation) Bytes() ([]byte, error) {
@@ -54,7 +54,7 @@ func (op *RemoveMemberOperation) Bytes() ([]byte, error) {
 type ReadMembershipOperation struct{}
 
 type ReadMembershipResult struct {
-	Config *chainnode.Configuration
+	Config *chain.Configuration
 }
 
 func (op *ReadMembershipOperation) Bytes() ([]byte, error) {
@@ -67,10 +67,10 @@ func (op *ReadMembershipOperation) Bytes() ([]byte, error) {
 }
 
 type Snapshot struct {
-	Configuration *chainnode.Configuration
+	Configuration *chain.Configuration
 }
 
-func NewSnapshot(config *chainnode.Configuration) *Snapshot {
+func NewSnapshot(config *chain.Configuration) *Snapshot {
 	return &Snapshot{Configuration: config}
 }
 
@@ -91,12 +91,12 @@ func (s *Snapshot) Persist(sink raft.SnapshotSink) error {
 func (s *Snapshot) Release() {}
 
 type FSM struct {
-	configuration *chainnode.Configuration
+	configuration *chain.Configuration
 	mu            sync.Mutex
 }
 
 func NewFSM() *FSM {
-	return &FSM{configuration: chainnode.EmptyChain}
+	return &FSM{configuration: chain.EmptyChain}
 }
 
 func (f *FSM) Apply(log *raft.Log) any {
@@ -132,7 +132,7 @@ func (f *FSM) Restore(snapshot io.ReadCloser) error {
 	if err != nil {
 		return err
 	}
-	config, err := chainnode.NewConfigurationFromBytes(b)
+	config, err := chain.NewConfigurationFromBytes(b)
 	if err != nil {
 		return err
 	}
@@ -144,7 +144,7 @@ func (f *FSM) Restore(snapshot io.ReadCloser) error {
 	return nil
 }
 
-func (f *FSM) ChainConfiguration() *chainnode.Configuration {
+func (f *FSM) ChainConfiguration() *chain.Configuration {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	return f.configuration.Copy()

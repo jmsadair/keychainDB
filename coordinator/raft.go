@@ -1,4 +1,4 @@
-package node
+package coordinator
 
 import (
 	"context"
@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/raft"
-	chainnode "github.com/jmsadair/keychainDB/chain/node"
+	"github.com/jmsadair/keychainDB/chain"
 	"github.com/jmsadair/keychainDB/coordinator/raftnet"
 	"github.com/jmsadair/keychainDB/coordinator/raftstore"
 	"google.golang.org/grpc"
@@ -114,7 +114,7 @@ func (r *RaftBackend) Shutdown() error {
 }
 
 // AddMember adds a new chain node to the chain configuration.
-func (r *RaftBackend) AddMember(ctx context.Context, id, address string) (*chainnode.Configuration, error) {
+func (r *RaftBackend) AddMember(ctx context.Context, id, address string) (*chain.Configuration, error) {
 	op := &AddMemberOperation{ID: id, Address: address}
 	applied, err := r.apply(ctx, op)
 	if err != nil {
@@ -125,7 +125,7 @@ func (r *RaftBackend) AddMember(ctx context.Context, id, address string) (*chain
 }
 
 // RemoveMember removes a chain node from the chain configuration.
-func (r *RaftBackend) RemoveMember(ctx context.Context, id string) (*chainnode.Configuration, *chainnode.ChainMember, error) {
+func (r *RaftBackend) RemoveMember(ctx context.Context, id string) (*chain.Configuration, *chain.ChainMember, error) {
 	op := &RemoveMemberOperation{ID: id}
 	applied, err := r.apply(ctx, op)
 	if err != nil {
@@ -137,7 +137,7 @@ func (r *RaftBackend) RemoveMember(ctx context.Context, id string) (*chainnode.C
 
 // GetMembers is used to read the chain configuration. This operation requires cluster quorum.
 // If strong consistency is not required, then ChainConfiguration should be used instead.
-func (r *RaftBackend) GetMembers(ctx context.Context) (*chainnode.Configuration, error) {
+func (r *RaftBackend) GetMembers(ctx context.Context) (*chain.Configuration, error) {
 	op := &ReadMembershipOperation{}
 	applied, err := r.apply(ctx, op)
 	if err != nil {
@@ -215,7 +215,7 @@ func (r *RaftBackend) LeaderWithID() (string, string) {
 
 // ChainConfiguration is used to read the current chain configuration from this nodes perspective.
 // This operation does not require quorum hence the value read may be stale
-func (r *RaftBackend) ChainConfiguration() *chainnode.Configuration {
+func (r *RaftBackend) ChainConfiguration() *chain.Configuration {
 	return r.fsm.ChainConfiguration()
 }
 

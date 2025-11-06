@@ -3,7 +3,7 @@ package tests
 import (
 	"testing"
 
-	chainnode "github.com/jmsadair/keychainDB/chain/node"
+	"github.com/jmsadair/keychainDB/chain"
 	"github.com/stretchr/testify/require"
 )
 
@@ -61,22 +61,22 @@ func TestAddToChainThenRemoveRPC(t *testing.T) {
 
 	client := newTestCoordinatorClient(t)
 
-	member1 := &chainnode.ChainMember{ID: chainServer1.server.Node.ID, Address: chainServer1.server.Node.Address}
-	member2 := &chainnode.ChainMember{ID: chainServer2.server.Node.ID, Address: chainServer2.server.Node.Address}
+	member1 := &chain.ChainMember{ID: chainServer1.server.Node.ID, Address: chainServer1.server.Node.Address}
+	member2 := &chain.ChainMember{ID: chainServer2.server.Node.ID, Address: chainServer2.server.Node.Address}
 
 	cluster.addChainMemberRPC(t, client, member1.ID, member1.Address)
 	cluster.addChainMemberRPC(t, client, member2.ID, member2.Address)
 
 	getMembersResp := cluster.getChainMembersRPC(t, client)
-	config := chainnode.NewConfigurationFromProto(getMembersResp.GetConfiguration())
-	expectedConfig := chainnode.NewConfiguration([]*chainnode.ChainMember{member1, member2}, 2)
+	config := chain.NewConfigurationFromProto(getMembersResp.GetConfiguration())
+	expectedConfig := chain.NewConfiguration([]*chain.ChainMember{member1, member2}, 2)
 	require.True(t, config.Equal(expectedConfig))
 
 	cluster.removeChainMemberRPC(t, client, member2.ID)
 
 	getMembersResp = cluster.getChainMembersRPC(t, client)
-	config = chainnode.NewConfigurationFromProto(getMembersResp.GetConfiguration())
-	expectedConfig = chainnode.NewConfiguration([]*chainnode.ChainMember{member1}, 3)
+	config = chain.NewConfigurationFromProto(getMembersResp.GetConfiguration())
+	expectedConfig = chain.NewConfiguration([]*chain.ChainMember{member1}, 3)
 	require.True(t, config.Equal(expectedConfig))
 }
 
@@ -88,21 +88,21 @@ func TestAddToChainThenRemoveHTTP(t *testing.T) {
 	chainServer2 := newTestChainServer(t, "chain-node-2", 8081, false)
 	defer chainServer2.stop()
 
-	member1 := &chainnode.ChainMember{ID: chainServer1.server.Node.ID, Address: chainServer1.server.Node.Address}
-	member2 := &chainnode.ChainMember{ID: chainServer2.server.Node.ID, Address: chainServer2.server.Node.Address}
+	member1 := &chain.ChainMember{ID: chainServer1.server.Node.ID, Address: chainServer1.server.Node.Address}
+	member2 := &chain.ChainMember{ID: chainServer2.server.Node.ID, Address: chainServer2.server.Node.Address}
 
 	cluster.addChainMemberHTTP(t, member1.ID, member1.Address)
 	cluster.addChainMemberHTTP(t, member2.ID, member2.Address)
 
 	getMembersResp := cluster.getChainMembersHTTP(t)
-	config := chainnode.NewConfigurationFromProto(getMembersResp.GetConfiguration())
-	expectedConfig := chainnode.NewConfiguration([]*chainnode.ChainMember{member1, member2}, 2)
+	config := chain.NewConfigurationFromProto(getMembersResp.GetConfiguration())
+	expectedConfig := chain.NewConfiguration([]*chain.ChainMember{member1, member2}, 2)
 	require.True(t, config.Equal(expectedConfig))
 
 	cluster.removeChainMemberHTTP(t, member2.ID)
 
 	getMembersResp = cluster.getChainMembersHTTP(t)
-	config = chainnode.NewConfigurationFromProto(getMembersResp.GetConfiguration())
-	expectedConfig = chainnode.NewConfiguration([]*chainnode.ChainMember{member1}, 3)
+	config = chain.NewConfigurationFromProto(getMembersResp.GetConfiguration())
+	expectedConfig = chain.NewConfiguration([]*chain.ChainMember{member1}, 3)
 	require.True(t, config.Equal(expectedConfig))
 }
