@@ -29,7 +29,7 @@ func contactLeader[T any](clusterMembers []string, fn func(target string) (T, er
 	// Try all of the coordinators. This could be done concurrently but is not
 	// because the coordinator will try to forward the request to the leader.
 	// The only time where multiple coordinators will need to be contacted is if
-	// there is a partition that has resulted in multiple nodes beleiving that
+	// there is a partition that has resulted in multiple nodes believing that
 	// they are the leader.
 	for _, m := range clusterMembers {
 		resp, err := fn(m)
