@@ -206,7 +206,7 @@ func (r *RaftBackend) LeaderCh() <-chan bool {
 	return r.consensus.LeaderCh()
 }
 
-// LeaderWithID is used to return the current leader address and ID of the cluster.
+// LeaderWithID is used to return the address and ID of the current leader of the cluster.
 // It may return empty strings if there is no current leader or the leader is unknown.
 func (r *RaftBackend) LeaderWithID() (string, string) {
 	addr, id := r.consensus.LeaderWithID()
