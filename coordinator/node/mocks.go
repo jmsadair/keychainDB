@@ -139,3 +139,42 @@ func (m *mockCoordinatorClient) Close() error {
 	args := m.MethodCalled("Close")
 	return args.Error(0)
 }
+
+type mockSnapshotReader struct {
+	mock.Mock
+}
+
+func (m *mockSnapshotReader) Read(p []byte) (n int, err error) {
+	args := m.MethodCalled("Read")
+	data := args.Get(0).([]byte)
+	return copy(p, data), args.Error(1)
+}
+
+func (m *mockSnapshotReader) Close() error {
+	args := m.MethodCalled("Close")
+	return args.Error(0)
+}
+
+type mockSnapshotSync struct {
+	mock.Mock
+}
+
+func (m *mockSnapshotSync) ID() string {
+	args := m.MethodCalled("ID")
+	return args.String(0)
+}
+
+func (m *mockSnapshotSync) Write(p []byte) (n int, err error) {
+	args := m.MethodCalled("Write", p)
+	return args.Int(0), args.Error(1)
+}
+
+func (m *mockSnapshotSync) Close() error {
+	args := m.MethodCalled("Close")
+	return args.Error(0)
+}
+
+func (m *mockSnapshotSync) Cancel() error {
+	args := m.MethodCalled("Cancel")
+	return args.Error(0)
+}
