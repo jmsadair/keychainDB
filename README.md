@@ -63,7 +63,7 @@ This allows clients to interact with the system through a single, simplified int
 
 ## Future Work
 This a non-exhaustive list of things that need to be done in the near term.
-- [ ] Leader forwarding. Coordinators should forward client requests to the leader.
+- [X] Leader forwarding. Coordinators should forward client requests to the leader.
 - [ ] More testing. There needs to be more integration and E2E tests. Especially for various failure scenarios.
 - [ ] A `cmd` directory with the logic for running the coordinator, chain nodes, and proxy nodes.
 - [ ] Various package documentation.
