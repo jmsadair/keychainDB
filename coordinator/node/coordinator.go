@@ -35,6 +35,24 @@ type ChainClient interface {
 	Close() error
 }
 
+// CoordinatorClient defines the interface for coordinator communication.
+type CoordinatorClient interface {
+	// AddMember sends the appropriate RPC to the target node.
+	AddMember(ctx context.Context, address string, request *pb.AddMemberRequest) (*pb.AddMemberResponse, error)
+	// RemoveMember sends the appropriate RPC to the target node.
+	RemoveMember(ctx context.Context, address string, request *pb.RemoveMemberRequest) (*pb.RemoveMemberResponse, error)
+	// GetMembers sends the appropriate RPC to the target node.
+	GetMembers(ctx context.Context, address string, request *pb.GetMembersRequest) (*pb.GetMembersResponse, error)
+	// JoinCluster sends the appropriate RPC to the target node.
+	JoinCluster(ctx context.Context, address string, request *pb.JoinClusterRequest) (*pb.JoinClusterResponse, error)
+	// RemoveFromCluster sends the appropriate RPC to the target node.
+	RemoveFromCluster(ctx context.Context, address string, request *pb.RemoveFromClusterRequest) (*pb.RemoveFromClusterResponse, error)
+	// ClusterStatus sends the appropriate RPC to the target node.
+	ClusterStatus(ctx context.Context, address string, request *pb.ClusterStatusRequest) (*pb.ClusterStatusResponse, error)
+	// Close closes all connections managed by this client.
+	Close() error
+}
+
 // RaftProtocol defines the interface for interacting with the underlying consensus protocol.
 type RaftProtocol interface {
 	// AddMember is used to add a new member to the chain membership configuration.
@@ -46,6 +64,9 @@ type RaftProtocol interface {
 	// LeaderCh is used to get a channel which delivers signals on acquiring or losing leadership.
 	// It sends true if this node gains leadership and false if it loses leadership.
 	LeaderCh() <-chan bool
+	// LeaderWithID returns the current address and ID of the current leader of the cluster.
+	// This function will return empty strings if there is not a known leader.
+	LeaderWithID() (string, string)
 	// ChainConfiguration is used to read the local chain membership configuration this node has.
 	// This operation does not require quorum. Hence, the value read may be stale
 	ChainConfiguration() *chainnode.Configuration
@@ -57,6 +78,24 @@ type RaftProtocol interface {
 	ClusterStatus() (Status, error)
 	// Shutdown shuts down the protocol.
 	Shutdown() error
+}
+
+func forwardIfNotLeader[Req any, Resp any](
+	c *Coordinator,
+	ctx context.Context,
+	request Req,
+	forwarder func(context.Context, string, Req) (Resp, error),
+) (Resp, bool, error) {
+	var zero Resp
+	leaderAddr, leaderID := c.raft.LeaderWithID()
+	if leaderID == "" {
+		return zero, false, ErrNotLeader
+	}
+	if leaderID != c.ID {
+		resp, err := forwarder(ctx, leaderAddr, request)
+		return resp, true, err
+	}
+	return zero, false, nil
 }
 
 type memberState struct {
@@ -73,6 +112,7 @@ type Coordinator struct {
 	Address             string
 	raft                RaftProtocol
 	chainClient         ChainClient
+	coordinatorClient   CoordinatorClient
 	memberStates        map[string]*memberState
 	isLeader            bool
 	leadershipChangeCh  <-chan bool
@@ -87,6 +127,7 @@ func NewCoordinator(
 	id string,
 	address string,
 	chainClient ChainClient,
+	coordinatorClient CoordinatorClient,
 	raft RaftProtocol,
 	log *slog.Logger,
 ) *Coordinator {
@@ -95,6 +136,7 @@ func NewCoordinator(
 		ID:                  id,
 		raft:                raft,
 		chainClient:         chainClient,
+		coordinatorClient:   coordinatorClient,
 		leadershipChangeCh:  raft.LeaderCh(),
 		memberStates:        make(map[string]*memberState),
 		failedChainMemberCh: make(chan any),
@@ -105,6 +147,7 @@ func NewCoordinator(
 
 // Run runs this node.
 func (c *Coordinator) Run(ctx context.Context) {
+	defer c.coordinatorClient.Close()
 	defer c.chainClient.Close()
 	defer c.raft.Shutdown()
 
@@ -138,10 +181,15 @@ func (c *Coordinator) Run(ctx context.Context) {
 // to all nodes in the chain. An error will be returned in this case, but the coordinator will continue to attempt
 // to apply the configuration update until all nodes have it.
 func (c *Coordinator) AddMember(ctx context.Context, request *pb.AddMemberRequest) (*pb.AddMemberResponse, error) {
+	if resp, forwarded, err := forwardIfNotLeader(c, ctx, request, c.coordinatorClient.AddMember); forwarded || err != nil {
+		return resp, err
+	}
+
 	config, err := c.raft.AddMember(ctx, request.GetId(), request.GetAddress())
 	if err != nil {
 		return nil, err
 	}
+
 	return &pb.AddMemberResponse{}, c.updateChainMemberConfigurations(ctx, config, nil)
 }
 
@@ -150,19 +198,29 @@ func (c *Coordinator) AddMember(ctx context.Context, request *pb.AddMemberReques
 // to all nodes in the chain. An error will be returned in this case, but the coordinator will continue to attempt
 // to apply the configuration update until all nodes have it.
 func (c *Coordinator) RemoveMember(ctx context.Context, request *pb.RemoveMemberRequest) (*pb.RemoveMemberResponse, error) {
+	if resp, forwarded, err := forwardIfNotLeader(c, ctx, request, c.coordinatorClient.RemoveMember); forwarded || err != nil {
+		return resp, err
+	}
+
 	config, removed, err := c.raft.RemoveMember(ctx, request.GetId())
 	if err != nil {
 		return nil, err
 	}
+
 	return &pb.RemoveMemberResponse{}, c.updateChainMemberConfigurations(ctx, config, removed)
 }
 
 // GetMembers is used to list the members of a chain.
 func (c *Coordinator) GetMembers(ctx context.Context, request *pb.GetMembersRequest) (*pb.GetMembersResponse, error) {
+	if resp, forwarded, err := forwardIfNotLeader(c, ctx, request, c.coordinatorClient.GetMembers); forwarded || err != nil {
+		return resp, err
+	}
+
 	config, err := c.raft.GetMembers(ctx)
 	if err != nil {
 		return nil, err
 	}
+
 	return &pb.GetMembersResponse{Configuration: config.Proto()}, nil
 }
 
@@ -170,26 +228,41 @@ func (c *Coordinator) GetMembers(ctx context.Context, request *pb.GetMembersRequ
 // the request and must be ready to start serving RPCs immediately. There must not be a node with the same address
 // or the same ID that is already a member of the cluster.
 func (c *Coordinator) JoinCluster(ctx context.Context, request *pb.JoinClusterRequest) (*pb.JoinClusterResponse, error) {
+	if resp, forwarded, err := forwardIfNotLeader(c, ctx, request, c.coordinatorClient.JoinCluster); forwarded || err != nil {
+		return resp, err
+	}
+
 	if err := c.raft.JoinCluster(ctx, request.GetId(), request.GetAddress()); err != nil {
 		return nil, err
 	}
+
 	return &pb.JoinClusterResponse{}, nil
 }
 
 // RemoveFromCluster is used to remove a coordinator from the cluster.
 func (c *Coordinator) RemoveFromCluster(ctx context.Context, request *pb.RemoveFromClusterRequest) (*pb.RemoveFromClusterResponse, error) {
+	if resp, forwarded, err := forwardIfNotLeader(c, ctx, request, c.coordinatorClient.RemoveFromCluster); forwarded || err != nil {
+		return resp, err
+	}
+
 	if err := c.raft.RemoveFromCluster(ctx, request.GetId()); err != nil {
 		return nil, err
 	}
+
 	return &pb.RemoveFromClusterResponse{}, nil
 }
 
 // ClusterStatus is used to get the current members of the cluster and the leader.
 func (c *Coordinator) ClusterStatus(ctx context.Context, request *pb.ClusterStatusRequest) (*pb.ClusterStatusResponse, error) {
+	if resp, forwarded, err := forwardIfNotLeader(c, ctx, request, c.coordinatorClient.ClusterStatus); forwarded || err != nil {
+		return resp, err
+	}
+
 	status, err := c.raft.ClusterStatus()
 	if err != nil {
 		return nil, err
 	}
+
 	return &pb.ClusterStatusResponse{Leader: status.Leader, Members: status.Members}, nil
 }
 

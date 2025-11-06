@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"log/slog"
-	"sync"
 	"sync/atomic"
 
 	"github.com/jmsadair/keychainDB/api/types"
@@ -26,39 +25,21 @@ var (
 	ErrCoordinatorUnavailable = errors.New("proxyserver: failed to read chain configuration from coordinator")
 )
 
-func forwardToLeader[T any](clusterMembers []string, fn func(target string) (T, error)) (T, error) {
-	var wg sync.WaitGroup
-	var mu sync.Mutex
-	var success bool
-	var successResp T
-
-	// Try all of the coordinators - one of them should be the leader.
-	wg.Add(len(clusterMembers))
+func contactLeader[T any](clusterMembers []string, fn func(target string) (T, error)) (T, error) {
+	// Try all of the coordinators. This could be done concurrently but is not
+	// because the coordinator will try to forward the request to the leader.
+	// The only time where multiple coordinators will need to be contacted is if
+	// there is a partition that has resulted in multiple nodes believing that
+	// they are the leader.
 	for _, m := range clusterMembers {
-		go func() {
-			defer wg.Done()
-			resp, err := fn(m)
-			if err != nil {
-				return
-			}
-			mu.Lock()
-			defer mu.Unlock()
-			if success {
-				return
-			}
-			success = true
-			successResp = resp
-		}()
+		resp, err := fn(m)
+		if err == nil {
+			return resp, nil
+		}
 	}
-
-	wg.Wait()
 
 	var zero T
-	if !success {
-		return zero, ErrCoordinatorUnavailable
-	}
-
-	return successResp, nil
+	return zero, ErrCoordinatorUnavailable
 }
 
 // ChainClient defines the interface for the proxy to communicate with chain nodes.
@@ -188,7 +169,7 @@ func (p *Proxy) getChainMembership(ctx context.Context, forceRefresh bool) (*cha
 		return config, nil
 	}
 
-	resp, err := forwardToLeader(p.raftMembers, func(target string) (*coordinatorpb.GetMembersResponse, error) {
+	resp, err := contactLeader(p.raftMembers, func(target string) (*coordinatorpb.GetMembersResponse, error) {
 		var req coordinatorpb.GetMembersRequest
 		return p.coordinatorClient.GetMembers(ctx, target, &req)
 	})

@@ -84,6 +84,11 @@ func NewService(cfg ServiceConfig) (*Service, error) {
 		return nil, err
 	}
 
+	coordinatorClient, err := NewClient(cfg.DialOptions...)
+	if err != nil {
+		return nil, err
+	}
+
 	// Create a raft node and bootstrap it if requested.
 	rb, err := node.NewRaftBackend(cfg.ID, cfg.Advertise, cfg.StorageDir, cfg.DialOptions...)
 	if err != nil {
@@ -98,7 +103,7 @@ func NewService(cfg ServiceConfig) (*Service, error) {
 		}
 	}
 
-	coordinatorNode := node.NewCoordinator(cfg.ID, cfg.Advertise, chainClient, rb, cfg.Log)
+	coordinatorNode := node.NewCoordinator(cfg.ID, cfg.Advertise, chainClient, coordinatorClient, rb, cfg.Log)
 	srv := transport.NewServer(cfg.Listen, func(grpcServer *grpc.Server) {
 		coordinatorpb.RegisterCoordinatorServiceServer(grpcServer, coordinatorNode)
 		rb.Register(grpcServer)

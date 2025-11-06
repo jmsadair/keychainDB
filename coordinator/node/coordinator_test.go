@@ -14,192 +14,168 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type mockRaft struct {
-	mock.Mock
-}
-
-func (m *mockRaft) JoinCluster(ctx context.Context, id, address string) error {
-	return m.MethodCalled("JoinCluster", ctx, id, address).Error(0)
-}
-
-func (m *mockRaft) RemoveFromCluster(ctx context.Context, id string) error {
-	return m.MethodCalled("RemoveFromCluster", ctx, id).Error(0)
-}
-
-func (m *mockRaft) AddMember(ctx context.Context, id, address string) (*chainnode.Configuration, error) {
-	args := m.MethodCalled("AddMember", ctx, id, address)
-	return args.Get(0).(*chainnode.Configuration), args.Error(1)
-}
-
-func (m *mockRaft) RemoveMember(ctx context.Context, id string) (*chainnode.Configuration, *chainnode.ChainMember, error) {
-	args := m.MethodCalled("RemoveMember", ctx, id)
-	return args.Get(0).(*chainnode.Configuration), args.Get(1).(*chainnode.ChainMember), args.Error(2)
-}
-
-func (m *mockRaft) GetMembers(ctx context.Context) (*chainnode.Configuration, error) {
-	args := m.MethodCalled("GetMembers", ctx)
-	return args.Get(0).(*chainnode.Configuration), args.Error(1)
-}
-
-func (m *mockRaft) LeaderCh() <-chan bool {
-	return m.MethodCalled("LeaderCh").Get(0).(chan bool)
-}
-
-func (m *mockRaft) ChainConfiguration() *chainnode.Configuration {
-	return m.MethodCalled("ChainConfiguration").Get(0).(*chainnode.Configuration)
-}
-
-func (m *mockRaft) ClusterStatus() (Status, error) {
-	args := m.MethodCalled("ClusterStatus")
-	return args.Get(0).(Status), args.Error(1)
-}
-
-func (m *mockRaft) Shutdown() error {
-	args := m.MethodCalled("Shutdown")
-	return args.Error(0)
-}
-
-type mockChainClient struct {
-	mock.Mock
-}
-
-func (m *mockChainClient) Ping(ctx context.Context, address string, request *chainpb.PingRequest) (*chainpb.PingResponse, error) {
-	args := m.MethodCalled("Ping", ctx, address, request)
-	if resp := args.Get(0); resp != nil {
-		return resp.(*chainpb.PingResponse), nil
-	}
-	return nil, args.Error(1)
-}
-
-func (m *mockChainClient) UpdateConfiguration(ctx context.Context, address string, request *chainpb.UpdateConfigurationRequest) (*chainpb.UpdateConfigurationResponse, error) {
-	args := m.MethodCalled("UpdateConfiguration", ctx, address, request)
-	if resp := args.Get(0); resp != nil {
-		return resp.(*chainpb.UpdateConfigurationResponse), nil
-	}
-	return nil, args.Error(1)
-}
-
-func (m *mockChainClient) Close() error {
-	args := m.MethodCalled("Close")
-	return args.Error(0)
-}
-
 func TestNewCoordinator(t *testing.T) {
 	chainClient := new(mockChainClient)
+	coordinatorClient := new(mockCoordinatorClient)
 	consensus := new(mockRaft)
-	id := "coordinator-1"
-	addr := "127.0.0.1:9000"
-	log := slog.Default()
+
 	consensus.On("LeaderCh").Return(make(chan bool)).Once()
-	coordinator := NewCoordinator(id, addr, chainClient, consensus, log)
-	consensus.AssertExpectations(t)
+	coordinator := NewCoordinator("coordinator-1", "127.0.0.1:9000", chainClient, coordinatorClient, consensus, slog.Default())
 
 	require.NotNil(t, coordinator)
-	require.Equal(t, id, coordinator.ID)
-	require.Equal(t, addr, coordinator.Address)
+	require.Equal(t, "coordinator-1", coordinator.ID)
+	require.Equal(t, "127.0.0.1:9000", coordinator.Address)
 	require.NotNil(t, coordinator.memberStates)
 	require.NotNil(t, coordinator.failedChainMemberCh)
 	require.False(t, coordinator.isLeader)
+	consensus.AssertExpectations(t)
 }
 
 func TestJoinCluster(t *testing.T) {
 	chainClient := new(mockChainClient)
+	coordinatorClient := new(mockCoordinatorClient)
 	consensus := new(mockRaft)
-	id := "coordinator-1"
-	addr := "127.0.0.1:9000"
-	log := slog.Default()
+
 	consensus.On("LeaderCh").Return(make(chan bool)).Once()
-	coordinator := NewCoordinator(id, addr, chainClient, consensus, log)
-	consensus.AssertExpectations(t)
+	coordinator := NewCoordinator("coordinator-1", "127.0.0.1:9000", chainClient, coordinatorClient, consensus, slog.Default())
 
 	req := &pb.JoinClusterRequest{Id: "node-2", Address: "127.0.0.2:9000"}
 
-	consensus.On("LeaderAddressAndID").Return(addr, id).Once()
+	// This node is the leader.
+	consensus.On("LeaderWithID").Return(coordinator.Address, coordinator.ID).Once()
 	consensus.On("JoinCluster", mock.Anything, req.Id, req.Address).Return(nil)
 	resp, err := coordinator.JoinCluster(context.Background(), req)
 	require.NoError(t, err)
 	require.NotNil(t, resp)
+	consensus.AssertExpectations(t)
+
+	// This node is not the leader. The request should be forwarded.
+	consensus.On("LeaderWithID").Return("127.0.0.3:9000", "coordinator-3").Once()
+	coordinatorClient.On("JoinCluster", mock.Anything, "127.0.0.3:9000", req).Return(&pb.JoinClusterResponse{}, nil).Once()
+	resp, err = coordinator.JoinCluster(context.Background(), req)
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	coordinatorClient.AssertExpectations(t)
+	consensus.AssertExpectations(t)
 }
 
 func TestRemoveFromCluster(t *testing.T) {
 	chainClient := new(mockChainClient)
+	coordinatorClient := new(mockCoordinatorClient)
 	consensus := new(mockRaft)
-	id := "coordinator-1"
-	addr := "127.0.0.1:9000"
-	log := slog.Default()
+
 	consensus.On("LeaderCh").Return(make(chan bool)).Once()
-	coordinator := NewCoordinator(id, addr, chainClient, consensus, log)
-	consensus.AssertExpectations(t)
+	coordinator := NewCoordinator("coordinator-1", "127.0.0.1:9000", chainClient, coordinatorClient, consensus, slog.Default())
 
-	req := &pb.RemoveFromClusterRequest{Id: "coordinator-3"}
+	req := &pb.RemoveFromClusterRequest{Id: "coordinator-2"}
 
-	consensus.On("LeaderAddressAndID").Return(addr, id).Once()
+	// This node is the leader.
+	consensus.On("LeaderWithID").Return(coordinator.Address, coordinator.ID).Once()
 	consensus.On("RemoveFromCluster", mock.Anything, req.Id).Return(nil)
 	resp, err := coordinator.RemoveFromCluster(context.Background(), req)
 	require.NoError(t, err)
 	require.NotNil(t, resp)
+	consensus.AssertExpectations(t)
+
+	// This node is not the leader. The request should be forwarded.
+	consensus.On("LeaderWithID").Return("127.0.0.3:9000", "coordinator-3").Once()
+	coordinatorClient.On("RemoveFromCluster", mock.Anything, "127.0.0.3:9000", req).Return(&pb.RemoveFromClusterResponse{}, nil).Once()
+	resp, err = coordinator.RemoveFromCluster(context.Background(), req)
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	coordinatorClient.AssertExpectations(t)
+	consensus.AssertExpectations(t)
+
 }
 
 func TestClusterStatus(t *testing.T) {
 	chainClient := new(mockChainClient)
+	coordinatorClient := new(mockCoordinatorClient)
 	consensus := new(mockRaft)
-	id := "coordinator-1"
-	addr := "127.0.0.1:9000"
-	log := slog.Default()
+
 	consensus.On("LeaderCh").Return(make(chan bool)).Once()
-	coordinator := NewCoordinator(id, addr, chainClient, consensus, log)
-	consensus.AssertExpectations(t)
+	coordinator := NewCoordinator("coordinator-1", "127.0.0.1:9000", chainClient, coordinatorClient, consensus, slog.Default())
 
 	req := &pb.ClusterStatusRequest{}
 
-	consensus.On("LeaderAddressAndID").Return(addr, id).Once()
-	consensus.On("ClusterStatus", mock.Anything).Return(Status{Leader: addr, Members: map[string]string{id: addr}}, nil)
+	// This node is the leader.
+	consensus.On("LeaderWithID").Return(coordinator.Address, coordinator.ID).Once()
+	consensus.On("ClusterStatus", mock.Anything).Return(
+		Status{Leader: coordinator.Address, Members: map[string]string{coordinator.ID: coordinator.Address}}, nil,
+	)
 	resp, err := coordinator.ClusterStatus(context.Background(), req)
 	require.NoError(t, err)
 	require.NotNil(t, resp)
+	consensus.AssertExpectations(t)
+
+	// This node is not the leader. The request should be forwarded.
+	expectedLeader := "coordinator-2"
+	expectedMembers := map[string]string{coordinator.ID: coordinator.Address, "coordinator-2": "127.0.0.2:9000"}
+	consensus.On("LeaderWithID").Return("127.0.0.2:9000", "coordinator-2").Once()
+	coordinatorClient.On("ClusterStatus", mock.Anything, "127.0.0.2:9000", req).Return(
+		&pb.ClusterStatusResponse{
+			Leader:  "coordinator-2",
+			Members: map[string]string{coordinator.ID: coordinator.Address, "coordinator-2": "127.0.0.2:9000"},
+		}, nil,
+	).Once()
+	resp, err = coordinator.ClusterStatus(context.Background(), req)
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	require.Equal(t, expectedLeader, resp.GetLeader())
+	require.Equal(t, expectedMembers, resp.GetMembers())
+	coordinatorClient.AssertExpectations(t)
+	consensus.AssertExpectations(t)
+
 }
 
 func TestAddMember(t *testing.T) {
 	chainClient := new(mockChainClient)
+	coordinatorClient := new(mockCoordinatorClient)
 	consensus := new(mockRaft)
-	id := "coordinator-1"
-	addr := "127.0.0.1:9000"
-	log := slog.Default()
-	consensus.On("LeaderCh").Return(make(chan bool)).Once()
-	coordinator := NewCoordinator(id, addr, chainClient, consensus, log)
-	consensus.AssertExpectations(t)
 
-	memberID := "member-1"
-	memberAddr := "127.0.0.2:9000"
-	member := &chainnode.ChainMember{ID: memberID, Address: memberAddr}
+	consensus.On("LeaderCh").Return(make(chan bool)).Once()
+	coordinator := NewCoordinator("coordinator-1", "127.0.0.1:9000", chainClient, coordinatorClient, consensus, slog.Default())
+
+	member := &chainnode.ChainMember{ID: "member-1", Address: "127.0.0.2:9000"}
 	config := chainnode.NewConfiguration([]*chainnode.ChainMember{member}, 0)
 
-	consensus.On("AddMember", mock.Anything, memberID, memberAddr).Return(config, nil).Once()
-	chainClient.On("UpdateConfiguration", mock.Anything, memberAddr, mock.MatchedBy(func(r *chainpb.UpdateConfigurationRequest) bool {
+	// This node is the leader.
+	consensus.On("LeaderWithID").Return(coordinator.Address, coordinator.ID).Once()
+	consensus.On("AddMember", mock.Anything, member.ID, member.Address).Return(config, nil).Once()
+	chainClient.On("UpdateConfiguration", mock.Anything, member.Address, mock.MatchedBy(func(r *chainpb.UpdateConfigurationRequest) bool {
 		return config.Equal(chainnode.NewConfigurationFromProto(r.GetConfiguration()))
 	})).Return(&chainpb.UpdateConfigurationResponse{}, nil).Once()
-	req := &pb.AddMemberRequest{Id: memberID, Address: memberAddr}
+	req := &pb.AddMemberRequest{Id: member.ID, Address: member.Address}
 	resp, err := coordinator.AddMember(context.Background(), req)
 	require.NoError(t, err)
 	require.NotNil(t, resp)
 	chainClient.AssertExpectations(t)
 	consensus.AssertExpectations(t)
+
+	// This node is not the leader. The request should be forwarded.
+	consensus.On("LeaderWithID").Return("127.0.0.3:9000", "coordinator-3").Once()
+	coordinatorClient.On("AddMember", mock.Anything, "127.0.0.3:9000", req).Return(&pb.AddMemberResponse{}, nil).Once()
+	resp, err = coordinator.AddMember(context.Background(), req)
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	coordinatorClient.AssertExpectations(t)
+	consensus.AssertExpectations(t)
 }
 
 func TestRemoveMember(t *testing.T) {
 	chainClient := new(mockChainClient)
+	coordinatorClient := new(mockCoordinatorClient)
 	consensus := new(mockRaft)
-	id := "coordinator-1"
-	addr := "127.0.0.1:9000"
-	log := slog.Default()
+
 	consensus.On("LeaderCh").Return(make(chan bool)).Once()
-	coordinator := NewCoordinator(id, addr, chainClient, consensus, log)
-	consensus.AssertExpectations(t)
+	coordinator := NewCoordinator("coordinator-1", "127.0.0.1:9000", chainClient, coordinatorClient, consensus, slog.Default())
 
 	member1 := &chainnode.ChainMember{ID: "member-1", Address: "127.0.0.2:9000"}
 	member2 := &chainnode.ChainMember{ID: "member-2", Address: "127.0.0.3:9000"}
 	config := chainnode.NewConfiguration([]*chainnode.ChainMember{member1}, 1)
 
+	// This node is the leader.
+	consensus.On("LeaderWithID").Return(coordinator.Address, coordinator.ID).Once()
 	consensus.On("RemoveMember", mock.Anything, member2.ID).Return(config, member2, nil).Once()
 	chainClient.On(
 		"UpdateConfiguration",
@@ -219,22 +195,31 @@ func TestRemoveMember(t *testing.T) {
 	require.NotNil(t, resp)
 	consensus.AssertExpectations(t)
 	chainClient.AssertExpectations(t)
+
+	// This node is not the leader. The request should be forwarded.
+	consensus.On("LeaderWithID").Return("127.0.0.3:9000", "coordinator-3").Once()
+	coordinatorClient.On("RemoveMember", mock.Anything, "127.0.0.3:9000", req).Return(&pb.RemoveMemberResponse{}, nil).Once()
+	resp, err = coordinator.RemoveMember(context.Background(), req)
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	coordinatorClient.AssertExpectations(t)
+	consensus.AssertExpectations(t)
 }
 
 func TestGetMembers(t *testing.T) {
 	chainClient := new(mockChainClient)
+	coordinatorClient := new(mockCoordinatorClient)
 	consensus := new(mockRaft)
-	id := "coordinator-1"
-	addr := "127.0.0.1:9000"
-	log := slog.Default()
+
 	consensus.On("LeaderCh").Return(make(chan bool)).Once()
-	coordinator := NewCoordinator(id, addr, chainClient, consensus, log)
-	consensus.AssertExpectations(t)
+	coordinator := NewCoordinator("coordinator-1", "127.0.0.1:9000", chainClient, coordinatorClient, consensus, slog.Default())
 
-	member1 := &chainnode.ChainMember{ID: "member-1", Address: "127.0.0.1:9000"}
-	member2 := &chainnode.ChainMember{ID: "member-2", Address: "127.0.0.2:9000"}
-
+	member1 := &chainnode.ChainMember{ID: "member-1", Address: "127.0.0.2:9000"}
+	member2 := &chainnode.ChainMember{ID: "member-2", Address: "127.0.0.3:9000"}
 	expectedConfig := chainnode.NewConfiguration([]*chainnode.ChainMember{member1, member2}, 0)
+
+	// This node is the leader.
+	consensus.On("LeaderWithID").Return(coordinator.Address, coordinator.ID).Once()
 	consensus.On("GetMembers", mock.Anything).Return(expectedConfig, nil).Once()
 	req := &pb.GetMembersRequest{}
 	resp, err := coordinator.GetMembers(context.Background(), req)
@@ -242,17 +227,27 @@ func TestGetMembers(t *testing.T) {
 	require.NotNil(t, resp)
 	require.Equal(t, expectedConfig, chainnode.NewConfigurationFromProto(resp.GetConfiguration()))
 	consensus.AssertExpectations(t)
+
+	// This node is not the leader. The request should be forwarded.
+	consensus.On("LeaderWithID").Return("127.0.0.4:9000", "coordinator-2").Once()
+	coordinatorClient.On("GetMembers", mock.Anything, "127.0.0.4:9000", req).Return(
+		&pb.GetMembersResponse{Configuration: expectedConfig.Proto()}, nil,
+	).Once()
+	resp, err = coordinator.GetMembers(context.Background(), req)
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	require.Equal(t, expectedConfig, chainnode.NewConfigurationFromProto(resp.GetConfiguration()))
+	coordinatorClient.AssertExpectations(t)
+	consensus.AssertExpectations(t)
 }
 
 func TestOnHeartbeat(t *testing.T) {
 	chainClient := new(mockChainClient)
+	coordinatorClient := new(mockCoordinatorClient)
 	consensus := new(mockRaft)
-	id := "coordinator-1"
-	addr := "127.0.0.1:9000"
-	log := slog.Default()
+
 	consensus.On("LeaderCh").Return(make(chan bool)).Once()
-	coordinator := NewCoordinator(id, addr, chainClient, consensus, log)
-	consensus.AssertExpectations(t)
+	coordinator := NewCoordinator("coordinator-1", "127.0.0.1:9000", chainClient, coordinatorClient, consensus, slog.Default())
 
 	member1 := &chainnode.ChainMember{ID: "member-1", Address: "127.0.0.2:9000"}
 	member2 := &chainnode.ChainMember{ID: "member-2", Address: "127.0.0.3:9000"}
@@ -304,13 +299,11 @@ func TestOnHeartbeat(t *testing.T) {
 
 func TestOnFailedChainMember(t *testing.T) {
 	chainClient := new(mockChainClient)
+	coordinatorClient := new(mockCoordinatorClient)
 	consensus := new(mockRaft)
-	id := "coordinator-1"
-	addr := "127.0.0.1:9000"
-	log := slog.Default()
+
 	consensus.On("LeaderCh").Return(make(chan bool)).Once()
-	coordinator := NewCoordinator(id, addr, chainClient, consensus, log)
-	consensus.AssertExpectations(t)
+	coordinator := NewCoordinator("coordinator-1", "127.0.0.1:9000", chainClient, coordinatorClient, consensus, slog.Default())
 
 	member1 := &chainnode.ChainMember{ID: "member-1", Address: "127.0.0.2:9000"}
 	member2 := &chainnode.ChainMember{ID: "member-2", Address: "127.0.0.3:9000"}
@@ -355,12 +348,12 @@ func TestOnFailedChainMember(t *testing.T) {
 
 func TestOnLeadershipChange(t *testing.T) {
 	chainClient := new(mockChainClient)
+	coordinatorClient := new(mockCoordinatorClient)
 	consensus := new(mockRaft)
-	id := "coordinator-1"
-	addr := "127.0.0.1:9000"
-	log := slog.Default()
+
 	consensus.On("LeaderCh").Return(make(chan bool)).Once()
-	coordinator := NewCoordinator(id, addr, chainClient, consensus, log)
+	coordinator := NewCoordinator("coordinator-1", "127.0.0.1:9000", chainClient, coordinatorClient, consensus, slog.Default())
+
 	consensus.AssertExpectations(t)
 
 	memberID := "member-1"
@@ -377,17 +370,16 @@ func TestOnLeadershipChange(t *testing.T) {
 	coordinator.onLeadershipChange(false)
 	require.False(t, coordinator.isLeader)
 	require.Empty(t, coordinator.memberStates)
+
 }
 
 func TestOnConfigSync(t *testing.T) {
 	chainClient := new(mockChainClient)
+	coordinatorClient := new(mockCoordinatorClient)
 	consensus := new(mockRaft)
-	id := "coordinator-1"
-	addr := "127.0.0.1:9000"
-	log := slog.Default()
+
 	consensus.On("LeaderCh").Return(make(chan bool)).Once()
-	coordinator := NewCoordinator(id, addr, chainClient, consensus, log)
-	consensus.AssertExpectations(t)
+	coordinator := NewCoordinator("coordinator-1", "127.0.0.1:9000", chainClient, coordinatorClient, consensus, slog.Default())
 
 	member1 := &chainnode.ChainMember{ID: "member-1", Address: "127.0.0.2:9000"}
 	member2 := &chainnode.ChainMember{ID: "member-2", Address: "127.0.0.3:9000"}
